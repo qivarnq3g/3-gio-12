@@ -1,0 +1,44 @@
+name: Báo lỗi
+description: Lỗi tìm thấy khi kiểm thử hoặc chơi thử
+title: "[Lỗi] Mô tả ngắn"
+labels: ["loai: loi"]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Các bước tái hiện
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Kết quả mong đợi
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Kết quả thực tế
+      description: Kèm ảnh chụp hoặc video nếu có.
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Phiên bản, máy
+      description: Bản build hoặc commit, hệ điều hành, cấu hình máy.
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Mức độ
+      options:
+        - Nghiêm trọng (không chơi tiếp được, mất dữ liệu)
+        - Cao (sai chức năng chính)
+        - Trung bình
+        - Thấp (giao diện, chính tả)
+    validations:
+      required: true

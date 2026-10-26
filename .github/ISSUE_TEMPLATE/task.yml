@@ -1,0 +1,39 @@
+name: Công việc
+description: Một việc cần làm, có người nhận và tiêu chí hoàn thành
+title: "[Mảng] Tên việc"
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Mục tiêu
+      description: Làm việc này để làm gì?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Cần làm
+      description: Liệt kê các bước hoặc phần việc.
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Tiêu chí hoàn thành
+      description: Thế nào thì coi là xong? Người khác kiểm được bằng cách nào?
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: input
+    id: requirement
+    attributes:
+      label: Yêu cầu chức năng liên quan
+      description: Số yêu cầu trong bản đăng ký đề tài (1-14), nếu có.
+  - type: textarea
+    id: depends
+    attributes:
+      label: Phụ thuộc
+      description: Việc này đang chờ issue nào?

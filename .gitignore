@@ -1,0 +1,44 @@
+# Unity
+game/[Ll]ibrary/
+game/[Tt]emp/
+game/[Oo]bj/
+game/[Bb]uild/
+game/[Bb]uilds/
+game/[Ll]ogs/
+game/[Uu]ser[Ss]ettings/
+game/[Mm]emoryCaptures/
+game/[Rr]ecordings/
+game/*.csproj
+game/*.sln
+game/*.slnx
+game/*.suo
+game/*.user
+game/*.pidb
+game/*.booproj
+game/*.unityproj
+game/.vs/
+game/.vscode/
+game/.idea/
+game/*.apk
+game/*.aab
+game/crashlytics-build.properties
+
+# Heavy art sources live on Drive, not in Git
+art-source/
+
+# .NET
+**/bin/
+**/obj/
+*.user
+
+# Node
+**/node_modules/
+**/dist/
+.env
+.env.*
+!.env.example
+
+# OS and editor
+.DS_Store
+Thumbs.db
+desktop.ini

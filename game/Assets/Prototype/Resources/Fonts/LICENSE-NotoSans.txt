@@ -1,0 +1,5 @@
+Noto Sans (NotoSans-Regular.ttf, NotoSans-Bold.ttf), version 2.015.
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic).
+Licensed under the SIL Open Font License, Version 1.1: https://scripts.sil.org/OFL
+Copied 2026-10-18 from C:\Windows\Fonts on the developer machine; the licence text above is the font's own name-table entry.
+Before shipping, include the full OFL text with the build.
