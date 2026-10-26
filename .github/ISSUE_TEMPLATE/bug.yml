@@ -1,7 +1,7 @@
 name: Báo lỗi
 description: Lỗi tìm thấy khi kiểm thử hoặc chơi thử
 title: "[Lỗi] Mô tả ngắn"
-labels: ["loai: loi"]
+labels: ["loại: lỗi"]
 body:
   - type: textarea
     id: steps
