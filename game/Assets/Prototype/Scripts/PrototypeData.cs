@@ -3,16 +3,18 @@ using System.Collections.Generic;
 
 namespace BaGio12.Prototype
 {
-    // Shape of Resources/Prototype/chat-mau.json. Placeholder content only; the real
-    // script format will live in the Story.Core library once the story is locked.
+    // Shape of Resources/Prototype/dem-1.json and chat-mau.json.
+    // Handles contacts, messages, choices, photos, and voice memos.
     [Serializable]
     public class PrototypeData
     {
         public string note;
+        public string scenarioId;
         public string lockTime;
         public string lockDate;
         public List<Contact> contacts = new List<Contact>();
         public List<Photo> photos = new List<Photo>();
+        public List<VoiceMemo> voiceMemos = new List<VoiceMemo>();
     }
 
     [Serializable]
@@ -37,6 +39,7 @@ namespace BaGio12.Prototype
     [Serializable]
     public class Choice
     {
+        public string id;
         public string text;
         public List<Message> replies = new List<Message>();
     }
@@ -46,5 +49,18 @@ namespace BaGio12.Prototype
     {
         public string resource;  // path under a Resources folder, without extension
         public string caption;
+        public string time;
+    }
+
+    [Serializable]
+    public class VoiceMemo
+    {
+        public string id;
+        public string title;
+        public string duration;
+        public string time;
+        public string date;
+        public string transcript;
+        public string resource;
     }
 }

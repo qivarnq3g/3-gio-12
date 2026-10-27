@@ -1,0 +1,107 @@
+{
+  "note": "Kịch bản Đêm 1: Ác mộng lúc 3 giờ 12 tại chung cư cũ",
+  "scenarioId": "dem-1",
+  "lockTime": "3:12",
+  "lockDate": "Thứ năm, 26 tháng 11",
+  "contacts": [
+    {
+      "id": "me",
+      "name": "Mẹ",
+      "preview": "Con ở yên trong phòng trọ...",
+      "messages": [
+        { "from": "them", "text": "Con ngủ chưa?", "time": "03:09", "delay": 0.5 },
+        { "from": "them", "text": "Mẹ nghe tiếng gõ cửa ngoài hành lang tầng 3.", "time": "03:10", "delay": 1.2 },
+        { "from": "them", "text": "Gõ một cái... rồi hai cái... Đều đặn lắm.", "time": "03:11", "delay": 1.5 },
+        { "from": "them", "text": "Con ở yên trong phòng trọ, chốt then lại, tuyệt đối đừng ra mở cửa...", "time": "03:12", "delay": 1.6 }
+      ],
+      "choices": [
+        {
+          "id": "choice_me_1",
+          "text": "Con vừa nghe tiếng bước chân dừng ngay trước cửa phòng con...",
+          "replies": [
+            { "from": "them", "text": "Đừng gây ra tiếng động! Tắt hết đèn trong phòng đi!", "time": "03:13", "delay": 1.2 },
+            { "from": "them", "text": "Mẹ đang thử gọi điện xuống phòng bảo vệ bác Tư.", "time": "03:14", "delay": 1.4 }
+          ]
+        },
+        {
+          "id": "choice_me_2",
+          "text": "Mẹ ơi con sợ quá, có ai đang cào vào then cửa phòng!",
+          "replies": [
+            { "from": "them", "text": "Trốn vào tủ quần áo ngay! Nhanh lên con!", "time": "03:13", "delay": 1.2 },
+            { "from": "them", "text": "Bất kể ai gọi tên con ngoài cửa cũng không được trả lời!", "time": "03:14", "delay": 1.5 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bactu",
+      "name": "Bác Tư (Bảo vệ)",
+      "preview": "Camera tầng 3 vừa bị nhiễu...",
+      "messages": [
+        { "from": "them", "text": "Cháu phòng 312 ơi, trên tầng 3 có ai đi lại không?", "time": "03:06", "delay": 0.4 },
+        { "from": "them", "text": "Camera hành lang tầng 3 tự dưng mất tín hiệu, màn hình toàn sọc trắng.", "time": "03:08", "delay": 1.3 },
+        { "from": "them", "text": "Bác đang cầm đèn pin đi thang bộ lên kiểm tra đây.", "time": "03:11", "delay": 1.5 }
+      ],
+      "choices": [
+        {
+          "id": "choice_bactu_1",
+          "text": "Bác đừng lên! Cháu nhìn qua khe cửa thấy có bóng người cao kỳ dị!",
+          "replies": [
+            { "from": "them", "text": "Cái gì... Sao bóng đèn cầu thang vừa phụt tắt hết thế này...", "time": "03:13", "delay": 1.6 },
+            { "from": "them", "text": "Ai... ai đứng ở khúc quanh đó...? [Mất tín hiệu]", "time": "03:14", "delay": 2.0 }
+          ]
+        },
+        {
+          "id": "choice_bactu_2",
+          "text": "Bác kiểm tra giúp cháu phòng 314 kế bên với, nãy giờ có tiếng đập tường thình thịch.",
+          "replies": [
+            { "from": "them", "text": "Cháu nói sao? Phòng 314 bị niêm phong bỏ hoang 3 năm nay rồi mà!", "time": "03:13", "delay": 1.8 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cudan",
+      "name": "Cư Dân Tầng 3",
+      "preview": "Hùng P308: Có ai nghe tiếng chuông...",
+      "messages": [
+        { "from": "them", "text": "Hùng P308: Có ai nghe thấy tiếng chuêng đồng hồ điểm lúc 3 giờ 12 không?", "time": "03:12", "delay": 0.5 },
+        { "from": "them", "text": "Linh P310: Mùi khét với mùi tanh bốc lên nồng nặc từ phía thang thoát hiểm...", "time": "03:12", "delay": 1.4 },
+        { "from": "them", "text": "Tuấn P305: Mọi người chốt cửa cẩn thận, đừng ai mở cửa cho người lạ lúc này!", "time": "03:13", "delay": 1.6 }
+      ],
+      "choices": []
+    }
+  ],
+  "photos": [
+    {
+      "resource": "Scenes/phong-tro",
+      "caption": "Phòng trọ 312 lúc 03:12",
+      "time": "03:12"
+    },
+    {
+      "resource": "Scenes/phong-tro-blur",
+      "caption": "Bóng đen ngoài khe cửa",
+      "time": "03:13"
+    }
+  ],
+  "voiceMemos": [
+    {
+      "id": "memo_1",
+      "title": "Ghi âm tự động - Hành lang tầng 3",
+      "duration": "0:38",
+      "time": "03:10",
+      "date": "Hôm nay",
+      "transcript": "[03:10:02] Tiếng kim loại lê kéo dài trên nền gạch...\n[03:10:14] Cộc... cộc... cộc...\n[03:10:25] Tiếng thở nặng nhọc sát cánh cửa phòng 312...\n[03:10:32] Giọng thì thầm khàn đặc: 'Biết mày ở trong đó rồi...'",
+      "resource": ""
+    },
+    {
+      "id": "memo_2",
+      "title": "Hộp thư thoại - Bác Tư gọi khẩn",
+      "duration": "0:24",
+      "time": "03:14",
+      "date": "Hôm nay",
+      "transcript": "[03:14:01] 'Alo cháu ơi, bác vừa lên đến chiếu nghỉ tầng 3... Khoan đã, cái bóng kia... không phải người... Tránh xa cánh cửa ra, cháu ơi... Á... [tiếng rơi máy đập xuống sàn, tín hiệu tắt ngấm]'",
+      "resource": ""
+    }
+  ]
+}
