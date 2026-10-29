@@ -3,6 +3,8 @@
   "scenarioId": "chat-mau",
   "lockTime": "3:12",
   "lockDate": "Thứ năm, 26 tháng 11",
+  "chatDay": "Hôm nay - 3:12 AM",
+  "albumDay": "Hôm nay",
   "contacts": [
     {
       "id": "me",

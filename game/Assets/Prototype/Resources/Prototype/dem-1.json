@@ -3,6 +3,8 @@
   "scenarioId": "dem-1",
   "lockTime": "3:12",
   "lockDate": "Thứ năm, 26 tháng 11",
+  "chatDay": "Hôm nay - 3:12 AM",
+  "albumDay": "Hôm nay - Đêm 1",
   "contacts": [
     {
       "id": "me",
@@ -65,7 +67,7 @@
       "name": "Cư Dân Tầng 3",
       "preview": "Hùng P308: Có ai nghe tiếng chuông...",
       "messages": [
-        { "from": "them", "text": "Hùng P308: Có ai nghe thấy tiếng chuêng đồng hồ điểm lúc 3 giờ 12 không?", "time": "03:12", "delay": 0.5 },
+        { "from": "them", "text": "Hùng P308: Có ai nghe thấy tiếng chuông đồng hồ điểm lúc 3 giờ 12 không?", "time": "03:12", "delay": 0.5 },
         { "from": "them", "text": "Linh P310: Mùi khét với mùi tanh bốc lên nồng nặc từ phía thang thoát hiểm...", "time": "03:12", "delay": 1.4 },
         { "from": "them", "text": "Tuấn P305: Mọi người chốt cửa cẩn thận, đừng ai mở cửa cho người lạ lúc này!", "time": "03:13", "delay": 1.6 }
       ],

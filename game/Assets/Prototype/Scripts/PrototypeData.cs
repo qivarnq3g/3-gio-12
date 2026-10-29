@@ -12,6 +12,8 @@ namespace BaGio12.Prototype
         public string scenarioId;
         public string lockTime;
         public string lockDate;
+        public string chatDay;   // divider at the top of every chat, e.g. "Hôm nay - 3:12 AM"
+        public string albumDay;  // section heading in Nimbo, e.g. "Hôm nay - Đêm 1"
         public List<Contact> contacts = new List<Contact>();
         public List<Photo> photos = new List<Photo>();
         public List<VoiceMemo> voiceMemos = new List<VoiceMemo>();

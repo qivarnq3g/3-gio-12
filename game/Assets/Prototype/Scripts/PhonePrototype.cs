@@ -38,10 +38,12 @@ namespace BaGio12.Prototype
         Font uiFont, lightFont, boldFont;
         VisualElement rootContainer, phoneContainer, phone, screenHost;
         VisualElement hudPill;
-        Label hudBadge, clock;
+        Label hudBadge, hudTime, clock;
         readonly Stack<System.Action> back = new Stack<System.Action>();
         readonly Dictionary<string, List<Message>> shown = new Dictionary<string, List<Message>>();
-        readonly HashSet<string> chose = new HashSet<string>();
+        // Per contact: the choice the player picked and the bubble it produced.
+        readonly Dictionary<string, Choice> chose = new Dictionary<string, Choice>();
+        readonly Dictionary<string, Message> mine = new Dictionary<string, Message>();
         Coroutine typing;
         Coroutine audioPlayingCoroutine;
 
@@ -125,7 +127,10 @@ namespace BaGio12.Prototype
             LoadScenarioData(currentScenario);
             shown.Clear();
             chose.Clear();
+            mine.Clear();
             LoadSavedChoices();
+            if (clock != null) clock.text = data.lockTime;
+            if (hudTime != null) hudTime.text = data.lockTime + "  [Tab]";
             if (IsOpen) ShowHome();
             UpdateHudBadge();
         }
@@ -148,35 +153,62 @@ namespace BaGio12.Prototype
             }
         }
 
+        // Scoped by scenario so night 2 can reuse contact ids (e.g. "me") without
+        // inheriting night 1's answer.
+        string ChoiceKey(Contact c)
+        {
+            string scenario = string.IsNullOrEmpty(data.scenarioId) ? currentScenario : data.scenarioId;
+            return $"BaGio12_{scenario}_Choice_{c.id}";
+        }
+
+        static string ChoiceId(Choice ch) => string.IsNullOrEmpty(ch.id) ? ch.text : ch.id;
+
         void LoadSavedChoices()
         {
             if (data?.contacts == null) return;
             foreach (var c in data.contacts)
             {
-                string key = $"BaGio12_Choice_{c.id}";
-                if (PlayerPrefs.HasKey(key))
-                {
-                    string savedText = PlayerPrefs.GetString(key);
-                    chose.Add(c.id);
-                    var sh = Shown(c);
-                    // Add saved message if not already in list
-                    bool exists = sh.Exists(m => m.from == "me" && m.text == savedText);
-                    if (!exists)
-                    {
-                        sh.Add(new Message { from = "me", text = savedText, time = data.lockTime });
-                    }
-                }
+                string key = ChoiceKey(c);
+                if (!PlayerPrefs.HasKey(key) || c.choices == null) continue;
+                string savedId = PlayerPrefs.GetString(key);
+                var choice = c.choices.Find(ch => ChoiceId(ch) == savedId);
+                if (choice == null) continue;  // script changed since the save; offer the choices again
+                Pick(c, choice);
+                // The conversation was already read through before the save, so restore all of it in order.
+                var sh = Shown(c);
+                sh.Clear();
+                sh.AddRange(Script(c));
             }
+        }
+
+        void Pick(Contact c, Choice choice)
+        {
+            chose[c.id] = choice;
+            mine[c.id] = new Message { from = "me", text = choice.text, time = LastTime(c) };
         }
 
         void SaveChoice(Contact c, Choice choice)
         {
-            string key = $"BaGio12_Choice_{c.id}";
-            PlayerPrefs.SetString(key, choice.text);
+            PlayerPrefs.SetString(ChoiceKey(c), ChoiceId(choice));
             PlayerPrefs.Save();
             OnChoiceSelected?.Invoke(c.id, choice.text);
             Debug.Log($"[PhonePrototype] Saved choice for {c.name}: {choice.text}");
         }
+
+        // Everything this contact's chat should end up showing: the incoming messages,
+        // then the player's answer and its replies once a choice is made.
+        List<Message> Script(Contact c)
+        {
+            var all = new List<Message>(c.messages);
+            if (chose.TryGetValue(c.id, out var choice))
+            {
+                all.Add(mine[c.id]);
+                if (choice.replies != null) all.AddRange(choice.replies);
+            }
+            return all;
+        }
+
+        static string LastTime(Contact c) => c.messages.Count > 0 ? c.messages[c.messages.Count - 1].time : "";
 
         // ---------- Open / Close / HUD ----------
         public void TogglePhone() => SetPhoneOpen(!IsOpen);
@@ -224,8 +256,8 @@ namespace BaGio12.Prototype
             phoneIc.style.marginRight = 14;
             hudPill.Add(phoneIc);
 
-            var title = T("3:12  [Tab]", 26, Ink, boldFont);
-            hudPill.Add(title);
+            hudTime = T(data.lockTime + "  [Tab]", 26, Ink, boldFont);
+            hudPill.Add(hudTime);
 
             hudBadge = new Label("1");
             hudBadge.style.fontSize = 20;
@@ -251,8 +283,7 @@ namespace BaGio12.Prototype
             {
                 foreach (var c in data.contacts)
                 {
-                    var sh = Shown(c);
-                    total += Mathf.Max(0, c.messages.Count - sh.Count);
+                    total += Mathf.Max(0, Script(c).Count - Shown(c).Count);
                 }
             }
             return total;
@@ -486,7 +517,7 @@ namespace BaGio12.Prototype
                 var last = sh.Count > 0 ? (sh[sh.Count - 1].from == "me" ? "Bạn: " : "") + sh[sh.Count - 1].text : c.preview;
                 var lt = T(last, 31, sh.Count == 0 ? Ink : Dim); lt.style.flexShrink = 1; lt.style.overflow = Overflow.Hidden; lt.style.textOverflow = TextOverflow.Ellipsis; lt.style.whiteSpace = WhiteSpace.NoWrap;
                 bottom.Add(lt);
-                int unread = Mathf.Max(0, c.messages.Count - sh.Count);
+                int unread = Mathf.Max(0, Script(c).Count - sh.Count);
                 if (unread > 0)
                 {
                     var badge = new VisualElement(); badge.style.minWidth = 44; badge.style.height = 44; Radius(badge, 22); badge.style.backgroundColor = WarningRed;
@@ -520,7 +551,7 @@ namespace BaGio12.Prototype
             var scroll = new ScrollView(ScrollViewMode.Vertical); scroll.style.flexGrow = 1;
             scroll.verticalScrollerVisibility = ScrollerVisibility.Hidden;
             var cc = scroll.contentContainer; cc.style.paddingLeft = 36; cc.style.paddingRight = 36; cc.style.paddingTop = 30; cc.style.paddingBottom = 20;
-            var day = T("Hôm nay - 3:12 AM", 26, Faint); day.style.alignSelf = Align.Center; day.style.marginBottom = 26; cc.Add(day);
+            var day = T(string.IsNullOrEmpty(data.chatDay) ? "Hôm nay" : data.chatDay, 26, Faint); day.style.alignSelf = Align.Center; day.style.marginBottom = 26; cc.Add(day);
             s.Add(scroll);
 
             var choiceBox = new VisualElement(); choiceBox.style.paddingLeft = 36; choiceBox.style.paddingRight = 36; choiceBox.style.flexShrink = 0;
@@ -536,9 +567,15 @@ namespace BaGio12.Prototype
 
             Message prev = null;
             foreach (var m in Shown(c)) { cc.Add(Bubble(m, prev)); prev = m; }
-            var queue = new List<Message>();
-            foreach (var m in c.messages) if (!Shown(c).Contains(m)) queue.Add(m);
+            // Script(c) includes the answer and its replies, so leaving mid-reply resumes them here.
+            var queue = Pending(c);
             typing = StartCoroutine(Play(c, queue, scroll, presence, () => OfferChoices(c, scroll, presence, choiceBox)));
+        }
+
+        List<Message> Pending(Contact c)
+        {
+            var sh = Shown(c);
+            return Script(c).FindAll(m => !sh.Contains(m));
         }
 
         IEnumerator Play(Contact c, List<Message> queue, ScrollView scroll, Label presence, System.Action done)
@@ -569,7 +606,7 @@ namespace BaGio12.Prototype
 
         void OfferChoices(Contact c, ScrollView scroll, Label presence, VisualElement box)
         {
-            if (chose.Contains(c.id) || c.choices == null || c.choices.Count == 0) return;
+            if (chose.ContainsKey(c.id) || c.choices == null || c.choices.Count == 0) return;
             box.Clear();
             var label = T("Chọn câu trả lời:", 26, Faint); label.style.marginBottom = 12; label.style.marginLeft = 8; box.Add(label);
             foreach (var ch in c.choices)
@@ -583,12 +620,10 @@ namespace BaGio12.Prototype
                 btn.Add(Icon(IcSend, 32, new Color(0.45f, 0.8f, 0.7f)));
                 btn.RegisterCallback<PointerUpEvent>(_ =>
                 {
-                    chose.Add(c.id);
+                    Pick(c, choice);
                     SaveChoice(c, choice);
                     box.Clear();
-                    var q = new List<Message> { new Message { from = "me", text = choice.text, time = clock.text.PadLeft(5, '0') } };
-                    if (choice.replies != null) q.AddRange(choice.replies);
-                    typing = StartCoroutine(Play(c, q, scroll, presence, null));
+                    typing = StartCoroutine(Play(c, Pending(c), scroll, presence, null));
                 });
                 box.Add(btn);
             }
@@ -603,7 +638,7 @@ namespace BaGio12.Prototype
             var sync = Row(); sync.style.marginLeft = 56; sync.style.marginTop = 8;
             var dot = new VisualElement(); dot.style.width = dot.style.height = 14; Radius(dot, 7); dot.style.backgroundColor = new Color(0.95f, 0.65f, 0.25f); sync.Add(dot);
             var st = T("Đã đồng bộ ảnh hiện trường", 28, Dim); st.style.marginLeft = 14; sync.Add(st); s.Add(sync);
-            var day = T("Hôm nay - Đêm 1", 34, Ink, boldFont); day.style.marginLeft = 56; day.style.marginTop = 50; day.style.marginBottom = 18; s.Add(day);
+            var day = T(string.IsNullOrEmpty(data.albumDay) ? "Hôm nay" : data.albumDay, 34, Ink, boldFont); day.style.marginLeft = 56; day.style.marginTop = 50; day.style.marginBottom = 18; s.Add(day);
 
             var grid = Row(); grid.style.flexWrap = Wrap.Wrap; grid.style.alignItems = Align.FlexStart; grid.style.paddingLeft = 20; grid.style.paddingRight = 20;
             if (data.photos != null)
@@ -633,7 +668,7 @@ namespace BaGio12.Prototype
             var top = Row(); top.style.position = Position.Absolute; top.style.top = 92; top.style.left = 20; top.style.right = 44; top.style.height = 100;
             var b = Icon(IcBack, 44, Ink); Pad(b, 22); b.RegisterCallback<PointerUpEvent>(_ => GoBack()); top.Add(b);
             var meta = new VisualElement(); meta.style.marginLeft = 10;
-            meta.Add(T(p.caption, 34, Ink, boldFont)); meta.Add(T("Chụp lúc " + (string.IsNullOrEmpty(p.time) ? "03:12" : p.time), 26, Dim)); top.Add(meta);
+            meta.Add(T(p.caption, 34, Ink, boldFont)); if (!string.IsNullOrEmpty(p.time)) meta.Add(T("Chụp lúc " + p.time, 26, Dim)); top.Add(meta);
             s.Add(top);
             Switch(s, ShowNimbo, "photo");
         }
@@ -786,7 +821,7 @@ namespace BaGio12.Prototype
             var ic = AppIcon("Icons/icon-mosa", 160); ic.style.opacity = 0.5f; s.Add(ic);
             var t1 = T("Mosa Network", 40, Ink, boldFont); t1.style.marginTop = 40; s.Add(t1);
             var t2 = T("Không có kết nối Internet tại khu vực này", 30, Dim); t2.style.marginTop = 10; s.Add(t2);
-            var t3 = T("Tín hiệu 4G bị nhiễu sóng lạ lúc 03:12", 26, Faint); t3.style.marginTop = 10; s.Add(t3);
+            var t3 = T("Tín hiệu 4G bị nhiễu sóng lạ lúc " + data.lockTime, 26, Faint); t3.style.marginTop = 10; s.Add(t3);
             var retry = T("Thử dò lại sóng", 32, Accent, boldFont); retry.style.marginTop = 50;
             retry.RegisterCallback<PointerUpEvent>(_ => retry.text = "Đang quét tần số...");
             s.Add(retry);
