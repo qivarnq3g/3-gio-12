@@ -35,7 +35,7 @@ classDiagram
         +Guid InstallationId
         +Guid SessionId
         +int Sequence
-        +TelemetryEventType Type
+        +string Type
         +DateTimeOffset OccurredAt
         +DateTimeOffset ReceivedAt
         +string GameVersion
@@ -43,8 +43,8 @@ classDiagram
         +string? AreaId
         +string? CheckpointId
         +string? ChoiceId
-        +EndingId? EndingId
-        +SessionEndReason? EndReason
+        +string? EndingId
+        +string? EndReason
         +int? DurationSeconds
         +bool? IsReplay
         +double? PositionX
@@ -157,7 +157,7 @@ classDiagram
 
 Không có lớp người chơi. Máy chủ chỉ biết `InstallationId`, một UUID ngẫu nhiên, nên `TelemetryEvent` và `PuzzleSubmission` chỉ giữ mã này như một giá trị, không trỏ tới bảng nào.
 
-Kiểu liệt kê lưu dạng chuỗi snake_case giống hợp đồng, không lưu số, để đọc thẳng được trong cơ sở dữ liệu và trong tệp CSV.
+Các trường liệt kê (`Type`, `EndingId`, `EndReason`, `Result`) lưu dạng chuỗi snake_case giống hợp đồng, không lưu số, để đọc thẳng được trong cơ sở dữ liệu và trong tệp CSV. Các khối enumeration trong sơ đồ là tập giá trị hợp lệ; với sự kiện thống kê, tập này nằm trong `TelemetryEventValidator`.
 
 ## 3. Lớp dịch vụ và controller
 
@@ -178,19 +178,17 @@ classDiagram
 
     class ITelemetryIngestService {
         <<interface>>
-        +IngestAsync(TelemetryBatchRequest) Task~TelemetryBatchResponse~
+        +IngestAsync(installationId, gameVersion, events) Task~TelemetryBatchResponse~
         +DeleteInstallationAsync(Guid installationId) Task~int~
     }
 
     class TelemetryIngestService {
         -AppDbContext db
-        -TelemetryEventValidator validator
         -TimeProvider clock
     }
 
     class TelemetryEventValidator {
-        +Validate(TelemetryEventRequest, receivedAt) RejectReason?
-        +ToEntity(TelemetryEventRequest, batch, receivedAt) TelemetryEvent
+        +Check(JsonElement, gameVersion, installationId, receivedAt) TelemetryEventCheck$
     }
 
     class IPuzzleSubmissionService {
@@ -238,7 +236,7 @@ classDiagram
 | `TelemetryController.DeleteInstallation` | `DELETE /api/v1/telemetry/installations/{installationId}` | `DeleteInstallationAsync` | 204, kể cả khi không có gì để xóa |
 | `PuzzleSubmissionsController.Post` | `POST /api/v1/puzzles/{puzzleId}/submissions` | `SubmitAsync` | `Accepted`, `Rejected`: 200; `Blocked`: 429 kèm `Retry-After`; `PuzzleNotFound`: 404 |
 
-Giới hạn tần suất theo địa chỉ IP dùng bộ giới hạn tần suất có sẵn của ASP.NET Core (`AddRateLimiter`), khai báo bằng thuộc tính `[EnableRateLimiting]` trên controller; giữ trong bộ nhớ, không ghi IP vào cơ sở dữ liệu. Ba chính sách: `telemetry`, `puzzle-submit` (20 lần mỗi phút), `admin-login` (10 lần mỗi phút). Hợp đồng chưa chốt con số cho `telemetry`; đề xuất 60 lô mỗi phút cho mỗi IP, chốt khi làm task #25.
+Giới hạn tần suất theo địa chỉ IP dùng bộ giới hạn tần suất có sẵn của ASP.NET Core (`AddRateLimiter`), khai báo bằng thuộc tính `[EnableRateLimiting]` trên controller; giữ trong bộ nhớ, không ghi IP vào cơ sở dữ liệu. Ba chính sách: `telemetry`, `puzzle-submit` (20 lần mỗi phút), `admin-login` (10 lần mỗi phút). `telemetry` cho 60 yêu cầu mỗi phút cho mỗi IP (chốt ở task #25, đổi bằng cấu hình `RateLimits:Telemetry:PermitLimit`).
 
 ### 3.2. Phần quản trị (trang quản trị gọi)
 
@@ -365,7 +363,7 @@ Dịch vụ báo lỗi nghiệp vụ bằng ba ngoại lệ riêng: `NotFoundExc
 
 ### 4.1. Nhận lô thống kê
 
-1. `TelemetryEventValidator.Validate` kiểm từng sự kiện: loại có biết không, đủ trường bắt buộc của loại đó không, `occurredAt` có cũ hơn 30 ngày hay sau giờ máy chủ hơn 24 giờ không. Sai thì cho vào `rejected` với lý do `invalid`, `unknown_type`, `too_old` hoặc `in_future`.
+1. `TelemetryEventValidator.Check` kiểm từng sự kiện: loại có biết không, đủ trường bắt buộc của loại đó không, `occurredAt` có cũ hơn 30 ngày hay sau giờ máy chủ hơn 24 giờ không. Sai thì cho vào `rejected` với lý do `invalid`, `unknown_type`, `too_old` hoặc `in_future`.
 2. Các sự kiện hợp lệ được chèn trong một giao dịch bằng `INSERT ... ON CONFLICT (event_id) DO NOTHING`. Số dòng chèn được là `accepted`; phần còn lại là `duplicates`. Cách này đúng cả khi game gửi cùng một lô hai lần song song, điều mà kiểu "đọc trước xem đã có chưa rồi mới chèn" không bảo đảm.
 3. `eventId` trùng ngay trong một lô cũng tính là `duplicates`.
 
@@ -590,7 +588,7 @@ Sơ đồ ở trên chỉ vẽ `admin_users`; các cột chuẩn còn lại củ
 | Schema trong `openapi.yaml` | Lớp `Contracts/` | Thực thể hoặc nguồn |
 |---|---|---|
 | `TelemetryBatch` | `TelemetryBatchRequest` | Vỏ lô; `gameVersion` chép vào từng `TelemetryEvent` |
-| `TelemetryEvent` (bảy loại) | `TelemetryEventRequest` | `TelemetryEvent`; `reason` thành `EndReason`, `position` thành ba cột `Position*` |
+| `TelemetryEvent` (bảy loại) | `JsonElement`, kiểm bằng `TelemetryEventValidator` | `TelemetryEvent`; `reason` thành `EndReason`, `position` thành ba cột `Position*` |
 | `TelemetryBatchResult`, `RejectedEvent` | `TelemetryBatchResponse` | Kết quả của `IngestAsync` |
 | `PuzzleSubmission` | `PuzzleSubmissionRequest` | `PuzzleSubmission` |
 | `PuzzleSubmissionResult` | `PuzzleSubmissionResponse` | `SubmissionOutcome` |
@@ -599,7 +597,7 @@ Sơ đồ ở trên chỉ vẽ `admin_users`; các cột chuẩn còn lại củ
 | `PuzzleConfig`, `PuzzleSolution` | `PuzzleConfigResponse`, `PuzzleSolutionResponse` | `Puzzle`, `PuzzleSolution` |
 | `PuzzleSubmissionRecord`, `PuzzleSubmissionPage` | `PuzzleSubmissionRecordResponse`, `PuzzleSubmissionPage` | `PuzzleSubmission` |
 
-Gộp bảy loại sự kiện vào một lớp `TelemetryEventRequest` có mọi trường tùy chọn, rồi kiểm theo `type` trong `TelemetryEventValidator`. Làm vậy vì hợp đồng yêu cầu một sự kiện sai chỉ bị loại riêng, không làm hỏng cả lô; nếu để bộ đọc JSON kiểm theo từng kiểu con, một sự kiện sai sẽ làm cả lô nhận 400.
+Mỗi sự kiện trong lô được đọc dưới dạng JSON thô (`JsonElement`), rồi kiểm theo `type` trong `TelemetryEventValidator` (đã làm ở task #25). Làm vậy vì hợp đồng yêu cầu một sự kiện sai chỉ bị loại riêng, không làm hỏng cả lô; nếu để bộ đọc JSON kiểm theo từng kiểu con, một sự kiện sai sẽ làm cả lô nhận 400.
 
 ## 7. Trang quản trị
 
