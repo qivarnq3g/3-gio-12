@@ -29,7 +29,7 @@ Năm màn, chơi khoảng 30 đến 45 phút. Màn 3.3 là nhánh phụ, vào ha
 
 | Màn | Giờ trong game | Nơi | Mục tiêu người chơi | Cơ chế dạy | Điểm lưu |
 |---|---|---|---|---|---|
-| 3.1 Mở đầu "20:56" | 20:56 (đứng yên cho tới hết màn) | Hẻm 12, nhà xe | Đặt chiếc máy dưới chân chiếc Wave mà không để ai thấy | Đi, cúi, nấp, đọc tầm nhìn người khác | Đầu hẻm |
+| 3.1 Mở đầu "20:56" | 20:56 (đứng yên cho tới hết màn) | Hẻm 12, nhà xe | Đặt chiếc máy dưới chân chiếc Wave mà không để ai thấy | Đi, cúi, nấp, đọc tầm nhìn người khác, chạy trốn | Đầu hẻm (điểm lưu duy nhất của màn) |
 | 3.2 Nhà xe | 21:00 | Nhà xe cuối hẻm | Dựng xe, nhặt máy, đọc tin | Tương tác, mở điện thoại, Sổ tay | Nhà xe |
 | 3.3 Hẻm 12 (tùy chọn) | 21:10 | Tiệm chú Hùng, đầu hẻm | Mua mì, thấy camera, thấy đường ra công an phường | Khám phá, hội thoại | Không (nối với 3.2) |
 | 3.4 Nhà trọ và phòng 7 | 21:20 đến khoảng 22:30 | Cổng nhà trọ, cầu thang, hành lang tầng 3, phòng 7 | Lên phòng, đọc tin, chọn cách xử lý dãy số lạ | Lựa chọn trong chat | Phòng 7 |
@@ -48,11 +48,15 @@ Bố cục hẻm 12 (hẻm khu Bàn Cờ, rộng khoảng 2,5 m, nhà ống hai 
 
 ### 4.1. Đêm 1 có gì
 
-Đêm 1 không có ai truy đuổi người chơi. Phần ẩn nấp duy nhất là màn 3.1: người chơi tránh ánh mắt của người trong hẻm. Không có chiến đấu, không có chết.
+Màn 3.1 là đoạn ẩn nấp và chạy trốn duy nhất của bản nộp (yêu cầu chức năng 4); đêm 2 chỉ có ẩn nấp nhẹ, đêm 3 không có. Nhóm duyệt ngày 29/10. Không có chiến đấu, không có chết.
 
-Lý do có nguyên nhân trong truyện: Linh cần "một người lạ nhặt được máy", không dính tới mình. Bị ai thấy lúc đặt máy thì Linh bỏ, nên màn chơi làm lại từ đầu hẻm.
+Vì sao bị đuổi: lúc 20:56, sau cơn mưa, một người trùm áo mưa, đeo găng, đeo khẩu trang, cúi cạnh chiếc Wave của người khác trong nhà xe không người trông. Hàng xóm tưởng trộm xe, la lên, cả hẻm đổ ra. Bị tóm là bị đánh. Linh sợ bị giữ lại: bị giật khẩu trang, bị hỏi tên, và chiếc máy trong túi thành vật chứng nối Linh với Ngân.
 
-Ai đuổi người chơi ở các đêm sau chưa chốt (vấn đề R23 của kịch bản), sẽ trả lời trong task #19 trước khi Phúc làm task #20. Hướng đang nghiêng tới: người đuổi luôn là người thật có lý do (công an, hàng xóm, người quen của Linh), mối nguy là bị nhìn rõ mặt. Không dùng quái vật hay "bóng Linh" đuổi Sinh viên.
+Vì sao bị đánh lại đáng sợ: Linh và Sinh viên dùng chung một cơ thể. Vết thương Linh nhận lúc 20:56 thì Sinh viên mang từ 21:00, không biết từ đâu, như vết khâu ở cẳng tay cậu tin là do té xe.
+
+Sự thật của truyện: Linh đặt máy không bị ai thấy. Các lần bị đuổi, bị đánh chỉ có trong lần chơi đó.
+
+Người đuổi luôn là người thật có lý do; không dùng quái vật hay "bóng Linh". Đêm 7, 8 (ngoài bản nộp) là công an tìm Linh.
 
 ### 4.2. Màn 3.1 chạy thế nào
 
@@ -83,10 +87,40 @@ Ai đuổi người chơi ở các đêm sau chưa chốt (vấn đề R23 của
 - Ra khỏi nón nhìn thì thanh giảm dần, khoảng 3 giây về 0.
 - Thanh hiện nhỏ trên đầu người quan sát khi đang tăng; không có bản đồ nhỏ, không có đường nhìn vẽ trên đất.
 - Bị thấy khi: thanh đầy, hoặc có người đang nhìn thẳng (trong nón) đúng lúc người chơi bấm "Đặt", dù thanh chưa đầy.
-- Bị thấy: màn hình mờ đi khoảng 1 giây, quay về đầu hẻm, mọi người quan sát về đầu lịch. Không có câu thoại, không có cảnh bị hỏi.
+- Bị thấy thì người quan sát chuyển trạng thái (mục 4.4), không về đầu hẻm ngay.
 - Đồng hồ vẫn là 20:56 dù làm lại bao nhiêu lần.
 
-Cần chơi thử để chỉnh: bao nhiêu lần bị thấy thì người chơi bắt đầu bực. Nếu người chơi thử bị thấy trung bình quá ba lần, nới tầm nhìn hoặc giảm tốc độ tăng thanh.
+### 4.4. Nghi và đuổi
+
+| Trạng thái | Vào khi | Người quan sát làm gì |
+|---|---|---|
+| Bình thường | Đầu màn | Theo lịch nhìn ở mục 4.2 |
+| Nghi | Thanh chú ý đầy khi người chơi ở ngoài nhà xe; hoặc nghe tiếng la trong vòng 15 m | Lên tiếng hỏi, đi tới chỗ thấy người chơi lần cuối, nhìn quanh khoảng 15 giây rồi về chỗ |
+| Đuổi | Thanh chú ý đầy khi người chơi đang ở trong nhà xe; hoặc thấy lại người chơi trong lúc đang nghi | La "trộm", chạy theo; mất dấu thì tìm quanh chỗ thấy lần cuối khoảng 20 giây rồi bỏ |
+
+- Người đuổi: chú Hùng (cầm đèn pin), cô Liên (cầm chổi), người phụ nữ rửa chén. Hai đứa nhỏ la lên rồi chạy vào nhà.
+- Mỗi tiếng la "trộm" làm thêm một cửa nhà ống bật đèn, có người đứng ở cửa nhìn ra: thêm một nón nhìn, và chỗ trước cửa ấy hết tối. Họ không đuổi.
+- Hẻm cụt, đường ra duy nhất là đầu hẻm. Người chơi chạy nhanh hơn người đuổi; mối nguy là bị dồn vào cuối hẻm và hết chỗ tối.
+- Chỗ nấp: hốc cửa nhà đóng, sau dãy xe, gầm cầu thang nhà trọ, sau thùng rác. Ở yên ngoài tầm nhìn mọi người đuổi khoảng 8 giây là cắt dấu.
+- Đèn pin của chú Hùng rọi trúng liên tục 1 giây ở dưới 5 m thì tính là bị tóm, kể cả đang nấp.
+- Không đặt được máy khi còn ai đang nghi hay đuổi: nút "Đặt" mờ đi.
+- Ra tới đầu hẻm khi chưa đặt máy: Linh bỏ kế hoạch, về đầu hẻm như bị tóm lần 3, nhưng không gửi `player_caught`.
+
+### 4.5. Bị tóm: ba lần, mỗi lần nặng hơn
+
+Bị tóm khi người đuổi tới cách 1,2 m, hoặc đèn pin như trên. Không hiện cảnh đánh: màn hình đen và âm thanh. Mỗi lần gửi sự kiện thống kê `player_caught` (`areaId` nơi bị tóm, `checkpointId` là `n1.alley_start`).
+
+| Lần | Chuyện gì xảy ra | Tiếp tục từ đâu | Hậu quả mang theo |
+|---|---|---|---|
+| 1 | Tiếng xô, mấy tiếng đấm, tiếng áo mưa rách; Linh vùng ra được | Chỗ nấp gần nhất. Hẻm từ giờ cảnh giác: đèn nhà xe bật sáng, cô Liên ngồi ghế ở cổng nhìn ra nhà xe, chú Hùng đứng trước tiệm cầm đèn pin | Hai bàn tay có vết trầy ở lòng bàn tay và khớp ngón tới hết đêm 3. Áo mưa trong ba lô rách một bên tay |
+| 2 | Nặng hơn, có tiếng "Đánh chết nó đi!"; Linh vùng ra, mất chiếc găng trái | Chỗ nấp gần nhất, hẻm còn sáng hơn | Đau sườn: tới hết màn, tốc độ chạy giảm một phần ba, khi nấp có tiếng thở dốc làm người trong 3 m nghe thấy. Tới hết đêm 1, chạy hay leo cầu thang có tiếng thở nặng. Ba lô chỉ còn một chiếc găng |
+| 3 | Không vùng ra được: "Giữ nó lại! Gọi công an đi!" | Về đầu hẻm, làm lại cả màn | Mọi hậu quả của lần 1, 2 bị xóa |
+
+- Hẻm cảnh giác vẫn phải qua được: mỗi người đang canh có lúc quay đi (cô Liên cúi nhặt chổi, nghe điện thoại; chú Hùng quay vào tiệm trả lời khách), mỗi lần khoảng 4 đến 6 giây. Phải chơi thử đủ ba mức cảnh giác.
+- Đặt được máy sau một hay hai lần bị tóm thì hậu quả đi theo tới hết đêm 3, lưu trong tệp lưu. Muốn sạch thì phải thua hẳn một lần.
+- Công tắc máu me tắt thì vết trầy chỉ là vệt đỏ nhạt.
+
+Cần chơi thử để chỉnh: mọi con số ở mục 4.3 đến 4.5; màn đầu khó có làm người chơi mới bỏ game không. Nếu nhiều người bỏ, nới tầm nhìn ở lần đầu vào màn, giữ độ khó sau lần bị tóm thứ nhất.
 
 ## 5. Từng màn chi tiết
 
@@ -96,7 +130,7 @@ Bảng tin nhắn ở cuối mục này là khung cho Thắng dựng giao diện
 
 1. Chữ "21:00". Hai tay không đeo găng nắm tay lái, đang dắt xe vào hẻm; mặt đất ướt. Người chơi điều khiển từ đây.
 2. Dắt xe vào chỗ để, tắt máy: camera cận đồng hồ xe vài giây. Sổ tay ghi "Đồng hồ xe: 12.4xx km, lúc 21:00" (số cụ thể chốt khi làm đêm 2). Biến `odo_2100`.
-3. Độc thoại một câu khi tháo nón: "Đói quá."
+3. Độc thoại một câu khi tháo nón: "Đói quá." Nếu `prologue_beaten` từ 1, lúc tháo nón góc nhìn thấy lòng bàn tay trầy, Sinh viên nghĩ "Trầy hồi nào vậy ta." Không câu thứ hai.
 4. Dưới chân chiếc Wave đậu cạnh, một màn hình đang sáng. Lại gần thì hiện nút "Nhặt". Máy Ngân không khóa, lô tin A của "Mẹ" nằm sẵn, tin đầu hiện "4 phút trước".
 5. Xe ở đêm 1 chỉ dựng, không chạy đi đâu. Cốp xe không tương tác được ở đêm 1.
 6. Trên cột nhà xe có tờ giấy "Ai để xe qua đêm tự khóa cổ, mất ráng chịu".
@@ -111,13 +145,13 @@ Bảng tin nhắn ở cuối mục này là khung cho Thắng dựng giao diện
 
 ### 5.3. Màn 3.4: nhà trọ và phòng 7 (21:20)
 
-1. Cổng: cô Liên đang dựng lại mấy chậu kiểng bị mưa làm ngã. Sinh viên tự cúi xuống phụ (một tương tác). Cô nhắc chuyện căn cước hẹn đưa mà chưa đưa; Sinh viên nói rớt bóp hôm té xe, đang làm lại.
+1. Cổng: cô Liên đang dựng lại mấy chậu kiểng bị mưa làm ngã. Sinh viên tự cúi xuống phụ (một tương tác). Nếu `prologue_beaten` từ 1, cô kể "hồi nãy tụi nó đập một thằng ăn trộm ngoài nhà xe, mà nó vùng chạy mất"; từ 2, cô chìa chiếc găng xám nhặt được và nói cất trong buồng. Rồi cô nhắc chuyện căn cước hẹn đưa mà chưa đưa; Sinh viên nói rớt bóp hôm té xe, đang làm lại.
 2. Có thể đưa máy Ngân cho cô Liên: cô không nhận, bảo cứ giữ, ai kiếm thì đưa.
 3. Cầu thang ba tầng, hành lang tầng 3 có đèn cảm ứng bật khi có người đi qua, tiếng tivi phòng bên. Nhà vệ sinh chung cuối hành lang có gương mờ (luật 2 ở mục 2). Đứng trước gương thì Sinh viên nghĩ gương mờ quá, soi không ra mặt.
 4. Phòng 7, cửa có ô thoáng phía trên (dùng ở đêm 5). Bên trong gần như trống: nệm, quạt đứng, móc treo, túi quần áo còn nhãn, hộp điện thoại, cục sạc.
 5. Vật xem được, mỗi vật một câu nghĩ và một dòng Sổ tay:
    - Giấy nhận cọc dưới hộp điện thoại: "Phòng 7, nhận cọc ngày 22/11", không ghi tên. Biến `found_deposit_slip`.
-   - Ba lô, ngăn chính: sạc dự phòng, chai nước, khẩu trang, áo mưa cánh dơi xanh dương còn ướt, găng tay chống nắng màu xám.
+   - Ba lô, ngăn chính: sạc dự phòng, chai nước, khẩu trang, áo mưa cánh dơi xanh dương còn ướt, găng tay chống nắng màu xám. Nếu `prologue_beaten` từ 1, áo mưa rách một bên tay; từ 2, chỉ còn chiếc găng phải.
    - Ba lô, ngăn nhỏ bên trong: dây kéo kẹt, không mở được ở đêm 1.
    - Bảng mật khẩu Wi-Fi sau cửa.
 6. Vào phòng, Sinh viên tự đặt ba lô xuống sàn cạnh cửa (thấy rõ trong khung hình). Mở máy trong phòng thì nhân vật ngồi xuống nệm.
@@ -166,12 +200,17 @@ Gọi cho "Mẹ": không ai nghe; lô sau có câu "cô đang ở chỗ đông n
 | Đặt mã khóa máy Ngân | Cài đặt | Không cho: Sinh viên nghĩ "máy người ta, đặt mã lỡ người ta không mở được" | Không |
 | Đi ngủ hay thức canh | Nệm | Mục 5.4 | `night1_slept` |
 
-Biến còn lại cần lưu cho đêm 2: `odo_2100`, `saw_shop_camera`, `found_deposit_slip`, và danh sách câu người chơi đã gửi "Mẹ" (đêm 2 dùng để "Mẹ" đáp tiếp).
+Biến của màn 3.1: `prologue_beaten` (0, 1, 2; lần 3 đưa về 0), mang theo tới hết đêm 3 để vẽ bàn tay trầy và cho đêm 7 dùng.
+
+Biến còn lại cần lưu cho đêm 2: `odo_2100`, `saw_shop_camera`, `found_deposit_slip`, `prologue_beaten`, và danh sách câu người chơi đã gửi "Mẹ" (đêm 2 dùng để "Mẹ" đáp tiếp).
 
 ## 7. Cơ chế Phúc cần cho bản thô
 
 - Bộ điều khiển góc nhìn thứ nhất: đi, chạy, cúi, tương tác (nhặt, đặt, mở cửa, xem kỹ, dắt xe).
 - Người quan sát có lịch nhìn, nón nhìn và thanh chú ý (mục 4.3); vùng sáng và vùng tối trong hẻm.
+- Ba trạng thái bình thường, nghi, đuổi; tìm quanh chỗ thấy lần cuối; tiếng la lan sang người gần; cửa nhà bật đèn theo số tiếng la (mục 4.4).
+- Bị tóm ba mức, hẻm cảnh giác dần, đau sườn giảm tốc độ và phát tiếng thở; hậu quả lưu qua các đêm (mục 4.5).
+- Đèn pin của chú Hùng là một nón sáng hẹp có tầm 5 m.
 - Điểm lưu đầu mỗi màn (mục 3).
 - Đồng hồ chạy theo mốc, có một lần nhảy giờ 21:20 sang 21:26.
 - Hai điện thoại phủ toàn màn hình; tin tới theo sự kiện; trạng thái "Đã gửi", "đã đọc".
@@ -188,7 +227,9 @@ Phong cách: hình cách điệu, màu phẳng, đường nét rõ, giống các
 | Ưu tiên | Model | Ghi chú |
 |---|---|---|
 | A | Hai cánh tay góc nhìn thứ nhất của Sinh viên | Tay nam gầy, áo thun ngắn tay; băng trắng quấn cẳng tay trái, băng keo ngón trỏ phải. Có khung xương cho cầm điện thoại, nhặt, đặt, mở cửa, dắt xe |
-| A | Biến thể tay cho đoạn 20:56 | Cùng hai cánh tay, đeo găng chống nắng màu xám, tay áo mưa cánh dơi xanh dương |
+| A | Biến thể tay cho đoạn 20:56 | Cùng hai cánh tay, đeo găng chống nắng màu xám, tay áo mưa cánh dơi xanh dương; thêm bản găng phải sờn rách và bản tay trái không găng |
+| A | Biến thể tay trầy | Hai cánh tay của Sinh viên có vết trầy ở lòng bàn tay và khớp ngón; bản nhẹ không máu cho công tắc máu me |
+| A | Đèn pin của chú Hùng, cây chổi của cô Liên | Cầm trên tay khi đuổi |
 | A | Điện thoại Ngân | Ốp trong suốt, lót miếng vải xanh nhạt thêu con cá bống chỉ cam, nhìn rõ con cá từ mặt lưng |
 | A | Điện thoại Sinh viên | Máy rẻ, vỏ nhựa |
 | A | Xe máy của Sinh viên | Xe số phổ thông, không logo hãng thật; đồng hồ cơ đọc được số km khi cận |
@@ -197,6 +238,8 @@ Phong cách: hình cách điệu, màu phẳng, đường nét rõ, giống các
 | B | Cô Liên | Ngoài 50, mặc đồ bộ |
 | B | Chú Hùng | Ngoài 60, áo ba lỗ; cầm điện thoại |
 | B | Người trong hẻm: phụ nữ rửa chén, hai đứa nhỏ, hai người chạy xe mặc áo mưa | Dùng lại thân mẫu, đổi đồ; hai người chạy xe mặc đúng kiểu áo mưa của nhân vật |
+| B | Hàng xóm đứng ở cửa nhà ống | Dùng lại thân mẫu, ba bốn người, không cần mặt rõ |
+| B | Áo mưa rách một bên tay trong ba lô | Biến thể của áo mưa gấp |
 | B | Cán bộ trực công an phường | Chỉ dùng ở lựa chọn 0 |
 | B | Tiệm tạp hóa và camera an ninh có đèn đỏ | Camera phải nhìn rõ khi lại gần |
 | B | Đồ trong phòng 7 | Nệm, quạt đứng, móc treo, túi quần áo còn nhãn, hộp điện thoại, cục sạc, giấy nhận cọc, bảng Wi-Fi |
@@ -209,7 +252,6 @@ Không cần cho đêm 1: Ngân, Linh, cô Hòa, các nơi ngoài hẻm 12.
 
 ## 9. Còn mở
 
-- Ai đuổi người chơi ở các đêm sau: chưa chốt, trả lời ở task #19.
 - Độ khó màn 20:56 và việc áo mưa, găng tay trong ba lô có làm người chơi đoán ra quá sớm không: cần chơi thử với người chưa đọc truyện (task #31).
 - Thủ tục nhận đồ nhặt được ở công an phường: chưa có nguồn, lời thoại đang giữ ở mức tối thiểu.
 - Lời thoại từng câu đang là bản nháp; bản cuối sẽ đưa vào repo khi duyệt xong.
