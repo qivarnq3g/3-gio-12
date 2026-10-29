@@ -55,11 +55,24 @@ dotnet tool restore
 dotnet ef migrations add <TenMigration> -p src/ThreeTwelve.Api -o Data/Migrations
 ```
 
+## Các API đã có
+
+| API | Task |
+|---|---|
+| `GET /health` | #18 |
+| `POST /api/v1/telemetry/batches`, `DELETE /api/v1/telemetry/installations/{installationId}` | #25 |
+
+Giới hạn tần suất của API thống kê: 60 yêu cầu mỗi phút cho mỗi địa chỉ IP, đổi bằng biến `RateLimits__Telemetry__PermitLimit`. Địa chỉ IP chỉ nằm trong bộ nhớ, không ghi vào cơ sở dữ liệu.
+
 ## Cấu trúc
 
 | Thư mục | Nội dung |
 |---|---|
-| `src/ThreeTwelve.Api/Controllers/` | Controller của API; chưa có, thêm ở task #25, #26, #27 |
-| `src/ThreeTwelve.Api/Data/` | `AppDbContext` và migration |
+| `src/ThreeTwelve.Api/Controllers/` | Controller: nhận yêu cầu, kiểm phần vỏ, trả mã HTTP |
+| `src/ThreeTwelve.Api/Contracts/` | Dữ liệu vào ra theo `docs/api/openapi.yaml` |
+| `src/ThreeTwelve.Api/Services/` | Quy tắc nghiệp vụ: kiểm từng sự kiện, bỏ trùng, xóa theo mã cài đặt |
+| `src/ThreeTwelve.Api/Domain/` | Lớp thực thể |
+| `src/ThreeTwelve.Api/Data/` | `AppDbContext` và migration; tên bảng, cột viết snake_case |
+| `src/ThreeTwelve.Api/RateLimiting/` | Giới hạn tần suất theo địa chỉ IP |
 | `src/ThreeTwelve.Api/Health/` | Định dạng phản hồi của `/health` theo hợp đồng API |
 | `tests/ThreeTwelve.Api.Tests/` | Test tích hợp chạy qua HTTP với PostgreSQL thật |
