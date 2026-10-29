@@ -46,7 +46,7 @@ Bản đồ đêm 2 thêm hai chỗ ngoài hẻm 12, dùng lại ở đêm 3:
 - Lách qua lúc cô không nhìn thì vào được cầu thang.
 - Bị thấy: cô gọi lại, cằn nhằn chuyện căn cước và chuyện "phường người ta xuống kiểm", rồi cho đi. Không làm lại, không thua. Ghi biến `lien_saw_morning` để buổi tối cô nhắc lại.
 
-Truy đuổi có bị bắt và chạy trốn của bản nộp (yêu cầu chức năng 4) đang được đề xuất đặt ở màn 20:56 đêm 1, chờ nhóm chốt; xem mục 10.
+Truy đuổi có bị tóm và chạy trốn của bản nộp (yêu cầu chức năng 4) nằm ở màn 20:56 đêm 1 (`dem-1.md` mục 4.4, 4.5, nhóm duyệt 29/10). Hậu quả mang sang đêm 2: nếu `prologue_beaten` từ 1, hai bàn tay vẫn trầy (dùng biến thể tay trầy của đêm 1). Đêm 2 không có câu thoại nào nhắc tới vết trầy.
 
 ## 5. Từng màn chi tiết
 
@@ -145,7 +145,7 @@ Câu "Mẹ" đáp Q5 có nói ra tên Linh: "Bạn thân nó đấy cháu, thằ
 
 Mức nghi của "Mẹ" có ba mức: Tin, Nghi, Biết. Đêm 2 chỉ đi từ Tin lên Nghi. Ở "Nghi" các lô sau ngắn lại, hỏi dò, và bỏ câu quen "nhớ ăn".
 
-Biến cần lưu cho đêm 3: `odo_log`, `night1_slept`, `night2_slept`, `gave_room_number`, `drank_milk_tea`, `mom_suspicion`, `asked_mom_calculator`, `vault_wrong_attempts`, `saw_calculator_storage`, `set_ngan_passcode`, `lien_saw_morning`, danh sách câu người chơi đã gửi "Mẹ".
+Biến cần lưu cho đêm 3: `prologue_beaten`, `odo_log`, `night1_slept`, `night2_slept`, `gave_room_number`, `drank_milk_tea`, `mom_suspicion`, `asked_mom_calculator`, `vault_wrong_attempts`, `saw_calculator_storage`, `set_ngan_passcode`, `lien_saw_morning`, danh sách câu người chơi đã gửi "Mẹ".
 
 ## 9. Danh sách cho từng người
 
@@ -185,7 +185,6 @@ Bối cảnh mới (đoạn đường lớn, cửa hàng đồ gia dụng, quán
 
 ## 10. Còn mở
 
-- Truy đuổi của bản nộp: đề xuất cho màn 20:56 đêm 1 người trong hẻm tưởng trộm xe và đuổi; bị bắt thì về điểm lưu. Chờ nhóm chốt trước khi Phúc làm task #20.
 - Ứng dụng giao đồ ăn có cho ghi chú "gửi chủ trọ, khỏi gọi" và in giấy dán như vậy không: cần thử.
 - Đoạn lái xe có làm chậm nhịp không, Sổ tay có quá nhiều dòng đồng hồ xe không: cần chơi thử. Nếu ngợp, chỉ ghi lần tắt máy và lần bật máy đầu mỗi buổi.
 - Lời thoại từng câu đang là bản nháp; bản cuối sẽ đưa vào repo khi duyệt xong.

@@ -27,7 +27,7 @@ Bốn màn, chơi khoảng 45 đến 60 phút, phần lớn trong điện thoạ
 
 ## 3. Ẩn nấp và truy đuổi
 
-Đêm 3 không có ẩn nấp, không có truy đuổi (nhóm duyệt ngày 27/10). Không ai có lý do đuổi Sinh viên ở đêm này, và đêm mẹ thật lên tiếng cần yên.
+Đêm 3 không có ẩn nấp, không có truy đuổi (nhóm duyệt ngày 27/10). Không ai có lý do đuổi Sinh viên ở đêm này, và đêm mẹ thật lên tiếng cần yên. Nếu người chơi bị tóm ở màn 20:56 đêm 1 (`prologue_beaten` từ 1), hai bàn tay vẫn trầy tới hết đêm 3, thấy mỗi lần cầm điện thoại; lành từ đêm 4.
 
 ## 4. Từng màn chi tiết
 
