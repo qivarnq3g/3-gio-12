@@ -1,0 +1,528 @@
+openapi: 3.1.0
+info:
+  title: 3 GIỜ 12 - API giữa game và máy chủ
+  version: 1.0.0
+  description: |
+    Hợp đồng giữa game Unity và máy chủ ASP.NET Core. Giải thích quy tắc phía game nằm ở `docs/api/README.md`.
+    Game không đăng nhập; mọi yêu cầu chỉ mang mã cài đặt ngẫu nhiên. JSON dùng camelCase, giá trị liệt kê dùng snake_case, thời gian theo RFC 3339 giờ UTC.
+servers:
+  - url: http://localhost:8080
+    description: Docker Compose trên máy
+tags:
+  - name: telemetry
+    description: Thống kê ẩn danh (yêu cầu 6, 13)
+  - name: puzzles
+    description: Bằng chứng của câu đố ngoài game (yêu cầu 7, 14)
+  - name: health
+    description: Kiểm tra máy chủ còn sống
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Máy chủ còn sống
+      security: []
+      responses:
+        '200':
+          description: Máy chủ chạy và nối được cơ sở dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Máy chủ chạy nhưng không nối được cơ sở dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/v1/telemetry/batches:
+    post:
+      tags: [telemetry]
+      operationId: postTelemetryBatch
+      summary: Gửi một lô sự kiện thống kê
+      description: |
+        Chỉ gọi khi người chơi đã đồng ý gửi thống kê. Sự kiện trùng `eventId` đã nhận thì bỏ qua, nên game gửi lại một lô sau lỗi mạng là an toàn.
+        Máy chủ kiểm từng sự kiện: sự kiện sai hoặc lạ nằm trong `rejected`, không làm hỏng cả lô. 400 chỉ trả khi phần vỏ của lô sai (thiếu `installationId`, mảng rỗng, quá 100 sự kiện).
+        Game xóa cả lô khỏi hàng đợi khi nhận 200. Máy chủ giả Prism kiểm chặt hơn và trả 400 cho cả lô khi một sự kiện sai.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelemetryBatch'
+            example:
+              installationId: 6f1c2a9e-3b7d-4c51-9a2e-0d8f4b6e1a73
+              gameVersion: 0.3.0
+              platform: windows
+              events:
+                - eventId: 0b9a6c1e-5d2f-4e8a-b3c7-1f4d2e6a9b08
+                  sessionId: 2c7e4f1a-8b3d-4a6e-9c2f-5d1b7e3a0c94
+                  sequence: 0
+                  occurredAt: '2026-11-24T14:02:11Z'
+                  type: session_started
+                - eventId: 4e2d8a6c-1f3b-4c7e-a9d5-6b0e2f8c1a37
+                  sessionId: 2c7e4f1a-8b3d-4a6e-9c2f-5d1b7e3a0c94
+                  sequence: 1
+                  occurredAt: '2026-11-24T14:02:40Z'
+                  type: night_started
+                  night: 1
+                  isReplay: false
+                - eventId: 9a1f3c5e-7b2d-4e6a-8c0f-3d5b7e9a1c26
+                  sessionId: 2c7e4f1a-8b3d-4a6e-9c2f-5d1b7e3a0c94
+                  sequence: 2
+                  occurredAt: '2026-11-24T14:31:05Z'
+                  type: choice_made
+                  night: 1
+                  choiceId: '0b'
+      responses:
+        '200':
+          description: Lô đã được xử lý
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelemetryBatchResult'
+              example:
+                accepted: 3
+                duplicates: 0
+                rejected: []
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/v1/telemetry/installations/{installationId}:
+    delete:
+      tags: [telemetry]
+      operationId: deleteInstallationTelemetry
+      summary: Xóa mọi thống kê của một mã cài đặt
+      description: Game gọi khi người chơi rút lại đồng ý. Gọi lại với mã đã xóa vẫn trả 204.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/InstallationId'
+      responses:
+        '204':
+          description: Đã xóa hoặc không có gì để xóa
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/v1/puzzles/{puzzleId}/submissions:
+    post:
+      tags: [puzzles]
+      operationId: postPuzzleSubmission
+      summary: Gửi mã băm của tệp bằng chứng
+      description: |
+        Game tự tính SHA-256 của tệp người chơi chọn và chỉ gửi mã băm, không gửi tệp.
+        Mỗi lần gửi sai trừ một lượt. Hết lượt thì mọi lần gửi trong cửa sổ thời gian đều nhận 429, kể cả bằng chứng đúng.
+        Gửi đúng không trừ lượt và trả cùng kết quả nếu gửi lại.
+        Số lượt và độ dài cửa sổ do quản trị viên cấu hình trên trang quản trị.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PuzzleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PuzzleSubmission'
+            example:
+              installationId: 6f1c2a9e-3b7d-4c51-9a2e-0d8f4b6e1a73
+              gameVersion: 0.3.0
+              sha256: 3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b
+      responses:
+        '200':
+          description: Đã kiểm; xem `result`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PuzzleSubmissionResult'
+              examples:
+                accepted:
+                  summary: Bằng chứng đúng
+                  value:
+                    result: accepted
+                    unlockId: ending_red_thread_sandal
+                    attemptsRemaining: 5
+                    windowResetsAt: '2026-12-02T15:00:00Z'
+                rejected:
+                  summary: Bằng chứng sai
+                  value:
+                    result: rejected
+                    attemptsRemaining: 3
+                    windowResetsAt: '2026-12-02T15:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/PuzzleNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+components:
+  parameters:
+    InstallationId:
+      name: installationId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/InstallationId'
+    PuzzleId:
+      name: puzzleId
+      in: path
+      required: true
+      description: Câu đố của kịch bản bản 5 có mã `red-thread-sandal`.
+      schema:
+        type: string
+        pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+      example: red-thread-sandal
+
+  headers:
+    RetryAfter:
+      description: Số giây cần chờ trước khi gửi lại
+      schema:
+        type: integer
+        minimum: 1
+
+  responses:
+    BadRequest:
+      description: Yêu cầu sai cấu trúc; gửi lại y nguyên vẫn sai
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ValidationProblem'
+    PayloadTooLarge:
+      description: Lô quá 256 KiB; game chia lô nhỏ hơn rồi gửi lại
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    PuzzleNotFound:
+      description: Không có câu đố này, hoặc quản trị viên đã tắt nó
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TooManyRequests:
+      description: Vượt giới hạn tần suất, hoặc hết lượt gửi bằng chứng
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+  schemas:
+    InstallationId:
+      type: string
+      format: uuid
+      description: UUID phiên bản 4, game sinh ngẫu nhiên lần chạy đầu và sinh lại khi người chơi xóa dữ liệu lưu.
+
+    GameVersion:
+      type: string
+      pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+      example: 0.3.0
+
+    Night:
+      type: integer
+      minimum: 1
+      maximum: 9
+
+    AreaId:
+      type: string
+      description: Mã khu vực trong màn chơi, do người dựng màn đặt, ví dụ `n1.parking`, `n4.corridor_3f`.
+      pattern: '^[a-z0-9][a-z0-9_.-]{0,63}$'
+
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+
+    TelemetryBatch:
+      type: object
+      additionalProperties: false
+      required: [installationId, gameVersion, platform, events]
+      properties:
+        installationId:
+          $ref: '#/components/schemas/InstallationId'
+        gameVersion:
+          $ref: '#/components/schemas/GameVersion'
+        platform:
+          type: string
+          enum: [windows]
+        events:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/TelemetryEvent'
+
+    TelemetryEventBase:
+      type: object
+      required: [eventId, sessionId, sequence, occurredAt, type]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Sinh khi sự kiện xảy ra; máy chủ dùng để bỏ bản trùng.
+        sessionId:
+          type: string
+          format: uuid
+          description: Sinh mỗi lần mở game.
+        sequence:
+          type: integer
+          minimum: 0
+          description: Thứ tự sự kiện trong một phiên, bắt đầu từ 0.
+        occurredAt:
+          type: string
+          format: date-time
+          description: Giờ trên máy người chơi, UTC. Máy chủ lưu thêm giờ nhận riêng.
+        type:
+          type: string
+
+    TelemetryEvent:
+      oneOf:
+        - $ref: '#/components/schemas/SessionStartedEvent'
+        - $ref: '#/components/schemas/SessionEndedEvent'
+        - $ref: '#/components/schemas/NightStartedEvent'
+        - $ref: '#/components/schemas/NightCompletedEvent'
+        - $ref: '#/components/schemas/PlayerCaughtEvent'
+        - $ref: '#/components/schemas/ChoiceMadeEvent'
+        - $ref: '#/components/schemas/EndingReachedEvent'
+      discriminator:
+        propertyName: type
+        mapping:
+          session_started: '#/components/schemas/SessionStartedEvent'
+          session_ended: '#/components/schemas/SessionEndedEvent'
+          night_started: '#/components/schemas/NightStartedEvent'
+          night_completed: '#/components/schemas/NightCompletedEvent'
+          player_caught: '#/components/schemas/PlayerCaughtEvent'
+          choice_made: '#/components/schemas/ChoiceMadeEvent'
+          ending_reached: '#/components/schemas/EndingReachedEvent'
+
+    SessionStartedEvent:
+      description: Mở game.
+      allOf:
+        - $ref: '#/components/schemas/TelemetryEventBase'
+        - type: object
+          properties:
+            type:
+              const: session_started
+
+    SessionEndedEvent:
+      description: |
+        Thoát game. `night` và `areaId` có giá trị khi người chơi thoát giữa một đêm; dashboard dùng chúng làm vị trí bỏ game.
+        `not_closed` do game gửi ở lần mở sau khi phiên trước tắt đột ngột; khi đó `durationSeconds` tính tới lần game ghi hàng đợi cuối cùng.
+      allOf:
+        - $ref: '#/components/schemas/TelemetryEventBase'
+        - type: object
+          required: [type, reason, durationSeconds]
+          properties:
+            type:
+              const: session_ended
+            reason:
+              type: string
+              enum: [quit_to_menu, quit_app, not_closed]
+            durationSeconds:
+              type: integer
+              minimum: 0
+            night:
+              $ref: '#/components/schemas/Night'
+            areaId:
+              $ref: '#/components/schemas/AreaId'
+
+    NightStartedEvent:
+      allOf:
+        - $ref: '#/components/schemas/TelemetryEventBase'
+        - type: object
+          required: [type, night, isReplay]
+          properties:
+            type:
+              const: night_started
+            night:
+              $ref: '#/components/schemas/Night'
+            isReplay:
+              type: boolean
+              description: true khi chơi lại một đêm đã hoàn thành.
+
+    NightCompletedEvent:
+      allOf:
+        - $ref: '#/components/schemas/TelemetryEventBase'
+        - type: object
+          required: [type, night, durationSeconds]
+          properties:
+            type:
+              const: night_completed
+            night:
+              $ref: '#/components/schemas/Night'
+            durationSeconds:
+              type: integer
+              minimum: 0
+              description: Thời gian chơi thực của đêm, không tính lúc dừng game.
+
+    PlayerCaughtEvent:
+      allOf:
+        - $ref: '#/components/schemas/TelemetryEventBase'
+        - type: object
+          required: [type, night, areaId, checkpointId]
+          properties:
+            type:
+              const: player_caught
+            night:
+              $ref: '#/components/schemas/Night'
+            areaId:
+              $ref: '#/components/schemas/AreaId'
+            checkpointId:
+              type: string
+              pattern: '^[a-z0-9][a-z0-9_.-]{0,63}$'
+              description: Điểm lưu người chơi quay về.
+            position:
+              $ref: '#/components/schemas/Vector3'
+
+    ChoiceMadeEvent:
+      allOf:
+        - $ref: '#/components/schemas/TelemetryEventBase'
+        - type: object
+          required: [type, night, choiceId]
+          properties:
+            type:
+              const: choice_made
+            night:
+              $ref: '#/components/schemas/Night'
+            choiceId:
+              type: string
+              pattern: '^[0-9]{1,2}[a-z]?$'
+              description: Số lựa chọn theo mục 5.1 của kịch bản, ví dụ `0b`, `5a`, `12a`.
+
+    EndingReachedEvent:
+      allOf:
+        - $ref: '#/components/schemas/TelemetryEventBase'
+        - type: object
+          required: [type, night, endingId]
+          properties:
+            type:
+              const: ending_reached
+            night:
+              $ref: '#/components/schemas/Night'
+            endingId:
+              $ref: '#/components/schemas/EndingId'
+
+    EndingId:
+      type: string
+      description: |
+        Theo mục 6 của kịch bản: bystander (6.1 Người qua đường), scapegoat (6.2 Kẻ gánh tội), freezer (6.3 Ngăn đá),
+        empty_room (6.4 Căn phòng trống), deadline_passed (6.5 Hết hạn), home (6.6 Về nhà), red_thread_sandal (6.7 Đôi dép chỉ đỏ).
+      enum: [bystander, scapegoat, freezer, empty_room, deadline_passed, home, red_thread_sandal]
+
+    Vector3:
+      type: object
+      required: [x, y, z]
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+        z:
+          type: number
+
+    TelemetryBatchResult:
+      type: object
+      required: [accepted, duplicates, rejected]
+      properties:
+        accepted:
+          type: integer
+          minimum: 0
+        duplicates:
+          type: integer
+          minimum: 0
+          description: Sự kiện có `eventId` đã nhận trước đó.
+        rejected:
+          type: array
+          items:
+            $ref: '#/components/schemas/RejectedEvent'
+
+    RejectedEvent:
+      type: object
+      required: [index, reason]
+      properties:
+        index:
+          type: integer
+          minimum: 0
+          description: Vị trí của sự kiện trong mảng `events`.
+        eventId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          enum: [invalid, unknown_type, too_old, in_future]
+          description: |
+            unknown_type: máy chủ cũ chưa biết loại sự kiện này. too_old: `occurredAt` cũ hơn 30 ngày.
+            in_future: `occurredAt` sau giờ máy chủ hơn 24 giờ.
+
+    PuzzleSubmission:
+      type: object
+      additionalProperties: false
+      required: [installationId, gameVersion, sha256]
+      properties:
+        installationId:
+          $ref: '#/components/schemas/InstallationId'
+        gameVersion:
+          $ref: '#/components/schemas/GameVersion'
+        sha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+          description: SHA-256 của nguyên các byte trong tệp, 64 ký tự hex chữ thường.
+
+    PuzzleSubmissionResult:
+      type: object
+      required: [result, attemptsRemaining, windowResetsAt]
+      properties:
+        result:
+          type: string
+          enum: [accepted, rejected]
+        unlockId:
+          type: string
+          description: Chỉ có khi `result` là `accepted`. Với `red-thread-sandal` là `ending_red_thread_sandal`.
+        attemptsRemaining:
+          type: integer
+          minimum: 0
+        windowResetsAt:
+          type: string
+          format: date-time
+          description: Lúc số lượt trở lại đầy.
+
+    Problem:
+      type: object
+      description: RFC 9457 problem details, dạng mặc định của ASP.NET Core.
+      required: [title, status]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        traceId:
+          type: string
+
+    ValidationProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
