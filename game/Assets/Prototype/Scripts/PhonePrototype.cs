@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -14,7 +15,7 @@ namespace BaGio12.Prototype
         public static PhonePrototype Instance { get; private set; }
 
         public static event Action<bool> OnPhoneVisibilityChanged;
-        public static event Action<string, string> OnChoiceSelected; // contactId, choiceText
+        public static event Action<string, string> OnChoiceSelected; // contactId, choiceId ("call" for a call)
         public static event Action<string> OnMessageReceived;
 
         static readonly Color Ink = new Color(0.95f, 0.95f, 0.97f);
@@ -40,10 +41,20 @@ namespace BaGio12.Prototype
         VisualElement hudPill;
         Label hudBadge, hudTime, clock;
         readonly Stack<System.Action> back = new Stack<System.Action>();
+        // shown[c] is always a prefix of transcript[c]; the rest is unread.
         readonly Dictionary<string, List<Message>> shown = new Dictionary<string, List<Message>>();
-        // Per contact: the choice the player picked and the bubble it produced.
-        readonly Dictionary<string, Choice> chose = new Dictionary<string, Choice>();
-        readonly Dictionary<string, Message> mine = new Dictionary<string, Message>();
+        readonly Dictionary<string, List<Message>> transcript = new Dictionary<string, List<Message>>();
+
+        // Story log, saved per scenario and replayed on load. Entries:
+        // "batch:B", "sent:me/cam_no@21:12", "call:me@21:15", "flag:saw_shop_camera=true".
+        readonly List<string> log = new List<string>();
+        readonly HashSet<string> delivered = new HashSet<string>();
+        readonly HashSet<string> sent = new HashSet<string>();      // "contactId/choiceId", "contactId/call"
+        readonly HashSet<string> answered = new HashSet<string>();  // same keys, once a batch has answered them
+        readonly HashSet<string> blocked = new HashSet<string>();
+        readonly Dictionary<string, string> flags = new Dictionary<string, string>();
+        string now;
+        Contact openChat;
         Coroutine typing;
         Coroutine audioPlayingCoroutine;
 
@@ -72,7 +83,7 @@ namespace BaGio12.Prototype
         void Start()
         {
             LoadScenarioData(currentScenario);
-            LoadSavedChoices();
+            LoadState();
 
             uiFont = Resources.Load<Font>("Fonts/NotoSans-Regular") ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             boldFont = Resources.Load<Font>("Fonts/NotoSans-Bold") ?? uiFont;
@@ -104,6 +115,14 @@ namespace BaGio12.Prototype
             var kb = UnityEngine.InputSystem.Keyboard.current;
             if (kb == null) return;
 
+            // Stand-ins for story events until the night-1 scene sends them (task #14). Editor and dev builds only.
+            if (Debug.isDebugBuild)
+            {
+                if (kb.f5Key.wasPressedThisFrame) DeliverNextBatch();
+                if (kb.f6Key.wasPressedThisFrame) SetFlag("saw_shop_camera");
+                if (kb.f8Key.wasPressedThisFrame) { PlayerPrefs.DeleteKey(LogKey()); LoadScenario(currentScenario); }
+            }
+
             if (kb.tabKey.wasPressedThisFrame || kb.pKey.wasPressedThisFrame)
             {
                 TogglePhone();
@@ -125,12 +144,8 @@ namespace BaGio12.Prototype
         {
             currentScenario = scenarioResourcePath;
             LoadScenarioData(currentScenario);
-            shown.Clear();
-            chose.Clear();
-            mine.Clear();
-            LoadSavedChoices();
-            if (clock != null) clock.text = data.lockTime;
-            if (hudTime != null) hudTime.text = data.lockTime + "  [Tab]";
+            LoadState();
+            SetClock(now);
             if (IsOpen) ShowHome();
             UpdateHudBadge();
         }
@@ -151,64 +166,209 @@ namespace BaGio12.Prototype
             {
                 data = new PrototypeData { lockTime = "3:12", lockDate = "Thứ năm, 26 tháng 11" };
             }
+            now = data.lockTime;
         }
 
-        // Scoped by scenario so night 2 can reuse contact ids (e.g. "me") without
-        // inheriting night 1's answer.
-        string ChoiceKey(Contact c)
+        // ---------- Story state (batches, sent lines, flags) ----------
+
+        // Called by the game on story events: "B" when the clock jumps to 21:26, "C" at 21:35, "D" if the player sleeps.
+        public void DeliverBatch(string batch)
+        {
+            if (delivered.Contains(batch)) return;
+            Record("batch:" + batch);
+            Refresh();
+        }
+
+        public void SetFlag(string name, string value = "true")
+        {
+            Record($"flag:{name}={value}");
+            Refresh();
+        }
+
+        public string GetFlag(string name) => flags.TryGetValue(name, out var v) ? v : null;
+
+        public bool HasSent(string contactId, string choiceId) => sent.Contains(contactId + "/" + choiceId);
+
+        // Lines the player has sent to a contact, in order (night 2 needs what was sent to "Mẹ").
+        public List<string> SentLines(string contactId)
+        {
+            var lines = new List<string>();
+            foreach (var m in Transcript(contactId)) if (m.from == "me") lines.Add(m.text);
+            return lines;
+        }
+
+        // The clock follows story milestones (luật 7), so the game sets it; messages never move it.
+        public string Now => now;
+
+        public void SetClock(string time)
+        {
+            now = time;
+            if (clock != null) clock.text = time;
+            if (hudTime != null) hudTime.text = time + "  [Tab]";
+        }
+
+        string LogKey()
         {
             string scenario = string.IsNullOrEmpty(data.scenarioId) ? currentScenario : data.scenarioId;
-            return $"BaGio12_{scenario}_Choice_{c.id}";
+            return $"BaGio12_{scenario}_Log";
         }
 
         static string ChoiceId(Choice ch) => string.IsNullOrEmpty(ch.id) ? ch.text : ch.id;
 
-        void LoadSavedChoices()
+        void LoadState()
         {
+            log.Clear(); delivered.Clear(); sent.Clear(); answered.Clear(); blocked.Clear(); flags.Clear();
+            shown.Clear(); transcript.Clear();
             if (data?.contacts == null) return;
+
+            ApplyBatch("");  // messages with no batch
+            string saved = PlayerPrefs.GetString(LogKey(), "");
+            if (saved.Length == 0)
+            {
+                foreach (var b in data.startBatches) Record("batch:" + b);
+                return;
+            }
+            foreach (var entry in saved.Split('\n'))
+            {
+                if (entry.Length == 0) continue;
+                log.Add(entry);
+                Apply(entry);
+            }
+            // Everything before the save was already on screen once.
+            foreach (var c in data.contacts) MarkRead(c);
+        }
+
+        void Record(string entry)
+        {
+            log.Add(entry);
+            Apply(entry);
+            PlayerPrefs.SetString(LogKey(), string.Join("\n", log));
+            PlayerPrefs.Save();
+        }
+
+        void Apply(string entry)
+        {
+            int colon = entry.IndexOf(':');
+            if (colon < 0) return;
+            string kind = entry.Substring(0, colon), arg = entry.Substring(colon + 1), time = "";
+            int at = arg.LastIndexOf('@');
+            if (at >= 0) { time = arg.Substring(at + 1); arg = arg.Substring(0, at); }
+            switch (kind)
+            {
+                case "batch": ApplyBatch(arg); break;
+                case "sent": ApplySent(arg, time); break;
+                case "call": ApplyCall(arg, time); break;
+                case "flag": ApplyFlag(arg); break;
+            }
+        }
+
+        void ApplyBatch(string batch)
+        {
+            if (!delivered.Add(batch)) return;
+            var nowAnswered = new List<string>();
             foreach (var c in data.contacts)
             {
-                string key = ChoiceKey(c);
-                if (!PlayerPrefs.HasKey(key) || c.choices == null) continue;
-                string savedId = PlayerPrefs.GetString(key);
-                var choice = c.choices.Find(ch => ChoiceId(ch) == savedId);
-                if (choice == null) continue;  // script changed since the save; offer the choices again
-                Pick(c, choice);
-                // The conversation was already read through before the save, so restore all of it in order.
-                var sh = Shown(c);
-                sh.Clear();
-                sh.AddRange(Script(c));
+                if (blocked.Contains(c.id)) continue;
+                foreach (var m in c.messages)
+                {
+                    if (!InBatch(m, batch)) continue;
+                    if (!string.IsNullOrEmpty(m.answers))
+                    {
+                        string key = c.id + "/" + m.answers;
+                        if (!sent.Contains(key) || answered.Contains(key)) continue;
+                        nowAnswered.Add(key);  // several lines may answer the same question in one batch
+                    }
+                    Transcript(c.id).Add(m);
+                }
+                if (c.autoRead) MarkRead(c);
             }
+            answered.UnionWith(nowAnswered);
         }
 
-        void Pick(Contact c, Choice choice)
-        {
-            chose[c.id] = choice;
-            mine[c.id] = new Message { from = "me", text = choice.text, time = LastTime(c) };
-        }
+        static bool InBatch(Message m, string batch) => (m.batch ?? "") == batch;
 
-        void SaveChoice(Contact c, Choice choice)
+        void ApplySent(string key, string time)
         {
-            PlayerPrefs.SetString(ChoiceKey(c), ChoiceId(choice));
-            PlayerPrefs.Save();
-            OnChoiceSelected?.Invoke(c.id, choice.text);
-            Debug.Log($"[PhonePrototype] Saved choice for {c.name}: {choice.text}");
-        }
-
-        // Everything this contact's chat should end up showing: the incoming messages,
-        // then the player's answer and its replies once a choice is made.
-        List<Message> Script(Contact c)
-        {
-            var all = new List<Message>(c.messages);
-            if (chose.TryGetValue(c.id, out var choice))
+            int slash = key.IndexOf('/');
+            if (slash < 0) return;
+            var c = data.contacts.Find(x => x.id == key.Substring(0, slash));
+            var ch = c?.choices?.Find(x => ChoiceId(x) == key.Substring(slash + 1));
+            if (ch == null) return;  // script changed since the save
+            sent.Add(key);
+            if (!string.IsNullOrEmpty(ch.sets)) ApplyFlag(ch.sets);
+            if (ch.block)
             {
-                all.Add(mine[c.id]);
-                if (choice.replies != null) all.AddRange(choice.replies);
+                blocked.Add(c.id);
+                Transcript(c.id).Add(new Message { from = "system", text = "Bạn đã chặn số này", time = time });
+                return;
             }
-            return all;
+            Transcript(c.id).Add(new Message { from = "me", text = ch.text, time = time });
+            if (ch.replies != null) Transcript(c.id).AddRange(ch.replies);
         }
 
-        static string LastTime(Contact c) => c.messages.Count > 0 ? c.messages[c.messages.Count - 1].time : "";
+        void ApplyCall(string contactId, string time)
+        {
+            var c = data.contacts.Find(x => x.id == contactId);
+            if (c == null || string.IsNullOrEmpty(c.callNote)) return;
+            sent.Add(c.id + "/call");
+            if (!string.IsNullOrEmpty(c.callSets)) ApplyFlag(c.callSets);
+            Transcript(c.id).Add(new Message { from = "system", text = c.callNote, time = time });
+        }
+
+        void ApplyFlag(string arg)
+        {
+            int eq = arg.IndexOf('=');
+            if (eq < 0) flags[arg] = "true";
+            else flags[arg.Substring(0, eq)] = arg.Substring(eq + 1);
+        }
+
+        bool Offered(Contact c, Choice ch)
+        {
+            if (blocked.Contains(c.id) || sent.Contains(c.id + "/" + ChoiceId(ch))) return false;
+            if (!string.IsNullOrEmpty(ch.requires) && GetFlag(ch.requires) == null) return false;
+            string group = ch.group ?? "";
+            foreach (var other in c.choices)
+                if ((other.group ?? "") == group && sent.Contains(c.id + "/" + ChoiceId(other))) return false;
+            return true;
+        }
+
+        void MarkRead(Contact c)
+        {
+            var sh = Shown(c);
+            sh.Clear();
+            sh.AddRange(Transcript(c.id));
+        }
+
+        // Redraw whatever is on screen after the story state changed.
+        void Refresh()
+        {
+            UpdateHudBadge();
+            if (screenHost == null || screenHost.childCount == 0) return;
+            switch (screenHost[0].name)
+            {
+                case "tic": ShowTicList(); break;
+                case "chat": if (openChat != null) ShowChat(openChat); break;
+                case "lock": ShowLock(); break;
+            }
+        }
+
+        // F5: deliver the next batch in name order and move the clock to its first line.
+        void DeliverNextBatch()
+        {
+            var all = new SortedSet<string>();
+            foreach (var c in data.contacts)
+                foreach (var m in c.messages)
+                    if (!string.IsNullOrEmpty(m.batch)) all.Add(m.batch);
+            foreach (var b in all)
+            {
+                if (delivered.Contains(b)) continue;
+                var first = data.contacts.SelectMany(c => c.messages).FirstOrDefault(m => InBatch(m, b) && string.IsNullOrEmpty(m.answers));
+                if (first != null && !string.IsNullOrEmpty(first.time)) SetClock(first.time);
+                Debug.Log($"[PhonePrototype] Lô tin {b}");
+                DeliverBatch(b);
+                return;
+            }
+        }
 
         // ---------- Open / Close / HUD ----------
         public void TogglePhone() => SetPhoneOpen(!IsOpen);
@@ -230,8 +390,8 @@ namespace BaGio12.Prototype
 
             if (open)
             {
-                Cursor.visible = true;
-                Cursor.lockState = CursorLockMode.None;
+                UnityEngine.Cursor.visible = true;
+                UnityEngine.Cursor.lockState = CursorLockMode.None;
             }
 
             OnPhoneVisibilityChanged?.Invoke(open);
@@ -256,7 +416,7 @@ namespace BaGio12.Prototype
             phoneIc.style.marginRight = 14;
             hudPill.Add(phoneIc);
 
-            hudTime = T(data.lockTime + "  [Tab]", 26, Ink, boldFont);
+            hudTime = T(now + "  [Tab]", 26, Ink, boldFont);
             hudPill.Add(hudTime);
 
             hudBadge = new Label("1");
@@ -283,7 +443,7 @@ namespace BaGio12.Prototype
             {
                 foreach (var c in data.contacts)
                 {
-                    total += Mathf.Max(0, Script(c).Count - Shown(c).Count);
+                    total += Mathf.Max(0, Transcript(c.id).Count - Shown(c).Count);
                 }
             }
             return total;
@@ -376,7 +536,7 @@ namespace BaGio12.Prototype
             bar.style.height = 92; bar.style.paddingLeft = 64; bar.style.paddingRight = 56; bar.style.paddingTop = 18;
             bar.style.justifyContent = Justify.SpaceBetween;
             bar.pickingMode = PickingMode.Ignore;
-            clock = T(data.lockTime, 34, Ink, boldFont); bar.Add(clock);
+            clock = T(now, 34, Ink, boldFont); bar.Add(clock);
             var right = Row(); right.pickingMode = PickingMode.Ignore;
             right.Add(T("4G", 26, Ink, boldFont));
             var sig = Row(); sig.style.alignItems = Align.FlexEnd; sig.style.marginLeft = 10; sig.style.height = 24;
@@ -435,7 +595,7 @@ namespace BaGio12.Prototype
             Cover(s, "Scenes/phong-tro-blur", Color.white);
             var lockIc = Icon(IcLock, 34, Dim); lockIc.style.marginTop = 150; s.Add(lockIc);
             var date = T(data.lockDate, 36, Ink); date.style.marginTop = 26; s.Add(date);
-            var big = T(data.lockTime, 250, Ink, lightFont); big.style.marginTop = -10; big.style.letterSpacing = -6; s.Add(big);
+            var big = T(now, 250, Ink, lightFont); big.style.marginTop = -10; big.style.letterSpacing = -6; s.Add(big);
 
             if (data.contacts != null && data.contacts.Count > 0)
             {
@@ -444,7 +604,7 @@ namespace BaGio12.Prototype
                 var head = Row();
                 head.Add(AppIcon("Icons/icon-tic", 52));
                 var app = T("Tíc", 28, Dim, boldFont); app.style.marginLeft = 16; head.Add(app);
-                var when = T("vừa xong", 26, Faint); when.style.marginLeft = 12; when.style.flexGrow = 1; head.Add(when);
+                var when = T(string.IsNullOrEmpty(data.lockNotifyAgo) ? "vừa xong" : data.lockNotifyAgo, 26, Faint); when.style.marginLeft = 12; when.style.flexGrow = 1; head.Add(when);
                 note.Add(head);
                 var who = T(c.name, 34, Ink, boldFont); who.style.marginTop = 16; note.Add(who);
                 note.Add(T(c.preview, 34, Ink));
@@ -469,7 +629,7 @@ namespace BaGio12.Prototype
             shade.style.backgroundColor = new Color(0, 0, 0, 0.35f); shade.pickingMode = PickingMode.Ignore; s.Add(shade);
 
             var widget = new VisualElement(); widget.style.marginTop = 170; widget.style.marginLeft = 72; widget.pickingMode = PickingMode.Ignore;
-            var wt = T(data.lockTime, 150, Ink, lightFont); wt.style.letterSpacing = -4; Shadow(wt); widget.Add(wt);
+            var wt = T(now, 150, Ink, lightFont); wt.style.letterSpacing = -4; Shadow(wt); widget.Add(wt);
             var wd = T(data.lockDate, 34, Ink); Shadow(wd); widget.Add(wd);
             s.Add(widget);
 
@@ -503,6 +663,8 @@ namespace BaGio12.Prototype
             var list = new ScrollView(ScrollViewMode.Vertical); list.style.marginTop = 24; list.style.flexGrow = 1;
             foreach (var c in data.contacts)
             {
+                var tr = Transcript(c.id);
+                if (tr.Count == 0) continue;  // nothing has arrived from this contact yet
                 var row = Row(); row.style.paddingLeft = 48; row.style.paddingRight = 48; row.style.height = 168;
                 row.Add(Avatar(c.name, 108));
                 var col = new VisualElement(); col.style.marginLeft = 30; col.style.flexGrow = 1; col.style.flexShrink = 1;
@@ -510,14 +672,14 @@ namespace BaGio12.Prototype
                 var top = Row(); top.style.justifyContent = Justify.SpaceBetween;
                 top.Add(T(c.name, 38, Ink, boldFont));
                 var sh = Shown(c);
-                var lastTime = sh.Count > 0 ? sh[sh.Count - 1].time : (c.messages.Count > 0 ? c.messages[c.messages.Count - 1].time : "");
-                top.Add(T(lastTime, 26, Faint));
+                var lastMsg = tr[tr.Count - 1];
+                top.Add(T(lastMsg.time, 26, Faint));
                 col.Add(top);
                 var bottom = Row(); bottom.style.justifyContent = Justify.SpaceBetween; bottom.style.marginTop = 6;
-                var last = sh.Count > 0 ? (sh[sh.Count - 1].from == "me" ? "Bạn: " : "") + sh[sh.Count - 1].text : c.preview;
-                var lt = T(last, 31, sh.Count == 0 ? Ink : Dim); lt.style.flexShrink = 1; lt.style.overflow = Overflow.Hidden; lt.style.textOverflow = TextOverflow.Ellipsis; lt.style.whiteSpace = WhiteSpace.NoWrap;
+                var last = (lastMsg.from == "me" ? "Bạn: " : "") + lastMsg.text;
+                var lt = T(last, 31, sh.Count < tr.Count ? Ink : Dim); lt.style.flexShrink = 1; lt.style.overflow = Overflow.Hidden; lt.style.textOverflow = TextOverflow.Ellipsis; lt.style.whiteSpace = WhiteSpace.NoWrap;
                 bottom.Add(lt);
-                int unread = Mathf.Max(0, Script(c).Count - sh.Count);
+                int unread = Mathf.Max(0, Transcript(c.id).Count - sh.Count);
                 if (unread > 0)
                 {
                     var badge = new VisualElement(); badge.style.minWidth = 44; badge.style.height = 44; Radius(badge, 22); badge.style.backgroundColor = WarningRed;
@@ -536,6 +698,7 @@ namespace BaGio12.Prototype
 
         void ShowChat(Contact c)
         {
+            openChat = c;
             var s = AppScreen();
             var head = Row(); head.style.marginTop = 92; head.style.height = 140; head.style.paddingLeft = 20; head.style.paddingRight = 44;
             head.style.borderBottomWidth = 1; head.style.borderBottomColor = Hair; head.style.flexShrink = 0;
@@ -543,9 +706,17 @@ namespace BaGio12.Prototype
             head.Add(Avatar(c.name, 84));
             var nm = new VisualElement(); nm.style.marginLeft = 24; nm.style.flexGrow = 1;
             nm.Add(T(c.name, 38, Ink, boldFont));
-            var presence = T("Đang hoạt động", 26, Dim); nm.Add(presence);
+            var presence = T(Status(c), 26, Dim); nm.Add(presence);
             head.Add(nm);
-            head.Add(Icon(IcCall, 40, Ink)); var more = Icon(IcMore, 40, Ink); more.style.marginLeft = 40; head.Add(more);
+            var call = Icon(IcCall, 40, Ink); head.Add(call);
+            if (!string.IsNullOrEmpty(c.callNote) && !blocked.Contains(c.id))
+                call.RegisterCallback<PointerUpEvent>(_ =>
+                {
+                    Record($"call:{c.id}@{now}");
+                    OnChoiceSelected?.Invoke(c.id, "call");
+                    ShowChat(c);
+                });
+            var more = Icon(IcMore, 40, Ink); more.style.marginLeft = 30; head.Add(more);
             s.Add(head);
 
             var scroll = new ScrollView(ScrollViewMode.Vertical); scroll.style.flexGrow = 1;
@@ -554,76 +725,90 @@ namespace BaGio12.Prototype
             var day = T(string.IsNullOrEmpty(data.chatDay) ? "Hôm nay" : data.chatDay, 26, Faint); day.style.alignSelf = Align.Center; day.style.marginBottom = 26; cc.Add(day);
             s.Add(scroll);
 
-            var choiceBox = new VisualElement(); choiceBox.style.paddingLeft = 36; choiceBox.style.paddingRight = 36; choiceBox.style.flexShrink = 0;
+            var choiceBox = new ScrollView(ScrollViewMode.Vertical); choiceBox.style.paddingLeft = 36; choiceBox.style.paddingRight = 36;
+            choiceBox.style.flexShrink = 0; choiceBox.style.maxHeight = Length.Percent(40);
+            choiceBox.style.display = DisplayStyle.None;  // opened by tapping the input field
             s.Add(choiceBox);
 
             var input = Row(); input.style.flexShrink = 0; input.style.marginLeft = 28; input.style.marginRight = 28; input.style.marginTop = 14; input.style.marginBottom = 76;
             input.Add(Icon(IcAdd, 44, Dim));
             var field = Row(); field.style.flexGrow = 1; field.style.height = 92; field.style.marginLeft = 22; field.style.marginRight = 22; field.style.backgroundColor = Raised; Radius(field, 46); field.style.paddingLeft = 36;
-            var placeholder = T("Nhập tin nhắn...", 32, Faint); field.Add(placeholder); input.Add(field);
+            var placeholder = T(blocked.Contains(c.id) ? "Bạn đã chặn số này" : "Nhập tin nhắn...", 32, Faint); field.Add(placeholder); input.Add(field);
+            field.RegisterCallback<PointerUpEvent>(_ =>
+            {
+                if (choiceBox.childCount == 0) return;
+                bool show = choiceBox.resolvedStyle.display == DisplayStyle.None;
+                choiceBox.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+            });
             input.Add(Icon(IcMic, 44, Dim));
             s.Add(input);
             Switch(s, ShowTicList, "chat");
 
             Message prev = null;
             foreach (var m in Shown(c)) { cc.Add(Bubble(m, prev)); prev = m; }
-            // Script(c) includes the answer and its replies, so leaving mid-reply resumes them here.
-            var queue = Pending(c);
-            typing = StartCoroutine(Play(c, queue, scroll, presence, () => OfferChoices(c, scroll, presence, choiceBox)));
+            typing = StartCoroutine(Play(c, scroll, presence, () => OfferChoices(c, scroll, presence, choiceBox, placeholder)));
         }
 
-        List<Message> Pending(Contact c)
-        {
-            var sh = Shown(c);
-            return Script(c).FindAll(m => !sh.Contains(m));
-        }
+        string Status(Contact c) => string.IsNullOrEmpty(c.status) ? "Đang hoạt động" : c.status;
 
-        IEnumerator Play(Contact c, List<Message> queue, ScrollView scroll, Label presence, System.Action done)
+        // Plays whatever has arrived but is not on screen yet, including lines added while it runs.
+        IEnumerator Play(Contact c, ScrollView scroll, Label presence, System.Action done)
         {
             var cc = scroll.contentContainer;
-            foreach (var m in queue)
+            var sh = Shown(c);
+            var tr = Transcript(c.id);
+            while (sh.Count < tr.Count)
             {
-                VisualElement dots = null;
-                if (m.from != "me")
+                var m = tr[sh.Count];
+                bool animate = m.from == "them" && !data.noTyping;
+                if (animate)
                 {
                     presence.text = "đang soạn tin..."; presence.style.color = Accent;
-                    dots = TypingBubble(); cc.Add(dots); ScrollEnd(scroll, dots);
+                    var dots = TypingBubble(); cc.Add(dots); ScrollEnd(scroll, dots);
                     yield return new WaitForSeconds(m.delay);
                     dots.RemoveFromHierarchy();
+                    presence.text = Status(c); presence.style.color = Dim;
                 }
-                presence.text = "Đang hoạt động"; presence.style.color = Dim;
-                var sh = Shown(c);
                 var prev = sh.Count > 0 ? sh[sh.Count - 1] : null;
                 sh.Add(m);
-                OnMessageReceived?.Invoke(m.text);
-                if (!string.IsNullOrEmpty(m.time)) clock.text = m.time.TrimStart('0');
+                if (m.from == "them") OnMessageReceived?.Invoke(m.text);
                 var b = Bubble(m, prev); cc.Add(b); ScrollEnd(scroll, b);
-                yield return new WaitForSeconds(0.35f);
+                // Lines already waiting in the phone (lô tin nằm sẵn) show at once; typed ones get a beat.
+                if (animate || m.from == "me") yield return new WaitForSeconds(0.35f);
             }
             typing = null;
+            UpdateHudBadge();
             done?.Invoke();
         }
 
-        void OfferChoices(Contact c, ScrollView scroll, Label presence, VisualElement box)
+        // Fills the reply list; it stays closed until the player taps the input field.
+        void OfferChoices(Contact c, ScrollView scroll, Label presence, ScrollView box, Label placeholder)
         {
-            if (chose.ContainsKey(c.id) || c.choices == null || c.choices.Count == 0) return;
             box.Clear();
+            var open = c.choices == null ? new List<Choice>() : c.choices.FindAll(ch => Offered(c, ch));
+            if (!blocked.Contains(c.id)) placeholder.text = open.Count > 0 ? "Chạm để chọn câu trả lời..." : "Nhập tin nhắn...";
+            placeholder.style.color = open.Count > 0 ? Dim : Faint;
+            if (open.Count == 0) { box.style.display = DisplayStyle.None; return; }
             var label = T("Chọn câu trả lời:", 26, Faint); label.style.marginBottom = 12; label.style.marginLeft = 8; box.Add(label);
-            foreach (var ch in c.choices)
+            foreach (var ch in open)
             {
                 var choice = ch;
                 var btn = Row(); btn.style.marginBottom = 14; btn.style.paddingTop = 24; btn.style.paddingBottom = 24; btn.style.paddingLeft = 34; btn.style.paddingRight = 34;
-                Radius(btn, 40); btn.style.backgroundColor = AccentSoft;
+                Radius(btn, 40); btn.style.backgroundColor = choice.block ? new Color(0.86f, 0.24f, 0.22f, 0.16f) : AccentSoft;
+                var edge = choice.block ? new Color(0.86f, 0.24f, 0.22f, 0.7f) : new Color(0.24f, 0.56f, 0.49f, 0.7f);
                 btn.style.borderTopWidth = btn.style.borderBottomWidth = btn.style.borderLeftWidth = btn.style.borderRightWidth = 2;
-                btn.style.borderTopColor = btn.style.borderBottomColor = btn.style.borderLeftColor = btn.style.borderRightColor = new Color(0.24f, 0.56f, 0.49f, 0.7f);
-                var bt = T(choice.text, 30, Ink); bt.style.flexGrow = 1; bt.style.whiteSpace = WhiteSpace.Normal; btn.Add(bt);
-                btn.Add(Icon(IcSend, 32, new Color(0.45f, 0.8f, 0.7f)));
+                btn.style.borderTopColor = btn.style.borderBottomColor = btn.style.borderLeftColor = btn.style.borderRightColor = edge;
+                var bt = T(choice.text, 30, Ink); bt.style.flexGrow = 1; bt.style.flexShrink = 1; bt.style.whiteSpace = WhiteSpace.Normal; btn.Add(bt);
+                if (!choice.block) btn.Add(Icon(IcSend, 32, new Color(0.45f, 0.8f, 0.7f)));
                 btn.RegisterCallback<PointerUpEvent>(_ =>
                 {
-                    Pick(c, choice);
-                    SaveChoice(c, choice);
+                    Record($"sent:{c.id}/{ChoiceId(choice)}@{now}");
+                    OnChoiceSelected?.Invoke(c.id, ChoiceId(choice));
                     box.Clear();
-                    typing = StartCoroutine(Play(c, Pending(c), scroll, presence, null));
+                    box.style.display = DisplayStyle.None;
+                    placeholder.text = "Nhập tin nhắn..."; placeholder.style.color = Faint;
+                    if (blocked.Contains(c.id)) { ShowChat(c); return; }  // redraw the input as blocked
+                    typing = StartCoroutine(Play(c, scroll, presence, () => OfferChoices(c, scroll, presence, box, placeholder)));
                 });
                 box.Add(btn);
             }
@@ -821,7 +1006,7 @@ namespace BaGio12.Prototype
             var ic = AppIcon("Icons/icon-mosa", 160); ic.style.opacity = 0.5f; s.Add(ic);
             var t1 = T("Mosa Network", 40, Ink, boldFont); t1.style.marginTop = 40; s.Add(t1);
             var t2 = T("Không có kết nối Internet tại khu vực này", 30, Dim); t2.style.marginTop = 10; s.Add(t2);
-            var t3 = T("Tín hiệu 4G bị nhiễu sóng lạ lúc " + data.lockTime, 26, Faint); t3.style.marginTop = 10; s.Add(t3);
+            var t3 = T("Tín hiệu 4G bị nhiễu sóng lạ lúc " + now, 26, Faint); t3.style.marginTop = 10; s.Add(t3);
             var retry = T("Thử dò lại sóng", 32, Accent, boldFont); retry.style.marginTop = 50;
             retry.RegisterCallback<PointerUpEvent>(_ => retry.text = "Đang quét tần số...");
             s.Add(retry);
@@ -835,10 +1020,23 @@ namespace BaGio12.Prototype
             return l;
         }
 
+        List<Message> Transcript(string contactId)
+        {
+            if (!transcript.TryGetValue(contactId, out var l)) transcript[contactId] = l = new List<Message>();
+            return l;
+        }
+
         VisualElement AppScreen() { var s = new VisualElement(); s.style.backgroundColor = Surface; return s; }
 
         VisualElement Bubble(Message m, Message prev)
         {
+            if (m.from == "system")
+            {
+                var note = T(string.IsNullOrEmpty(m.time) ? m.text : m.time + "  ·  " + m.text, 26, Faint);
+                note.style.alignSelf = Align.Center; note.style.marginTop = 22; note.style.whiteSpace = WhiteSpace.Normal;
+                note.style.unityTextAlign = TextAnchor.MiddleCenter;
+                return note;
+            }
             bool mine = m.from == "me";
             bool grouped = prev != null && prev.from == m.from;
             var b = new VisualElement();

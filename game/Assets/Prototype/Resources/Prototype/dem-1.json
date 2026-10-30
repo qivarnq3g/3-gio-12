@@ -1,109 +1,75 @@
 {
-  "note": "Kịch bản Đêm 1: Ác mộng lúc 3 giờ 12 tại chung cư cũ",
+  "note": "Máy Ngân, đêm 1. Theo docs/kich-ban/dem-1.md mục 5.5 (PR #39). Lời thoại là bản nháp. Lô A nằm sẵn khi nhặt máy; game gửi lô B lúc nhảy giờ 21:26, lô C khoảng 21:35, lô D lúc 03:40 nếu người chơi đi ngủ.",
   "scenarioId": "dem-1",
-  "lockTime": "3:12",
-  "lockDate": "Thứ năm, 26 tháng 11",
-  "chatDay": "Hôm nay - 3:12 AM",
-  "albumDay": "Hôm nay - Đêm 1",
+  "lockTime": "21:00",
+  "lockDate": "Thứ Ba, 24 tháng 11",
+  "lockNotifyAgo": "4 phút trước",
+  "chatDay": "Hôm nay",
+  "albumDay": "Hôm nay",
+  "noTyping": true,
+  "startBatches": [ "A" ],
   "contacts": [
     {
-      "id": "me",
+      "id": "me_ngan",
       "name": "Mẹ",
-      "preview": "Con ở yên trong phòng trọ...",
+      "preview": "Ai đang cầm máy của con cô vậy? Cháu đọc được thì nhắn lại cho cô với.",
+      "status": "Không hoạt động",
+      "callNote": "Cuộc gọi đi, không ai bắt máy",
       "messages": [
-        { "from": "them", "text": "Con ngủ chưa?", "time": "03:09", "delay": 0.5 },
-        { "from": "them", "text": "Mẹ nghe tiếng gõ cửa ngoài hành lang tầng 3.", "time": "03:10", "delay": 1.2 },
-        { "from": "them", "text": "Gõ một cái... rồi hai cái... Đều đặn lắm.", "time": "03:11", "delay": 1.5 },
-        { "from": "them", "text": "Con ở yên trong phòng trọ, chốt then lại, tuyệt đối đừng ra mở cửa...", "time": "03:12", "delay": 1.6 }
+        { "batch": "A", "from": "them", "time": "20:56", "text": "Ai đang cầm máy của con cô vậy? Cháu đọc được thì nhắn lại cho cô với." },
+        { "batch": "A", "from": "them", "time": "20:56", "text": "Cô là mẹ của Ngân, chủ cái máy này." },
+        { "batch": "A", "from": "them", "time": "20:56", "text": "Con bé giận cô, bỏ lên Đà Lạt từ hôm qua. Cô đang ở dưới Bến Tre, không lên kịp." },
+        { "batch": "A", "from": "them", "time": "20:56", "text": "Cháu giữ giùm cô cái máy vài hôm nha, nhớ sạc pin giùm cô." },
+        { "batch": "A", "from": "them", "time": "20:56", "text": "Cô xin cháu đừng đem lên công an. Con bé đang làm hồ sơ học bổng, dính tới công an là hỏng hết." },
+        { "batch": "A", "from": "them", "time": "20:56", "text": "Chỗ cháu nhặt máy có camera không cháu?" },
+
+        { "batch": "B", "from": "them", "time": "21:26", "text": "Cô cảm ơn cháu nhiều lắm." },
+        { "batch": "B", "answers": "giu_may", "from": "them", "time": "21:26", "text": "Vậy cô yên tâm rồi. Có gì cháu cứ nhắn cho cô." },
+        { "batch": "B", "answers": "cam_khong", "from": "them", "time": "21:26", "text": "Vậy thì thôi, không sao đâu cháu." },
+        { "batch": "B", "answers": "cam_co", "from": "them", "time": "21:26", "text": "Tiệm đầu hẻm hả cháu. Ừ, cô biết rồi." },
+        { "batch": "B", "answers": "cam_khong_biet", "from": "them", "time": "21:26", "text": "Không sao, cô hỏi vậy thôi." },
+        { "batch": "B", "answers": "hoi_nha_xe", "from": "them", "time": "21:26", "text": "Con bé cố tình bỏ lại đó cháu. Nó không muốn cô gọi được nó." },
+        { "batch": "B", "answers": "call", "from": "them", "time": "21:26", "text": "Cô đang ở chỗ đông người, cháu nhắn cho cô nhé." },
+        { "batch": "B", "from": "them", "time": "21:26", "text": "À, cô dặn cháu cái này: sẽ có một số lạ nhắn vô máy này, xưng là mẹ con Ngân." },
+        { "batch": "B", "from": "them", "time": "21:26", "text": "Đó là thằng bồ cũ của con bé giả làm cô. Cháu đừng trả lời nó nha." },
+
+        { "batch": "D", "answers": "giu_may", "from": "them", "time": "03:40", "text": "Vậy cô yên tâm rồi. Có gì cháu cứ nhắn cho cô." },
+        { "batch": "D", "answers": "cam_khong", "from": "them", "time": "03:40", "text": "Vậy thì thôi, không sao đâu cháu." },
+        { "batch": "D", "answers": "cam_co", "from": "them", "time": "03:40", "text": "Tiệm đầu hẻm hả cháu. Ừ, cô biết rồi." },
+        { "batch": "D", "answers": "cam_khong_biet", "from": "them", "time": "03:40", "text": "Không sao, cô hỏi vậy thôi." },
+        { "batch": "D", "answers": "hoi_nha_xe", "from": "them", "time": "03:40", "text": "Con bé cố tình bỏ lại đó cháu. Nó không muốn cô gọi được nó." },
+        { "batch": "D", "answers": "call", "from": "them", "time": "03:40", "text": "Cô đang ở chỗ đông người, cháu nhắn cho cô nhé." }
       ],
       "choices": [
-        {
-          "id": "choice_me_1",
-          "text": "Con vừa nghe tiếng bước chân dừng ngay trước cửa phòng con...",
-          "replies": [
-            { "from": "them", "text": "Đừng gây ra tiếng động! Tắt hết đèn trong phòng đi!", "time": "03:13", "delay": 1.2 },
-            { "from": "them", "text": "Mẹ đang thử gọi điện xuống phòng bảo vệ bác Tư.", "time": "03:14", "delay": 1.4 }
-          ]
-        },
-        {
-          "id": "choice_me_2",
-          "text": "Mẹ ơi con sợ quá, có ai đang cào vào then cửa phòng!",
-          "replies": [
-            { "from": "them", "text": "Trốn vào tủ quần áo ngay! Nhanh lên con!", "time": "03:13", "delay": 1.2 },
-            { "from": "them", "text": "Bất kể ai gọi tên con ngoài cửa cũng không được trả lời!", "time": "03:14", "delay": 1.5 }
-          ]
-        }
+        { "id": "giu_may", "group": "giu_may", "text": "Dạ, cháu giữ máy giùm cô vài hôm." },
+        { "id": "cam_khong", "group": "camera", "text": "Dạ chỗ đó không có camera đâu cô." },
+        { "id": "cam_co", "group": "camera", "requires": "saw_shop_camera", "sets": "linh_knows_shop_camera", "text": "Dạ có, tiệm đầu hẻm có camera quay ra hẻm." },
+        { "id": "cam_khong_biet", "group": "camera", "text": "Dạ cháu cũng không biết nữa." },
+        { "id": "hoi_nha_xe", "group": "hoi_nha_xe", "sets": "asked_mom_why_here", "text": "Sao máy chị Ngân lại nằm dưới nhà xe vậy cô?" }
       ]
     },
     {
-      "id": "bactu",
-      "name": "Bác Tư (Bảo vệ)",
-      "preview": "Camera tầng 3 vừa bị nhiễu...",
+      "id": "so_la",
+      "name": "0918 352 476",
+      "preview": "Bong oi",
+      "autoRead": true,
+      "callNote": "Cuộc gọi đi 0:07, có người bắt máy, bạn không nói gì rồi tắt",
+      "callSets": "number_choice=replied",
       "messages": [
-        { "from": "them", "text": "Cháu phòng 312 ơi, trên tầng 3 có ai đi lại không?", "time": "03:06", "delay": 0.4 },
-        { "from": "them", "text": "Camera hành lang tầng 3 tự dưng mất tín hiệu, màn hình toàn sọc trắng.", "time": "03:08", "delay": 1.3 },
-        { "from": "them", "text": "Bác đang cầm đèn pin đi thang bộ lên kiểm tra đây.", "time": "03:11", "delay": 1.5 }
+        { "batch": "C", "from": "them", "time": "21:35", "text": "Bong oi" },
+        { "batch": "C", "from": "them", "time": "21:35", "text": "Bong oi con o dau" },
+        { "batch": "C", "from": "them", "time": "21:36", "text": "Me goi con hoai ma khong duoc" },
+        { "batch": "C", "from": "them", "time": "21:36", "text": "Con nghe may di Bong" },
+        { "batch": "C", "from": "them", "time": "21:37", "text": "Con co sao khong, nhan cho me mot chu thoi cung duoc" },
+        { "batch": "C", "from": "them", "time": "21:37", "text": "Me lo lam" },
+        { "batch": "C", "from": "them", "time": "21:38", "text": "Bong oi con o dau" }
       ],
       "choices": [
-        {
-          "id": "choice_bactu_1",
-          "text": "Bác đừng lên! Cháu nhìn qua khe cửa thấy có bóng người cao kỳ dị!",
-          "replies": [
-            { "from": "them", "text": "Cái gì... Sao bóng đèn cầu thang vừa phụt tắt hết thế này...", "time": "03:13", "delay": 1.6 },
-            { "from": "them", "text": "Ai... ai đứng ở khúc quanh đó...? [Mất tín hiệu]", "time": "03:14", "delay": 2.0 }
-          ]
-        },
-        {
-          "id": "choice_bactu_2",
-          "text": "Bác kiểm tra giúp cháu phòng 314 kế bên với, nãy giờ có tiếng đập tường thình thịch.",
-          "replies": [
-            { "from": "them", "text": "Cháu nói sao? Phòng 314 bị niêm phong bỏ hoang 3 năm nay rồi mà!", "time": "03:13", "delay": 1.8 }
-          ]
-        }
+        { "id": "tra_loi", "group": "so_la", "sets": "number_choice=replied", "text": "Ai vậy ạ?" },
+        { "id": "chan", "group": "so_la", "block": true, "sets": "number_choice=blocked", "text": "Chặn số này" }
       ]
-    },
-    {
-      "id": "cudan",
-      "name": "Cư Dân Tầng 3",
-      "preview": "Hùng P308: Có ai nghe tiếng chuông...",
-      "messages": [
-        { "from": "them", "text": "Hùng P308: Có ai nghe thấy tiếng chuông đồng hồ điểm lúc 3 giờ 12 không?", "time": "03:12", "delay": 0.5 },
-        { "from": "them", "text": "Linh P310: Mùi khét với mùi tanh bốc lên nồng nặc từ phía thang thoát hiểm...", "time": "03:12", "delay": 1.4 },
-        { "from": "them", "text": "Tuấn P305: Mọi người chốt cửa cẩn thận, đừng ai mở cửa cho người lạ lúc này!", "time": "03:13", "delay": 1.6 }
-      ],
-      "choices": []
     }
   ],
-  "photos": [
-    {
-      "resource": "Scenes/phong-tro",
-      "caption": "Phòng trọ 312 lúc 03:12",
-      "time": "03:12"
-    },
-    {
-      "resource": "Scenes/phong-tro-blur",
-      "caption": "Bóng đen ngoài khe cửa",
-      "time": "03:13"
-    }
-  ],
-  "voiceMemos": [
-    {
-      "id": "memo_1",
-      "title": "Ghi âm tự động - Hành lang tầng 3",
-      "duration": "0:38",
-      "time": "03:10",
-      "date": "Hôm nay",
-      "transcript": "[03:10:02] Tiếng kim loại lê kéo dài trên nền gạch...\n[03:10:14] Cộc... cộc... cộc...\n[03:10:25] Tiếng thở nặng nhọc sát cánh cửa phòng 312...\n[03:10:32] Giọng thì thầm khàn đặc: 'Biết mày ở trong đó rồi...'",
-      "resource": ""
-    },
-    {
-      "id": "memo_2",
-      "title": "Hộp thư thoại - Bác Tư gọi khẩn",
-      "duration": "0:24",
-      "time": "03:14",
-      "date": "Hôm nay",
-      "transcript": "[03:14:01] 'Alo cháu ơi, bác vừa lên đến chiếu nghỉ tầng 3... Khoan đã, cái bóng kia... không phải người... Tránh xa cánh cửa ra, cháu ơi... Á... [tiếng rơi máy đập xuống sàn, tín hiệu tắt ngấm]'",
-      "resource": ""
-    }
-  ]
+  "photos": [],
+  "voiceMemos": []
 }
