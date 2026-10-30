@@ -294,6 +294,7 @@ def finish_docx(path):
         for row_index, row in enumerate(rows):
             for cell in row.cells:
                 for paragraph in cell.paragraphs:
+                    paragraph.paragraph_format.keep_with_next = row_index == 0
                     for run in paragraph.runs:
                         run.font.bold = row_index == 0
     first = doc.sections[0]
