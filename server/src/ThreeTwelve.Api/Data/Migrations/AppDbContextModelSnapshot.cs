@@ -22,6 +22,175 @@ namespace ThreeTwelve.Api.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("ThreeTwelve.Api.Domain.Puzzle", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptWindowMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(60)
+                        .HasColumnName("attempt_window_minutes");
+
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_enabled");
+
+                    b.Property<int>("MaxFailedAttempts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(5)
+                        .HasColumnName("max_failed_attempts");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("UnlockId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("unlock_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_puzzles");
+
+                    b.ToTable("puzzles", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_puzzles_attempt_window_minutes", "attempt_window_minutes between 1 and 10080");
+
+                            t.HasCheckConstraint("ck_puzzles_max_failed_attempts", "max_failed_attempts between 1 and 100");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "red-thread-sandal",
+                            AttemptWindowMinutes = 60,
+                            IsEnabled = false,
+                            MaxFailedAttempts = 5,
+                            Title = "Đôi dép chỉ đỏ",
+                            UnlockId = "ending_red_thread_sandal",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        });
+                });
+
+            modelBuilder.Entity("ThreeTwelve.Api.Domain.PuzzleSolution", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasDefaultValue("")
+                        .HasColumnName("note");
+
+                    b.Property<string>("PuzzleId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("puzzle_id");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasColumnType("character(64)")
+                        .HasColumnName("sha256");
+
+                    b.HasKey("Id")
+                        .HasName("pk_puzzle_solutions");
+
+                    b.HasIndex("PuzzleId", "Sha256")
+                        .IsUnique()
+                        .HasDatabaseName("ix_puzzle_solutions_puzzle_id_sha256");
+
+                    b.ToTable("puzzle_solutions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_puzzle_solutions_sha256", "sha256 ~ '^[0-9a-f]{64}$'");
+                        });
+                });
+
+            modelBuilder.Entity("ThreeTwelve.Api.Domain.PuzzleSubmission", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("GameVersion")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("game_version");
+
+                    b.Property<Guid>("InstallationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("installation_id");
+
+                    b.Property<string>("PuzzleId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("puzzle_id");
+
+                    b.Property<string>("Result")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("result");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasColumnType("character(64)")
+                        .HasColumnName("sha256");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_puzzle_submissions");
+
+                    b.HasIndex("PuzzleId", "SubmittedAt")
+                        .HasDatabaseName("ix_puzzle_submissions_puzzle_id_submitted_at");
+
+                    b.HasIndex("PuzzleId", "InstallationId", "SubmittedAt")
+                        .HasDatabaseName("ix_puzzle_submissions_puzzle_id_installation_id_submitted_at");
+
+                    b.ToTable("puzzle_submissions", (string)null);
+                });
+
             modelBuilder.Entity("ThreeTwelve.Api.Domain.TelemetryEvent", b =>
                 {
                     b.Property<Guid>("EventId")
@@ -119,6 +288,31 @@ namespace ThreeTwelve.Api.Data.Migrations
                         .HasDatabaseName("ix_telemetry_events_received_at_type");
 
                     b.ToTable("telemetry_events", (string)null);
+                });
+
+            modelBuilder.Entity("ThreeTwelve.Api.Domain.PuzzleSolution", b =>
+                {
+                    b.HasOne("ThreeTwelve.Api.Domain.Puzzle", null)
+                        .WithMany("Solutions")
+                        .HasForeignKey("PuzzleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_puzzle_solutions_puzzles_puzzle_id");
+                });
+
+            modelBuilder.Entity("ThreeTwelve.Api.Domain.PuzzleSubmission", b =>
+                {
+                    b.HasOne("ThreeTwelve.Api.Domain.Puzzle", null)
+                        .WithMany()
+                        .HasForeignKey("PuzzleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_puzzle_submissions_puzzles_puzzle_id");
+                });
+
+            modelBuilder.Entity("ThreeTwelve.Api.Domain.Puzzle", b =>
+                {
+                    b.Navigation("Solutions");
                 });
 #pragma warning restore 612, 618
         }
