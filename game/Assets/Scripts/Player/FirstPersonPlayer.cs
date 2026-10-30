@@ -10,6 +10,14 @@ namespace BaGio12.Gameplay
         public Camera eyes;
         public float walkSpeed = 3, runSpeed = 5, crouchSpeed = 1.5f;
         public float sensitivity = 0.09f, reach = 2.4f;
+        public bool showTestHud = true;
+        public bool ExternalUI { get; set; }
+        public float RunMultiplier { get; set; } = 1f;
+        public bool IsRunning { get; private set; }
+        public bool IsPaused => paused;
+        public System.Func<int, bool> CanOpenPhone;
+        public event System.Action<int, int> PhoneChanged;
+        public event System.Action FellOutOfWorld;
         public bool IsCrouched { get; private set; }
         public int ActivePhone { get; private set; }
         public int ItemsCollected { get; private set; }
@@ -49,7 +57,7 @@ namespace BaGio12.Gameplay
             if (cancel.WasPressedThisFrame())
             {
                 if (ActivePhone != 0) SetPhone(0);
-                else { paused = !paused; LockCursor(!paused); }
+                else if (!ExternalUI) { paused = !paused; LockCursor(!paused); }
             }
             if (!paused)
             {
@@ -57,7 +65,7 @@ namespace BaGio12.Gameplay
                 if (phoneTwo.WasPressedThisFrame()) SetPhone(ActivePhone == 2 ? 0 : 2);
             }
             target = null;
-            bool control = !paused && ActivePhone == 0;
+            bool control = !paused && ActivePhone == 0 && !ExternalUI;
             if (control)
             {
                 Vector2 delta = look.ReadValue<Vector2>();
@@ -68,13 +76,15 @@ namespace BaGio12.Gameplay
                 if (crouch.WasPressedThisFrame()) SetCrouch(!IsCrouched);
                 if (Physics.Raycast(eyes.transform.position, eyes.transform.forward, out var hit, reach, ~(1 << 2), QueryTriggerInteraction.Ignore))
                     target = hit.collider.GetComponentInParent<WorldInteractable>();
-                if (target != null && interact.WasPressedThisFrame()) target.Interact(this);
+                if (target != null) target.HandleInput(this, interact.WasPressedThisFrame(), interact.IsPressed());
             }
             var axis = control ? Vector2.ClampMagnitude(move.ReadValue<Vector2>(), 1) : Vector2.zero;
-            float speed = IsCrouched ? crouchSpeed : sprint.IsPressed() ? runSpeed : walkSpeed;
+            IsRunning = control && !IsCrouched && sprint.IsPressed() && axis.sqrMagnitude > .01f;
+            float speed = IsCrouched ? crouchSpeed : sprint.IsPressed() ? runSpeed * RunMultiplier : walkSpeed;
             if (body.isGrounded && fall < 0) fall = -2;
             fall = Mathf.Max(fall + Physics.gravity.y * Time.deltaTime, -30);
             body.Move((transform.TransformDirection(new Vector3(axis.x, 0, axis.y)) * speed + Vector3.up * fall) * Time.deltaTime);
+            if (transform.position.y < -10 && FellOutOfWorld != null) { FellOutOfWorld.Invoke(); return; }
             if (transform.position.y < -10) { body.enabled = false; transform.position = new Vector3(0, 0.1f, -3); body.enabled = true; fall = 0; }
         }
         public bool SetCrouch(bool value)
@@ -94,12 +104,31 @@ namespace BaGio12.Gameplay
             return true;
         }
         public void ResumeControl() { paused = false; LockCursor(ActivePhone == 0); }
-        public void SetPhone(int phone) { ActivePhone = phone; LockCursor(phone == 0 && !paused); }
+        public void SetPhone(int phone)
+        {
+            if (phone != 0 && (ExternalUI || (CanOpenPhone != null && !CanOpenPhone(phone)))) return;
+            int previous = ActivePhone;
+            ActivePhone = phone;
+            LockCursor(phone == 0 && !paused && !ExternalUI);
+            if (previous != phone) PhoneChanged?.Invoke(previous, phone);
+        }
+        public void SetOverlay(bool open) { ExternalUI = open; LockCursor(!open && ActivePhone == 0 && !paused); }
+        public void Teleport(Vector3 point, float yaw = 0)
+        {
+            body.enabled = false; transform.SetPositionAndRotation(point, Quaternion.Euler(0, yaw, 0));
+            body.enabled = true; fall = 0; pitch = 0; SetCrouch(false);
+        }
         public void Collect() { ItemsCollected++; Notify("Đã nhặt vật chứng"); }
         public void Notify(string message) { notice = message; noticeUntil = Time.time + 3; }
         void OnGUI()
         {
             if (text == null) { text = new GUIStyle(GUI.skin.label) { fontSize = 18, wordWrap = true }; title = new GUIStyle(text) { fontSize = 28, alignment = TextAnchor.MiddleCenter }; }
+            if (!showTestHud)
+            {
+                if (!paused && ActivePhone == 0 && !ExternalUI && target != null) GUI.Label(new Rect(Screen.width/2 - 220, Screen.height*.76f, 440, 65), "E — " + target.Prompt, title);
+                if (paused && ActivePhone == 0 && !ExternalUI && GUI.Button(new Rect(Screen.width/2-100, Screen.height/2, 200, 50), "Tiếp tục (Esc)")) ResumeControl();
+                return;
+            }
             GUI.Box(new Rect(12, 12, 580, 95), "");
             GUI.Label(new Rect(24, 20, 555, 85), "PHÒNG THỬ #6 — WASD: đi | Shift: chạy | C: cúi\nE: tương tác | 1/2: điện thoại | Esc: đóng / thả chuột\nVật đã nhặt: " + ItemsCollected + (IsCrouched ? "  •  Đang cúi" : ""), text);
             if (ActivePhone != 0)
