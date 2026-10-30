@@ -1,0 +1,1372 @@
+openapi: 3.1.0
+info:
+  title: 3 GIỜ 12 - API giữa game và máy chủ
+  version: 1.0.0
+  description: |
+    Hợp đồng giữa game Unity và máy chủ ASP.NET Core. Giải thích quy tắc phía game nằm ở `docs/api/README.md`.
+    Game không đăng nhập; mọi yêu cầu chỉ mang mã cài đặt ngẫu nhiên. JSON dùng camelCase, giá trị liệt kê dùng snake_case, thời gian theo RFC 3339 giờ UTC.
+    Các API dưới `/api/admin` dành cho trang quản trị, cần cookie đăng nhập của quản trị viên.
+servers:
+  - url: http://localhost:8080
+    description: Docker Compose trên máy
+tags:
+  - name: telemetry
+    description: Thống kê ẩn danh (yêu cầu 6, 13)
+  - name: puzzles
+    description: Bằng chứng của câu đố ngoài game (yêu cầu 7, 14)
+  - name: health
+    description: Kiểm tra máy chủ còn sống
+  - name: admin-auth
+    description: Đăng nhập trang quản trị (yêu cầu 9)
+  - name: admin-accounts
+    description: Quản lý tài khoản quản trị viên (yêu cầu 9)
+  - name: admin-dashboard
+    description: Dashboard thống kê và xuất CSV (yêu cầu 10, 11)
+  - name: admin-puzzles
+    description: Cấu hình câu đố và lịch sử gửi (yêu cầu 12)
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Máy chủ còn sống
+      security: []
+      responses:
+        '200':
+          description: Máy chủ chạy và nối được cơ sở dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Máy chủ chạy nhưng không nối được cơ sở dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/v1/telemetry/batches:
+    post:
+      tags: [telemetry]
+      operationId: postTelemetryBatch
+      summary: Gửi một lô sự kiện thống kê
+      description: |
+        Chỉ gọi khi người chơi đã đồng ý gửi thống kê. Sự kiện trùng `eventId` đã nhận thì bỏ qua, nên game gửi lại một lô sau lỗi mạng là an toàn.
+        Máy chủ kiểm từng sự kiện: sự kiện sai hoặc lạ nằm trong `rejected`, không làm hỏng cả lô. 400 chỉ trả khi phần vỏ của lô sai (thiếu `installationId`, mảng rỗng, quá 100 sự kiện).
+        Game xóa cả lô khỏi hàng đợi khi nhận 200. Máy chủ giả Prism kiểm chặt hơn và trả 400 cho cả lô khi một sự kiện sai.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelemetryBatch'
+            example:
+              installationId: 6f1c2a9e-3b7d-4c51-9a2e-0d8f4b6e1a73
+              gameVersion: 0.3.0
+              platform: windows
+              events:
+                - eventId: 0b9a6c1e-5d2f-4e8a-b3c7-1f4d2e6a9b08
+                  sessionId: 2c7e4f1a-8b3d-4a6e-9c2f-5d1b7e3a0c94
+                  sequence: 0
+                  occurredAt: '2026-11-24T14:02:11Z'
+                  type: session_started
+                - eventId: 4e2d8a6c-1f3b-4c7e-a9d5-6b0e2f8c1a37
+                  sessionId: 2c7e4f1a-8b3d-4a6e-9c2f-5d1b7e3a0c94
+                  sequence: 1
+                  occurredAt: '2026-11-24T14:02:40Z'
+                  type: night_started
+                  night: 1
+                  isReplay: false
+                - eventId: 9a1f3c5e-7b2d-4e6a-8c0f-3d5b7e9a1c26
+                  sessionId: 2c7e4f1a-8b3d-4a6e-9c2f-5d1b7e3a0c94
+                  sequence: 2
+                  occurredAt: '2026-11-24T14:31:05Z'
+                  type: choice_made
+                  night: 1
+                  choiceId: '0b'
+      responses:
+        '200':
+          description: Lô đã được xử lý
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelemetryBatchResult'
+              example:
+                accepted: 3
+                duplicates: 0
+                rejected: []
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/v1/telemetry/installations/{installationId}:
+    delete:
+      tags: [telemetry]
+      operationId: deleteInstallationTelemetry
+      summary: Xóa mọi thống kê của một mã cài đặt
+      description: Game gọi khi người chơi rút lại đồng ý. Gọi lại với mã đã xóa vẫn trả 204.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/InstallationId'
+      responses:
+        '204':
+          description: Đã xóa hoặc không có gì để xóa
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/v1/puzzles/{puzzleId}/submissions:
+    post:
+      tags: [puzzles]
+      operationId: postPuzzleSubmission
+      summary: Gửi mã băm của tệp bằng chứng
+      description: |
+        Game tự tính SHA-256 của tệp người chơi chọn và chỉ gửi mã băm, không gửi tệp.
+        Mỗi lần gửi sai trừ một lượt. Hết lượt thì mọi lần gửi trong cửa sổ thời gian đều nhận 429, kể cả bằng chứng đúng.
+        Gửi đúng không trừ lượt và trả cùng kết quả nếu gửi lại.
+        Số lượt và độ dài cửa sổ do quản trị viên cấu hình trên trang quản trị.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PuzzleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PuzzleSubmission'
+            example:
+              installationId: 6f1c2a9e-3b7d-4c51-9a2e-0d8f4b6e1a73
+              gameVersion: 0.3.0
+              sha256: 3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b
+      responses:
+        '200':
+          description: Đã kiểm; xem `result`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PuzzleSubmissionResult'
+              examples:
+                accepted:
+                  summary: Bằng chứng đúng
+                  value:
+                    result: accepted
+                    unlockId: ending_red_thread_sandal
+                    attemptsRemaining: 5
+                    windowResetsAt: '2026-12-02T15:00:00Z'
+                rejected:
+                  summary: Bằng chứng sai
+                  value:
+                    result: rejected
+                    attemptsRemaining: 3
+                    windowResetsAt: '2026-12-02T15:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/PuzzleNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/admin/auth/login:
+    post:
+      tags: [admin-auth]
+      operationId: adminLogin
+      summary: Đăng nhập
+      description: |
+        Đúng thì máy chủ đặt cookie phiên `ThreeTwelve.Admin` (HttpOnly, Secure, SameSite=Strict) và trả tài khoản đang đăng nhập.
+        Sai email, sai mật khẩu hay tài khoản bị khóa đều trả cùng một lỗi 401, để không lộ email nào có tài khoản.
+        Sai mật khẩu 5 lần liên tiếp thì tài khoản bị tạm chặn đăng nhập 15 phút (khác với khóa tài khoản, việc do quản trị viên làm).
+        Ngoài ra mỗi địa chỉ IP chỉ được thử 10 lần mỗi phút (429).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminLoginRequest'
+            example:
+              email: admin@example.com
+              password: mat-khau-thu
+      responses:
+        '200':
+          description: Đã đăng nhập
+          headers:
+            Set-Cookie:
+              description: Cookie phiên của quản trị viên
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAccount'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/admin/auth/logout:
+    post:
+      tags: [admin-auth]
+      operationId: adminLogout
+      summary: Đăng xuất
+      security:
+        - adminCookie: []
+      responses:
+        '204':
+          description: Đã xóa cookie phiên
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/admin/auth/me:
+    get:
+      tags: [admin-auth]
+      operationId: getCurrentAdmin
+      summary: Tài khoản đang đăng nhập
+      description: Trang quản trị gọi khi mở để biết đã đăng nhập chưa.
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Tài khoản đang đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAccount'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/admin/auth/password:
+    post:
+      tags: [admin-auth]
+      operationId: changeOwnPassword
+      summary: Đổi mật khẩu của chính mình
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: Đã đổi; các phiên khác của tài khoản này bị đăng xuất
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/admin/accounts:
+    get:
+      tags: [admin-accounts]
+      operationId: listAdminAccounts
+      summary: Danh sách tài khoản quản trị viên
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Mọi tài khoản, cả tài khoản đã khóa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminAccount'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [admin-accounts]
+      operationId: createAdminAccount
+      summary: Tạo tài khoản quản trị viên
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAdminAccountRequest'
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAccount'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/admin/accounts/{accountId}:
+    patch:
+      tags: [admin-accounts]
+      operationId: updateAdminAccount
+      summary: Đổi tên hiển thị, khóa hoặc mở khóa tài khoản
+      description: |
+        Khóa tài khoản thì các phiên đang mở của tài khoản đó hết hiệu lực trong vòng một phút.
+        Không khóa được chính mình hay tài khoản hoạt động cuối cùng (409).
+      security:
+        - adminCookie: []
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAdminAccountRequest'
+      responses:
+        '200':
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAccount'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [admin-accounts]
+      operationId: deleteAdminAccount
+      summary: Xóa tài khoản quản trị viên
+      description: Không xóa được chính mình hay tài khoản hoạt động cuối cùng (409).
+      security:
+        - adminCookie: []
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        '204':
+          description: Đã xóa
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/admin/accounts/{accountId}/password:
+    post:
+      tags: [admin-accounts]
+      operationId: resetAdminPassword
+      summary: Đặt lại mật khẩu cho một tài khoản khác
+      description: Các phiên đang mở của tài khoản đó bị đăng xuất. Đổi mật khẩu của chính mình dùng `/api/admin/auth/password`.
+      security:
+        - adminCookie: []
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204':
+          description: Đã đặt lại
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/admin/dashboard:
+    get:
+      tags: [admin-dashboard]
+      operationId: getDashboard
+      summary: Số liệu dashboard trong một khoảng thời gian
+      description: Tính trực tiếp từ bảng sự kiện, lọc theo `occurredAt`. Tỉ lệ (ví dụ tỉ lệ từng kết thúc) do trang quản trị tự chia từ các số đếm.
+      security:
+        - adminCookie: []
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: Số liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/admin/exports/{dataset}:
+    get:
+      tags: [admin-dashboard]
+      operationId: exportCsv
+      summary: Xuất CSV
+      description: |
+        `summary`: các số liệu của dashboard, mỗi dòng một số, cột `metric,night,key,value`.
+        `events`: mọi sự kiện trong khoảng thời gian, mỗi dòng một sự kiện, cột theo tên trường của sự kiện viết snake_case.
+        Tệp mã hóa UTF-8 có BOM để Excel mở đúng tiếng Việt, dấu phân cách là dấu phẩy.
+      security:
+        - adminCookie: []
+      parameters:
+        - name: dataset
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [summary, events]
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: Tệp CSV
+          headers:
+            Content-Disposition:
+              description: 'Tên tệp, ví dụ `attachment; filename="3gio12-summary-20261101-20261201.csv"`'
+              schema:
+                type: string
+          content:
+            text/csv:
+              schema:
+                type: string
+              example: |
+                metric,night,key,value
+                players,,,128
+                night_completed,1,,96
+                caught,1,n1.parking,14
+                ending,,home,31
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/admin/puzzles:
+    get:
+      tags: [admin-puzzles]
+      operationId: listPuzzles
+      summary: Danh sách câu đố
+      description: Câu đố được tạo sẵn bằng migration; trang quản trị chỉ cấu hình, không tạo hay xóa câu đố.
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Mọi câu đố
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PuzzleConfig'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/admin/puzzles/{puzzleId}:
+    get:
+      tags: [admin-puzzles]
+      operationId: getPuzzle
+      summary: Cấu hình một câu đố
+      security:
+        - adminCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PuzzleId'
+      responses:
+        '200':
+          description: Cấu hình, gồm các mã băm hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PuzzleConfig'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [admin-puzzles]
+      operationId: updatePuzzle
+      summary: Bật, tắt câu đố hoặc đổi giới hạn lượt gửi
+      description: |
+        Áp dụng ngay cho lần gửi kế tiếp từ game. Đổi giới hạn không xóa các lượt sai đã ghi.
+        Không bật được câu đố chưa có mã băm hợp lệ nào (409).
+      security:
+        - adminCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PuzzleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePuzzleRequest'
+            example:
+              maxFailedAttempts: 3
+      responses:
+        '200':
+          description: Cấu hình sau khi đổi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PuzzleConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/admin/puzzles/{puzzleId}/solutions:
+    post:
+      tags: [admin-puzzles]
+      operationId: addPuzzleSolution
+      summary: Thêm một mã băm hợp lệ
+      description: Quản trị viên tính SHA-256 của tệp bằng chứng gốc rồi nhập vào đây.
+      security:
+        - adminCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PuzzleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddPuzzleSolutionRequest'
+      responses:
+        '201':
+          description: Đã thêm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PuzzleSolution'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/admin/puzzles/{puzzleId}/solutions/{solutionId}:
+    delete:
+      tags: [admin-puzzles]
+      operationId: deletePuzzleSolution
+      summary: Bỏ một mã băm hợp lệ
+      description: Không bỏ được mã băm cuối cùng của câu đố đang bật (409); tắt câu đố trước.
+      security:
+        - adminCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PuzzleId'
+        - $ref: '#/components/parameters/SolutionId'
+      responses:
+        '204':
+          description: Đã bỏ
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/admin/puzzles/{puzzleId}/submissions:
+    get:
+      tags: [admin-puzzles]
+      operationId: listPuzzleSubmissions
+      summary: Lịch sử gửi bằng chứng
+      description: Mới nhất trước.
+      security:
+        - adminCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PuzzleId'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - name: result
+          in: query
+          schema:
+            $ref: '#/components/schemas/SubmissionResult'
+        - name: installationId
+          in: query
+          schema:
+            $ref: '#/components/schemas/InstallationId'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        '200':
+          description: Một trang lịch sử
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PuzzleSubmissionPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    adminCookie:
+      type: apiKey
+      in: cookie
+      name: ThreeTwelve.Admin
+      description: Cookie phiên do `/api/admin/auth/login` đặt. Thiếu, hết hạn hay tài khoản đã bị khóa thì nhận 401, không chuyển hướng.
+
+  parameters:
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SolutionId:
+      name: solutionId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    From:
+      name: from
+      in: query
+      description: Đầu khoảng thời gian, tính cả mốc này. Bỏ trống thì lấy 30 ngày trước `to`.
+      schema:
+        type: string
+        format: date-time
+      example: '2026-11-01T00:00:00+07:00'
+    To:
+      name: to
+      in: query
+      description: Cuối khoảng thời gian, không tính mốc này. Bỏ trống thì lấy giờ hiện tại. Khoảng dài tối đa 366 ngày.
+      schema:
+        type: string
+        format: date-time
+      example: '2026-12-01T00:00:00+07:00'
+    InstallationId:
+      name: installationId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/InstallationId'
+    PuzzleId:
+      name: puzzleId
+      in: path
+      required: true
+      description: Câu đố của kịch bản bản 5 có mã `red-thread-sandal`.
+      schema:
+        type: string
+        pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+      example: red-thread-sandal
+
+  headers:
+    RetryAfter:
+      description: Số giây cần chờ trước khi gửi lại
+      schema:
+        type: integer
+        minimum: 1
+
+  responses:
+    BadRequest:
+      description: Yêu cầu sai cấu trúc; gửi lại y nguyên vẫn sai
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ValidationProblem'
+    PayloadTooLarge:
+      description: Lô quá 256 KiB; game chia lô nhỏ hơn rồi gửi lại
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: Chưa đăng nhập, phiên hết hạn, hoặc sai thông tin đăng nhập
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Không có đối tượng này
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: Yêu cầu hợp lệ nhưng trái với trạng thái hiện tại (email đã có, mã băm đã có, khóa hay xóa tài khoản hoạt động cuối cùng hoặc chính mình, bật câu đố chưa có mã băm, bỏ mã băm cuối cùng của câu đố đang bật)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    PuzzleNotFound:
+      description: Không có câu đố này, hoặc quản trị viên đã tắt nó
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TooManyRequests:
+      description: Vượt giới hạn tần suất, hoặc hết lượt gửi bằng chứng
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+  schemas:
+    InstallationId:
+      type: string
+      format: uuid
+      description: UUID phiên bản 4, game sinh ngẫu nhiên lần chạy đầu và sinh lại khi người chơi xóa dữ liệu lưu.
+
+    GameVersion:
+      type: string
+      pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+      example: 0.3.0
+
+    Night:
+      type: integer
+      minimum: 1
+      maximum: 9
+
+    AreaId:
+      type: string
+      description: Mã khu vực trong màn chơi, do người dựng màn đặt, ví dụ `n1.parking`, `n4.corridor_3f`.
+      pattern: '^[a-z0-9][a-z0-9_.-]{0,63}$'
+
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+
+    TelemetryBatch:
+      type: object
+      additionalProperties: false
+      required: [installationId, gameVersion, platform, events]
+      properties:
+        installationId:
+          $ref: '#/components/schemas/InstallationId'
+        gameVersion:
+          $ref: '#/components/schemas/GameVersion'
+        platform:
+          type: string
+          enum: [windows]
+        events:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/TelemetryEvent'
+
+    TelemetryEventBase:
+      type: object
+      required: [eventId, sessionId, sequence, occurredAt, type]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Sinh khi sự kiện xảy ra; máy chủ dùng để bỏ bản trùng.
+        sessionId:
+          type: string
+          format: uuid
+          description: Sinh mỗi lần mở game.
+        sequence:
+          type: integer
+          minimum: 0
+          description: Thứ tự sự kiện trong một phiên, bắt đầu từ 0.
+        occurredAt:
+          type: string
+          format: date-time
+          description: Giờ trên máy người chơi, UTC, chỉ dùng để sắp thứ tự sự kiện trong một lượt chơi. Máy chủ lưu thêm giờ nhận riêng; dashboard và CSV lọc theo giờ nhận.
+        type:
+          type: string
+
+    TelemetryEvent:
+      oneOf:
+        - $ref: '#/components/schemas/SessionStartedEvent'
+        - $ref: '#/components/schemas/SessionEndedEvent'
+        - $ref: '#/components/schemas/NightStartedEvent'
+        - $ref: '#/components/schemas/NightCompletedEvent'
+        - $ref: '#/components/schemas/PlayerCaughtEvent'
+        - $ref: '#/components/schemas/ChoiceMadeEvent'
+        - $ref: '#/components/schemas/EndingReachedEvent'
+      discriminator:
+        propertyName: type
+        mapping:
+          session_started: '#/components/schemas/SessionStartedEvent'
+          session_ended: '#/components/schemas/SessionEndedEvent'
+          night_started: '#/components/schemas/NightStartedEvent'
+          night_completed: '#/components/schemas/NightCompletedEvent'
+          player_caught: '#/components/schemas/PlayerCaughtEvent'
+          choice_made: '#/components/schemas/ChoiceMadeEvent'
+          ending_reached: '#/components/schemas/EndingReachedEvent'
+
+    SessionStartedEvent:
+      description: Mở game.
+      allOf:
+        - $ref: '#/components/schemas/TelemetryEventBase'
+        - type: object
+          properties:
+            type:
+              const: session_started
+
+    SessionEndedEvent:
+      description: |
+        Thoát game. `night` và `areaId` có giá trị khi người chơi thoát giữa một đêm; dashboard dùng chúng làm vị trí bỏ game.
+        `not_closed` do game gửi ở lần mở sau khi phiên trước tắt đột ngột; khi đó `durationSeconds` tính tới lần game ghi hàng đợi cuối cùng.
+      allOf:
+        - $ref: '#/components/schemas/TelemetryEventBase'
+        - type: object
+          required: [type, reason, durationSeconds]
+          properties:
+            type:
+              const: session_ended
+            reason:
+              type: string
+              enum: [quit_to_menu, quit_app, not_closed]
+            durationSeconds:
+              type: integer
+              minimum: 0
+            night:
+              $ref: '#/components/schemas/Night'
+            areaId:
+              $ref: '#/components/schemas/AreaId'
+
+    NightStartedEvent:
+      allOf:
+        - $ref: '#/components/schemas/TelemetryEventBase'
+        - type: object
+          required: [type, night, isReplay]
+          properties:
+            type:
+              const: night_started
+            night:
+              $ref: '#/components/schemas/Night'
+            isReplay:
+              type: boolean
+              description: true khi chơi lại một đêm đã hoàn thành.
+
+    NightCompletedEvent:
+      allOf:
+        - $ref: '#/components/schemas/TelemetryEventBase'
+        - type: object
+          required: [type, night, isReplay, durationSeconds]
+          properties:
+            type:
+              const: night_completed
+            night:
+              $ref: '#/components/schemas/Night'
+            isReplay:
+              type: boolean
+              description: true khi đêm vừa hết là lần chơi lại, cùng giá trị với night_started của lượt đó.
+            durationSeconds:
+              type: integer
+              minimum: 0
+              description: Thời gian chơi thực của đêm, không tính lúc dừng game.
+
+    PlayerCaughtEvent:
+      allOf:
+        - $ref: '#/components/schemas/TelemetryEventBase'
+        - type: object
+          required: [type, night, areaId, checkpointId]
+          properties:
+            type:
+              const: player_caught
+            night:
+              $ref: '#/components/schemas/Night'
+            areaId:
+              $ref: '#/components/schemas/AreaId'
+            checkpointId:
+              type: string
+              pattern: '^[a-z0-9][a-z0-9_.-]{0,63}$'
+              description: Điểm lưu người chơi quay về.
+            position:
+              $ref: '#/components/schemas/Vector3'
+
+    ChoiceMadeEvent:
+      allOf:
+        - $ref: '#/components/schemas/TelemetryEventBase'
+        - type: object
+          required: [type, night, choiceId]
+          properties:
+            type:
+              const: choice_made
+            night:
+              $ref: '#/components/schemas/Night'
+            choiceId:
+              type: string
+              pattern: '^[0-9]{1,2}[a-z]?$'
+              description: Số lựa chọn theo mục 5.1 của kịch bản, ví dụ `0b`, `5a`, `12a`.
+
+    EndingReachedEvent:
+      allOf:
+        - $ref: '#/components/schemas/TelemetryEventBase'
+        - type: object
+          required: [type, night, endingId]
+          properties:
+            type:
+              const: ending_reached
+            night:
+              $ref: '#/components/schemas/Night'
+            endingId:
+              $ref: '#/components/schemas/EndingId'
+
+    EndingId:
+      type: string
+      description: |
+        Theo mục 6 của kịch bản: bystander (6.1 Người qua đường), scapegoat (6.2 Kẻ gánh tội), freezer (6.3 Ngăn đá),
+        empty_room (6.4 Căn phòng trống), deadline_passed (6.5 Hết hạn), home (6.6 Về nhà), red_thread_sandal (6.7 Đôi dép chỉ đỏ).
+      enum: [bystander, scapegoat, freezer, empty_room, deadline_passed, home, red_thread_sandal]
+
+    Vector3:
+      type: object
+      required: [x, y, z]
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+        z:
+          type: number
+
+    TelemetryBatchResult:
+      type: object
+      required: [accepted, duplicates, rejected]
+      properties:
+        accepted:
+          type: integer
+          minimum: 0
+        duplicates:
+          type: integer
+          minimum: 0
+          description: Sự kiện có `eventId` đã nhận trước đó.
+        rejected:
+          type: array
+          items:
+            $ref: '#/components/schemas/RejectedEvent'
+
+    RejectedEvent:
+      type: object
+      required: [index, reason]
+      properties:
+        index:
+          type: integer
+          minimum: 0
+          description: Vị trí của sự kiện trong mảng `events`.
+        eventId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          enum: [invalid, unknown_type, too_old, in_future]
+          description: |
+            unknown_type: máy chủ cũ chưa biết loại sự kiện này. too_old: `occurredAt` cũ hơn 30 ngày.
+            in_future: `occurredAt` sau giờ máy chủ hơn 24 giờ.
+
+    PuzzleSubmission:
+      type: object
+      additionalProperties: false
+      required: [installationId, gameVersion, sha256]
+      properties:
+        installationId:
+          $ref: '#/components/schemas/InstallationId'
+        gameVersion:
+          $ref: '#/components/schemas/GameVersion'
+        sha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+          description: SHA-256 của nguyên các byte trong tệp, 64 ký tự hex chữ thường.
+
+    PuzzleSubmissionResult:
+      type: object
+      required: [result, attemptsRemaining, windowResetsAt]
+      properties:
+        result:
+          type: string
+          enum: [accepted, rejected]
+        unlockId:
+          type: string
+          description: Chỉ có khi `result` là `accepted`. Với `red-thread-sandal` là `ending_red_thread_sandal`.
+        attemptsRemaining:
+          type: integer
+          minimum: 0
+        windowResetsAt:
+          type: string
+          format: date-time
+          description: Lúc số lượt trở lại đầy.
+
+    Sha256:
+      type: string
+      pattern: '^[0-9a-f]{64}$'
+      description: SHA-256, 64 ký tự hex chữ thường.
+
+    Password:
+      type: string
+      minLength: 12
+      maxLength: 128
+      description: Tối thiểu 12 ký tự; không bắt buộc chữ hoa, số hay ký tự đặc biệt.
+
+    AdminLoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 256
+        password:
+          type: string
+          maxLength: 128
+
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          maxLength: 128
+        newPassword:
+          $ref: '#/components/schemas/Password'
+
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [newPassword]
+      properties:
+        newPassword:
+          $ref: '#/components/schemas/Password'
+
+    AdminAccount:
+      type: object
+      required: [id, email, displayName, isActive, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        isActive:
+          type: boolean
+          description: false khi tài khoản đã bị khóa; tài khoản khóa không đăng nhập được.
+        createdAt:
+          type: string
+          format: date-time
+        lastLoginAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+
+    CreateAdminAccountRequest:
+      type: object
+      additionalProperties: false
+      required: [email, displayName, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 256
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 64
+        password:
+          $ref: '#/components/schemas/Password'
+
+    UpdateAdminAccountRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 64
+        isActive:
+          type: boolean
+
+    DashboardSummary:
+      type: object
+      required: [from, to, players, sessions, playtime, nights, caughtLocations, quitLocations, endings, choices]
+      properties:
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        players:
+          type: integer
+          minimum: 0
+          description: Số mã cài đặt khác nhau có ít nhất một sự kiện trong khoảng.
+        sessions:
+          type: integer
+          minimum: 0
+          description: Số sự kiện `session_started`.
+        playtime:
+          type: object
+          required: [totalSeconds, averageSessionSeconds]
+          description: Tính từ `session_ended`.
+          properties:
+            totalSeconds:
+              type: integer
+              minimum: 0
+            averageSessionSeconds:
+              type:
+                - number
+                - 'null'
+              description: null khi chưa có phiên nào kết thúc.
+        nights:
+          type: array
+          description: Mỗi đêm có ít nhất một người bắt đầu, xếp theo `night`.
+          items:
+            $ref: '#/components/schemas/NightStats'
+        caughtLocations:
+          type: array
+          description: Từ `player_caught`, nhiều nhất trước.
+          items:
+            $ref: '#/components/schemas/LocationCount'
+        quitLocations:
+          type: array
+          description: Từ `session_ended` có `night`, nhiều nhất trước.
+          items:
+            $ref: '#/components/schemas/LocationCount'
+        endings:
+          type: array
+          items:
+            $ref: '#/components/schemas/EndingStats'
+        choices:
+          type: array
+          description: Xếp theo `night` rồi `choiceId`.
+          items:
+            $ref: '#/components/schemas/ChoiceStats'
+
+    NightStats:
+      type: object
+      required: [night, playersStarted, playersCompleted, averageDurationSeconds]
+      properties:
+        night:
+          $ref: '#/components/schemas/Night'
+        playersStarted:
+          type: integer
+          minimum: 0
+          description: Số mã cài đặt có `night_started` của đêm này, không tính lượt chơi lại.
+        playersCompleted:
+          type: integer
+          minimum: 0
+          description: Số mã cài đặt có `night_completed` của đêm này.
+        averageDurationSeconds:
+          type:
+            - number
+            - 'null'
+          description: Trung bình `durationSeconds` của `night_completed`; null khi chưa ai hoàn thành.
+
+    LocationCount:
+      type: object
+      required: [night, areaId, count]
+      properties:
+        night:
+          $ref: '#/components/schemas/Night'
+        areaId:
+          $ref: '#/components/schemas/AreaId'
+        count:
+          type: integer
+          minimum: 1
+
+    EndingStats:
+      type: object
+      required: [endingId, players]
+      properties:
+        endingId:
+          $ref: '#/components/schemas/EndingId'
+        players:
+          type: integer
+          minimum: 1
+          description: Số mã cài đặt đã tới kết thúc này.
+
+    ChoiceStats:
+      type: object
+      required: [night, choiceId, players]
+      properties:
+        night:
+          $ref: '#/components/schemas/Night'
+        choiceId:
+          type: string
+        players:
+          type: integer
+          minimum: 1
+          description: Số mã cài đặt đã chọn lựa chọn này.
+
+    PuzzleConfig:
+      type: object
+      required: [puzzleId, title, unlockId, isEnabled, maxFailedAttempts, attemptWindowMinutes, solutions, updatedAt]
+      properties:
+        puzzleId:
+          type: string
+        title:
+          type: string
+        unlockId:
+          type: string
+          description: Trả cho game khi bằng chứng đúng.
+        isEnabled:
+          type: boolean
+          description: false thì game nhận 404 khi gửi.
+        maxFailedAttempts:
+          type: integer
+          minimum: 1
+          maximum: 100
+        attemptWindowMinutes:
+          type: integer
+          minimum: 1
+          maximum: 10080
+        solutions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PuzzleSolution'
+        updatedAt:
+          type: string
+          format: date-time
+
+    UpdatePuzzleRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        isEnabled:
+          type: boolean
+        maxFailedAttempts:
+          type: integer
+          minimum: 1
+          maximum: 100
+        attemptWindowMinutes:
+          type: integer
+          minimum: 1
+          maximum: 10080
+
+    PuzzleSolution:
+      type: object
+      required: [id, sha256, note, createdAt]
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        sha256:
+          $ref: '#/components/schemas/Sha256'
+        note:
+          type: string
+          description: Ghi chú của quản trị viên, ví dụ tệp này là bản nào.
+        createdAt:
+          type: string
+          format: date-time
+
+    AddPuzzleSolutionRequest:
+      type: object
+      additionalProperties: false
+      required: [sha256]
+      properties:
+        sha256:
+          $ref: '#/components/schemas/Sha256'
+        note:
+          type: string
+          maxLength: 200
+          default: ''
+
+    SubmissionResult:
+      type: string
+      enum: [accepted, rejected, blocked]
+      description: blocked là lần gửi bị chặn vì đã hết lượt (game nhận 429); lần bị chặn không trừ thêm lượt.
+
+    PuzzleSubmissionRecord:
+      type: object
+      required: [id, installationId, sha256, result, gameVersion, submittedAt]
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        installationId:
+          $ref: '#/components/schemas/InstallationId'
+        sha256:
+          $ref: '#/components/schemas/Sha256'
+        result:
+          $ref: '#/components/schemas/SubmissionResult'
+        gameVersion:
+          $ref: '#/components/schemas/GameVersion'
+        submittedAt:
+          type: string
+          format: date-time
+
+    PuzzleSubmissionPage:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PuzzleSubmissionRecord'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+
+    Problem:
+      type: object
+      description: RFC 9457 problem details, dạng mặc định của ASP.NET Core.
+      required: [title, status]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        traceId:
+          type: string
+
+    ValidationProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
