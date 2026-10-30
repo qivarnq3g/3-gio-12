@@ -84,8 +84,9 @@ public static partial class TelemetryEventValidator
                 e.IsReplay = ReadBool(json, "isReplay");
                 return RequiredNight(json, e) && e.IsReplay is not null;
             case "night_completed":
+                e.IsReplay = ReadBool(json, "isReplay");
                 e.DurationSeconds = ReadInt(json, "durationSeconds");
-                return RequiredNight(json, e) && e.DurationSeconds is >= 0;
+                return RequiredNight(json, e) && e.IsReplay is not null && e.DurationSeconds is >= 0;
             case "player_caught":
                 e.AreaId = ReadString(json, "areaId");
                 e.CheckpointId = ReadString(json, "checkpointId");

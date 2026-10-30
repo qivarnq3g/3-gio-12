@@ -115,8 +115,8 @@ namespace ThreeTwelve.Api.Data.Migrations
                     b.HasIndex("InstallationId")
                         .HasDatabaseName("ix_telemetry_events_installation_id");
 
-                    b.HasIndex("OccurredAt", "Type")
-                        .HasDatabaseName("ix_telemetry_events_occurred_at_type");
+                    b.HasIndex("ReceivedAt", "Type")
+                        .HasDatabaseName("ix_telemetry_events_received_at_type");
 
                     b.ToTable("telemetry_events", (string)null);
                 });

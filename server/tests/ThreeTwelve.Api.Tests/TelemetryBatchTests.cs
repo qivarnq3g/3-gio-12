@@ -78,8 +78,10 @@ public sealed class TelemetryBatchTests(PostgresApiFactory factory) : IClassFixt
         missingNight.Remove("night");
         var wrongType = TelemetryPayloads.PlayerCaught(1, "n1.parking", "n1.alley_start");
         wrongType["night"] = "one";
+        var missingReplay = TelemetryPayloads.NightCompleted(1, 1800);
+        missingReplay.Remove("isReplay");
         var valid = TelemetryPayloads.EndingReached(1, "bystander");
-        var batch = TelemetryPayloads.Batch(installationId, unknown, tooOld, inFuture, missingNight, wrongType, valid);
+        var batch = TelemetryPayloads.Batch(installationId, unknown, tooOld, inFuture, missingNight, wrongType, missingReplay, valid);
 
         var response = await client.PostAsJsonAsync(BatchUrl, batch);
 
@@ -90,7 +92,7 @@ public sealed class TelemetryBatchTests(PostgresApiFactory factory) : IClassFixt
             .Select(r => (r.GetProperty("index").GetInt32(), r.GetProperty("reason").GetString()))
             .ToList();
         Assert.Equal(
-            [(0, "unknown_type"), (1, "too_old"), (2, "in_future"), (3, "invalid"), (4, "invalid")],
+            [(0, "unknown_type"), (1, "too_old"), (2, "in_future"), (3, "invalid"), (4, "invalid"), (5, "invalid")],
             rejected);
         Assert.Equal(unknown["eventId"]!.GetValue<string>(),
             body.GetProperty("rejected")[0].GetProperty("eventId").GetString());
@@ -105,14 +107,15 @@ public sealed class TelemetryBatchTests(PostgresApiFactory factory) : IClassFixt
         var caught = TelemetryPayloads.PlayerCaught(1, "n1.parking", "n1.alley_start");
         caught["position"] = new JsonObject { ["x"] = 1.5, ["y"] = 0, ["z"] = -2.25 };
         var ended = TelemetryPayloads.SessionEnded("quit_app", 640, 1, "n1.alley");
-        var batch = TelemetryPayloads.Batch(installationId, caught, ended);
+        var replayed = TelemetryPayloads.NightCompleted(1, 1500, isReplay: true);
+        var batch = TelemetryPayloads.Batch(installationId, caught, ended, replayed);
 
         await client.PostAsJsonAsync(BatchUrl, batch);
 
         await using var connection = new NpgsqlConnection(factory.ConnectionString);
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand(
-            "select type, night, area_id, checkpoint_id, position_x, position_z, end_reason, duration_seconds, game_version " +
+            "select type, night, area_id, checkpoint_id, position_x, position_z, end_reason, duration_seconds, game_version, is_replay " +
             "from telemetry_events where installation_id = @id order by sequence", connection);
         command.Parameters.AddWithValue("id", installationId);
         await using var reader = await command.ExecuteReaderAsync();
@@ -128,6 +131,10 @@ public sealed class TelemetryBatchTests(PostgresApiFactory factory) : IClassFixt
         Assert.Equal("session_ended", reader.GetString(0));
         Assert.Equal("quit_app", reader.GetString(6));
         Assert.Equal(640, reader.GetInt32(7));
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal("night_completed", reader.GetString(0));
+        Assert.Equal(1500, reader.GetInt32(7));
+        Assert.True(reader.GetBoolean(9));
     }
 
     [Theory]

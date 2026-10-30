@@ -21,7 +21,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.EndingId).HasMaxLength(32);
             e.Property(x => x.EndReason).HasMaxLength(16);
             e.HasIndex(x => x.InstallationId);
-            e.HasIndex(x => new { x.OccurredAt, x.Type });
+            e.HasIndex(x => new { x.ReceivedAt, x.Type });
         });
     }
 }

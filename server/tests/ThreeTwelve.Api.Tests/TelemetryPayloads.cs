@@ -35,10 +35,11 @@ public static class TelemetryPayloads
         return e;
     }
 
-    public static JsonObject NightCompleted(int night, int durationSeconds)
+    public static JsonObject NightCompleted(int night, int durationSeconds, bool isReplay = false)
     {
         var e = Event("night_completed");
         e["night"] = night;
+        e["isReplay"] = isReplay;
         e["durationSeconds"] = durationSeconds;
         return e;
     }
