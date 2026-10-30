@@ -117,7 +117,7 @@ Game chạy offline nên người chơi sửa tệp lưu vẫn tự mở đượ
 - Tài khoản đầu tiên tạo lúc máy chủ khởi động nếu chưa có tài khoản nào, lấy email và mật khẩu từ biến môi trường `Admin__Email`, `Admin__Password`. Không ghi mật khẩu thật vào repo.
 - Luôn còn ít nhất một tài khoản hoạt động: không khóa, không xóa được tài khoản hoạt động cuối cùng, và không tự khóa hay tự xóa chính mình.
 - Khoảng thời gian `from`, `to` là nửa mở: tính `from`, không tính `to`. Trang quản trị gửi mốc nửa đêm theo giờ Việt Nam, ví dụ `2026-11-01T00:00:00+07:00`; máy chủ đổi sang UTC trước khi lọc.
-- Dashboard và CSV lọc theo `occurredAt` (giờ trên máy người chơi). Máy chủ đã loại sự kiện lệch quá xa giờ máy chủ, nên sai số chấp nhận được.
+- Dashboard và CSV lọc theo giờ máy chủ nhận sự kiện (`receivedAt`), không theo `occurredAt`; lý do ở mục "Quy ước chung".
 
 ## Quy ước chung
 
