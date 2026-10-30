@@ -14,3 +14,9 @@ Tất cả tạo ngày 18/10/2026 bằng ChatGPT (tạo ảnh trên web, gói Fr
 Câu lệnh chung: ảnh như chụp bằng điện thoại Android cũ ban đêm (nhiễu, mờ rìa, ánh vàng lẫn trắng), không người, không mặt, không chữ, số, biển hiệu hay logo đọc được; biểu tượng không được giống Zalo, Google, Facebook, Messenger, iCloud.
 
 Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** cho cảnh dựng 3D bằng Blender (`D:\Projects-gio-12rt-sourcelender`), không đưa thẳng vào game. Ảnh dựng xong nằm ở `Assets/Art/Scenes`.
+
+# Model 3D
+
+| Tệp | Nguồn | Giấy phép | Ngày |
+|---|---|---|---|
+| `Models/Props/prop_potted_snake_plant.fbx` | Nhóm tự dựng trong Blender 5.2 (chậu đất nung trồng lưỡi hổ, 582 tam giác) | Của nhóm | 30/10/2026 |
