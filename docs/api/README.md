@@ -67,8 +67,8 @@ Lớp và bảng dữ liệu phía máy chủ ở `docs/thiet-ke/luoc-do-lop-may
 |---|---|---|
 | `session_started` | Mở game | Số người chơi |
 | `session_ended` | Thoát về menu hoặc tắt game; `not_closed` gửi ở lần mở sau nếu lần trước tắt đột ngột | Thời gian chơi, vị trí bỏ game (`night`, `areaId`) |
-| `night_started` | Bắt đầu một đêm | Số người bắt đầu từng đêm |
-| `night_completed` | Hết một đêm | Số người hoàn thành từng đêm, thời gian từng đêm |
+| `night_started` | Bắt đầu một đêm | Số người bắt đầu từng đêm (chỉ lần đầu, `isReplay = false`) |
+| `night_completed` | Hết một đêm | Số người hoàn thành từng đêm, thời gian từng đêm (chỉ lần đầu, `isReplay = false`) |
 | `player_caught` | Bị bắt, quay về điểm lưu | Vị trí bị bắt |
 | `choice_made` | Chọn một lựa chọn trong mục 5.1 của kịch bản | Lựa chọn phổ biến |
 | `ending_reached` | Tới một kết thúc trong mục 6 của kịch bản | Tỉ lệ từng kết thúc |
@@ -123,6 +123,7 @@ Game chạy offline nên người chơi sửa tệp lưu vẫn tự mở đượ
 
 - JSON dùng camelCase; giá trị liệt kê dùng snake_case.
 - Thời gian theo RFC 3339, giờ UTC, ví dụ `2026-11-24T14:02:11Z`.
+- Dashboard và CSV lọc theo giờ máy chủ nhận, không theo `occurredAt`. Game chạy offline nên một lô có thể gửi muộn tới 30 ngày; sự kiện khi đó được tính vào ngày gửi lên, đổi lại số liệu không phụ thuộc đồng hồ máy người chơi.
 - Lỗi trả theo RFC 9457 (problem details), dạng mặc định của ASP.NET Core.
 - Đổi không tương thích (bỏ trường, đổi nghĩa) thì tăng lên `/api/v2`. Thêm trường tùy chọn hoặc thêm loại sự kiện thì giữ `v1`; máy chủ cũ loại sự kiện lạ bằng lý do `unknown_type`.
 
