@@ -8,16 +8,19 @@ public static class RateLimitPolicies
 {
     public const string Telemetry = "telemetry";
     public const string PuzzleSubmit = "puzzle-submit";
+    public const string AdminLogin = "admin-login";
 
     public static IServiceCollection AddPublicRateLimits(this IServiceCollection services, IConfiguration configuration)
     {
         var telemetryLimit = configuration.GetValue("RateLimits:Telemetry:PermitLimit", 60);
         var puzzleSubmitLimit = configuration.GetValue("RateLimits:PuzzleSubmit:PermitLimit", 20);
+        var adminLoginLimit = configuration.GetValue("RateLimits:AdminLogin:PermitLimit", 10);
 
         return services.AddRateLimiter(options =>
         {
             options.AddPolicy(Telemetry, context => PerAddressPerMinute(context, telemetryLimit));
             options.AddPolicy(PuzzleSubmit, context => PerAddressPerMinute(context, puzzleSubmitLimit));
+            options.AddPolicy(AdminLogin, context => PerAddressPerMinute(context, adminLoginLimit));
 
             options.OnRejected = async (context, ct) =>
             {

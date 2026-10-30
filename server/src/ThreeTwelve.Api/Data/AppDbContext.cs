@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ThreeTwelve.Api.Domain;
 
 namespace ThreeTwelve.Api.Data;
 
-public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityUserContext<AdminUser, Guid>(options)
 {
     public DbSet<TelemetryEvent> TelemetryEvents => Set<TelemetryEvent>();
     public DbSet<Puzzle> Puzzles => Set<Puzzle>();
@@ -12,6 +14,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<AdminUser>(e =>
+        {
+            e.ToTable("admin_users");
+            e.Property(x => x.DisplayName).HasMaxLength(64);
+            e.Property(x => x.IsActive).HasDefaultValue(true);
+        });
+        modelBuilder.Entity<IdentityUserClaim<Guid>>().ToTable("admin_user_claims");
+        modelBuilder.Entity<IdentityUserLogin<Guid>>().ToTable("admin_user_logins");
+        modelBuilder.Entity<IdentityUserToken<Guid>>().ToTable("admin_user_tokens");
+
         modelBuilder.Entity<TelemetryEvent>(e =>
         {
             e.HasKey(x => x.EventId);
@@ -41,6 +55,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.MaxFailedAttempts).HasDefaultValue(5);
             e.Property(x => x.AttemptWindowMinutes).HasDefaultValue(60);
             e.HasMany(x => x.Solutions).WithOne().HasForeignKey(x => x.PuzzleId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<AdminUser>().WithMany().HasForeignKey(x => x.UpdatedById).OnDelete(DeleteBehavior.SetNull);
             e.HasData(new Puzzle
             {
                 Id = "red-thread-sandal",
@@ -60,6 +75,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.Sha256).HasColumnType("character(64)");
             e.Property(x => x.Note).HasMaxLength(200).HasDefaultValue("");
             e.HasIndex(x => new { x.PuzzleId, x.Sha256 }).IsUnique();
+            e.HasOne<AdminUser>().WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<PuzzleSubmission>(e =>
