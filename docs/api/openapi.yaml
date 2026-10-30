@@ -390,7 +390,7 @@ paths:
       tags: [admin-dashboard]
       operationId: getDashboard
       summary: Số liệu dashboard trong một khoảng thời gian
-      description: Tính trực tiếp từ bảng sự kiện, lọc theo `occurredAt`. Tỉ lệ (ví dụ tỉ lệ từng kết thúc) do trang quản trị tự chia từ các số đếm.
+      description: Tính trực tiếp từ bảng sự kiện, lọc theo giờ máy chủ nhận sự kiện, không theo `occurredAt`. Tỉ lệ (ví dụ tỉ lệ từng kết thúc) do trang quản trị tự chia từ các số đếm.
       security:
         - adminCookie: []
       parameters:
@@ -415,7 +415,8 @@ paths:
       summary: Xuất CSV
       description: |
         `summary`: các số liệu của dashboard, mỗi dòng một số, cột `metric,night,key,value`.
-        `events`: mọi sự kiện trong khoảng thời gian, mỗi dòng một sự kiện, cột theo tên trường của sự kiện viết snake_case.
+        Khoảng thời gian lọc theo giờ máy chủ nhận sự kiện, giống dashboard.
+        `events`: mọi sự kiện máy chủ nhận trong khoảng thời gian, mỗi dòng một sự kiện, cột theo tên trường của sự kiện viết snake_case.
         Tệp mã hóa UTF-8 có BOM để Excel mở đúng tiếng Việt, dấu phân cách là dấu phẩy.
       security:
         - adminCookie: []
