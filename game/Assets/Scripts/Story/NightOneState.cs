@@ -8,7 +8,11 @@ namespace BaGio12.Story
     [Serializable]
     public sealed class NightOneState
     {
-        public int schemaVersion = 1;
+        public int schemaVersion = 2;
+        public int clockDay;
+        public bool lienCalled, bagChangePending, bagOpen, hasBagPosition;
+        public Vector3 bagPosition;
+        public List<string> afterJumpQuestions = new List<string>();
         public NightStage stage;
         public string clock = "20:56", ending = "", number_choice = "ignored";
         public int prologue_beaten, phone_left_count, odo_2100 = 12400;
@@ -30,7 +34,16 @@ namespace BaGio12.Story
     {
         readonly NightOneState state;
         public StoryClock(NightOneState state) { this.state = state; }
-        public void Set(string time) { state.clock = time; }
+        public bool Set(string time, int day = -1)
+        {
+            if (!TimeSpan.TryParseExact(time, @"hh\:mm", System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+                throw new ArgumentException("Expected HH:mm", nameof(time));
+            if (day < 0) day = state.clockDay;
+            int previous = state.clockDay * 1440 + (int)TimeSpan.Parse(state.clock).TotalMinutes;
+            int proposed = day * 1440 + (int)parsed.TotalMinutes;
+            if (proposed < previous) return false;
+            state.clockDay = day; state.clock = time; return true;
+        }
     }
     public sealed class CheckpointService
     {

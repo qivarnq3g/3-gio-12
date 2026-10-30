@@ -11,7 +11,7 @@ namespace BaGio12.Story
         void Update()
         {
             var keys=Keyboard.current;
-            if(keys==null)return;
+            if(keys==null || story.player.IsPaused || story.player.PauseChangedThisFrame)return;
             if(keys.nKey.wasPressedThisFrame)story.ToggleNotebook();
             if(keys.escapeKey.wasPressedThisFrame && story.Modal!="")story.CloseModal();
         }
@@ -27,6 +27,7 @@ namespace BaGio12.Story
         { GUI.color=color; GUI.DrawTexture(r,Texture2D.whiteTexture);GUI.color=Color.white; }
         void OnGUI()
         {
+            if(story.player.IsPaused)return;
             Init();
             var original=GUI.matrix; GUI.matrix=Matrix4x4.TRS(Vector3.zero,Quaternion.identity,new Vector3(Screen.width/1280f,Screen.height/720f,1));
             var state=story.State;
@@ -49,7 +50,7 @@ namespace BaGio12.Story
                 Panel(new Rect(20,18,660,115),new Color(.025f,.035f,.05f,.85f));
                 GUI.Label(new Rect(38,25,600,35),state.clock+"  •  "+(state.stage==NightStage.Prologue?"Hẻm 12":"Đêm 1"),heading);
                 GUI.Label(new Rect(38,70,620,55),story.Objective,normal);
-                GUI.Label(new Rect(24,675,1200,35),"WASD đi · Shift chạy · C cúi · E tương tác · 1/2 điện thoại · N Sổ tay · Esc thả chuột",small);
+                GUI.Label(new Rect(24,675,1200,35),state.stage==NightStage.Prologue?"WASD đi · Shift chạy · C cúi · Giữ E để đặt máy · Esc tạm dừng":"WASD đi · Shift chạy · C cúi · E tương tác · 1/2 điện thoại · N Sổ tay · Esc tạm dừng",small);
                 if(story.Subtitle!="")
                 { Panel(new Rect(180,540,920,90),new Color(0,0,0,.8f));GUI.Label(new Rect(200,552,880,75),story.Subtitle,normal); }
                 if(story.HoldProgress>.01f)
@@ -113,11 +114,14 @@ namespace BaGio12.Story
                     if(Button(0,"Mua mì gói")){story.State.boughtNoodles=true;story.Say("Chú Hùng: Mới dọn vô nhà cô Liên hả?");story.CloseModal();}
                     if(Button(1,"Hỏi có ai mất điện thoại không")){story.Say("Chú Hùng: Đem lên phường đi.");story.CloseModal();}
                     if(Button(2,"Xin xem camera")){story.Say("Chú Hùng: Đầu ghi trong buồng, vợ chú đang ngủ.");story.CloseModal();}break;
-                case "police": if(Button(0,"Giao máy và ghi tên"))story.End("bystander");break;
+                case "police": if(Button(0,"Giao máy và ghi tên"))story.HandInPhone();break;
                 case "leave-phone": if(Button(0,"Đặt máy xuống chỗ cũ"))story.LeavePhone();break;
                 case "wait": if(Button(0,"Chờ tới 22:30"))story.WaitUntilLate();break;
                 case "bed": if(Button(0,"Đi ngủ"))story.Rest(true); if(Button(1,"Thức canh tới sáng"))story.Rest(false);break;
-                case "alarm": if(Button(0,"Tắt báo thức"))story.StopAlarm(); break;
+                case "alarm":
+                    if(story.State.hasNganPhone && !story.State.phone_powered_off) {if(Button(0,"Tắt báo thức"))story.StopAlarm();}
+                    else {GUI.Label(new Rect(310,200,660,50),story.State.hasNganPhone?"Máy Ngân đang tắt nguồn.":"Máy Ngân đang ở nhà xe.",normal);if(Button(0,"Tiếp tục thức canh"))story.OpenModal("dawn");}
+                    break;
                 case "dawn":
                     if(Button(0,"Tiếp tục chờ tới sáng"))story.FinishNight();
                     if(Button(1,"Ra kiểm tra hành lang trước"))story.CloseModal();break;

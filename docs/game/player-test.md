@@ -1,6 +1,6 @@
 # Phòng thử điều khiển (#6)
 
-Unity 6000.3.26f1. Mở `game/Assets/Scenes/PlayerTest.unity`, bấm Play và nhấp vào Game view. Esc thả chuột; nút Tiếp tục nhận lại điều khiển.
+Unity 6000.3.26f1. Mở `game/Assets/Scenes/PlayerTest.unity`, bấm Play và nhấp vào Game view. Esc mở tạm dừng (dừng thời gian và âm thanh); nút Tiếp tục nhận lại điều khiển. Khi đang xem điện thoại, Esc chỉ cất máy.
 
 | Phím | Hành động |
 |---|---|
@@ -11,7 +11,7 @@ Unity 6000.3.26f1. Mở `game/Assets/Scenes/PlayerTest.unity`, bấm Play và nh
 | E / nút North | Tương tác |
 | 1 | Rút/cất máy Ngân |
 | 2 | Rút/cất máy Sinh viên |
-| Esc | Cất máy; ngoài điện thoại thì thả/khóa chuột |
+| Esc | Cất máy; ngoài điện thoại thì tạm dừng/tiếp tục |
 
 ## Kiểm tra thủ công
 
@@ -25,10 +25,10 @@ Unity 6000.3.26f1. Mở `game/Assets/Scenes/PlayerTest.unity`, bấm Play và nh
 
 ## Phạm vi
 
-- CharacterController xử lý va chạm; camera tầm mắt với near clip 0.03 m; cúi đổi cả capsule và tầm mắt, kiểm khoảng trống trước khi đứng.
-- Nhân vật dùng layer Ignore Raycast để ray tương tác và kiểm trần không chạm chính mình. Mọi vật cản thông thường cần Collider và không nằm trên layer này.
+- CharacterController xử lý va chạm; camera tầm mắt với near clip 0.03 m; kích thước chuẩn ở `PlayerGeometry` (cao 1.8 m, mắt 1.6 m, bán kính 0.3 m); cúi đổi cả capsule và tầm mắt, kiểm khoảng trống trước khi đứng.
+- Nhân vật dùng layer `Player`, tay dùng `FirstPersonArms`. Mặt nạ `PlayerGeometry.WorldMask` loại đúng hai layer này khỏi ray tương tác, kiểm trần và tầm nhìn NPC; không dùng layer 2 cho nhân vật.
 - InputActionAsset hiện có được clone khi chạy; các phím điện thoại chỉ thêm vào bản clone, không thay đổi input dùng chung.
-- Hai cẳng tay là khối giữ chỗ, chờ model/animation của Tiên. Điện thoại là giao diện giữ chỗ để nối với #17; chưa có chat, lưu game hoặc kịch bản.
+- Hai cẳng tay là khối giữ chỗ, chờ model/animation của Tiên; chúng được vẽ bằng URP Overlay Camera với clear depth riêng, không bị tường cắt hình. Điện thoại là giao diện giữ chỗ để nối với #17; chưa có chat, lưu game hoặc kịch bản.
 - Cửa trượt lên là đối tượng thử tương tác, chưa phải cửa hoàn thiện cho màn truyện.
 - `FirstPersonPlayer.SetPhone(0/1/2)` là điểm nối cho UI điện thoại; không đổi Time.timeScale.
 

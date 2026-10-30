@@ -1,4 +1,5 @@
 using BaGio12.Story;
+using BaGio12.Gameplay;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -23,6 +24,7 @@ namespace BaGio12.Stealth
         float elapsed, modeTime, lampTime, nextRandom;
         bool lastVisible;
         float originalInterval, originalDuration, originalDelay, watchUntil, focusUntil;
+        public bool IsOnSchedule(float sinceDeparture,bool departed,int captures) => !once || captures>0 || (departed && sinceDeparture>=startDelay && sinceDeparture<startDelay+watchDuration);
         void Start()
         {
             visuals=GetComponentsInChildren<Renderer>();
@@ -39,18 +41,21 @@ namespace BaGio12.Stealth
         }
         void Update()
         {
-            foreach(var visual in visuals)visual.enabled=Mode!=ObserverMode.Inactive;
+            float scheduleTime=once && director.State.prologue_beaten==0 ? director.PrologueElapsed : elapsed;
+            bool scheduledVisible=IsOnSchedule(director.PrologueElapsed,director.PrologueDeparted,director.State.prologue_beaten);
+            foreach(var visual in visuals)visual.enabled=Mode!=ObserverMode.Inactive && scheduledVisible;
             if(torch!=null)torch.enabled=Mode==ObserverMode.Chasing && director.State.stage==NightStage.Prologue && !director.State.phonePlaced;
-            if (director == null || director.State.stage != NightStage.Prologue || director.State.phonePlaced || Mode == ObserverMode.Inactive || director.Busy)
+            if (director == null || director.player.IsPaused || director.State.stage != NightStage.Prologue || director.State.phonePlaced || Mode == ObserverMode.Inactive || director.Busy)
             { Stop(); return; }
             elapsed += Time.deltaTime;
             modeTime += Time.deltaTime;
             if (Mode == ObserverMode.Normal)
             {
                 if (agent.isOnNavMesh) { agent.isStopped = true; agent.ResetPath(); }
-                float cycle = Mathf.Repeat(elapsed - startDelay, interval);
+                scheduleTime=once && director.State.prologue_beaten==0 ? director.PrologueElapsed : elapsed;
+                float cycle = Mathf.Repeat(scheduleTime - startDelay, interval);
                 bool watching = elapsed >= startDelay && cycle < watchDuration;
-                if(once && director.State.prologue_beaten==0)watching=elapsed>=startDelay && elapsed<startDelay+watchDuration;
+                if(once && director.State.prologue_beaten==0)watching=director.PrologueDeparted && scheduleTime>=startDelay && scheduleTime<startDelay+watchDuration;
                 if(irregularLook && elapsed>=nextRandom) {watchUntil=elapsed+3;nextRandom=elapsed+UnityEngine.Random.Range(8f,15f);}
                 if(irregularLook)watching=elapsed<watchUntil;
                 if(patrol)Travel(home+new Vector3(watching?-1.3f:0,0,0));
@@ -97,12 +102,14 @@ namespace BaGio12.Stealth
         public bool CanSeePlayer()
         {
             if (director == null || Mode == ObserverMode.Inactive || director.State.phonePlaced || director.State.stage != NightStage.Prologue) return false;
-            if (elapsed < startDelay) return false;
+            if (once && director.State.prologue_beaten==0)
+            {if(!director.PrologueDeparted || director.PrologueElapsed<startDelay || director.PrologueElapsed>=startDelay+watchDuration)return false;}
+            else if(elapsed<startDelay)return false;
             var origin = transform.position + Vector3.up*1.5f;
             var destination = director.player.eyes.transform.position;
             Vector3 delta = destination-origin;
             if (delta.magnitude > range || Vector3.Angle(transform.forward,delta) > fieldOfView/2) return false;
-            return !Physics.Raycast(origin,delta.normalized,delta.magnitude, ~(1<<2),QueryTriggerInteraction.Ignore);
+            return !Physics.Raycast(origin,delta.normalized,delta.magnitude, PlayerGeometry.WorldMask,QueryTriggerInteraction.Ignore);
         }
         public void Detect(bool placement)
         {

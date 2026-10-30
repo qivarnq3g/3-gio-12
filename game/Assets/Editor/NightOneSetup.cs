@@ -47,7 +47,7 @@ public static class NightOneSetup
     {var l=new GameObject(name).AddComponent<Light>();l.type=LightType.Point;l.range=7;l.intensity=intensity;l.color=color;l.transform.position=pos;return l;}
     static NightObserver Watch(string name,Vector3 pos,float yaw,float interval,float duration,float delay,NightOneDirector story,bool child=false)
     {
-        var o=GameObject.CreatePrimitive(PrimitiveType.Capsule);o.name=name;o.layer=2;
+        var o=GameObject.CreatePrimitive(PrimitiveType.Capsule);o.name=name;o.layer=0;
         o.transform.position=pos+Vector3.up*.9f;
         o.GetComponent<Renderer>().sharedMaterial=skin;
         UnityEngine.Object.DestroyImmediate(o.GetComponent<Collider>());
@@ -55,9 +55,9 @@ public static class NightOneSetup
         o.transform.position=pos;o.transform.rotation=Quaternion.Euler(0,yaw,0);
         // Visual body is offset from the agent's feet.
         UnityEngine.Object.DestroyImmediate(o.GetComponent<Renderer>());UnityEngine.Object.DestroyImmediate(o.GetComponent<MeshFilter>());
-        var body=GameObject.CreatePrimitive(PrimitiveType.Capsule);body.name="Body placeholder";body.layer=2;
+        var body=GameObject.CreatePrimitive(PrimitiveType.Capsule);body.name="Body placeholder";body.layer=0;
         UnityEngine.Object.DestroyImmediate(body.GetComponent<Collider>());body.transform.SetParent(o.transform,false);body.transform.localPosition=Vector3.up*.9f;body.GetComponent<Renderer>().sharedMaterial=skin;
-        var head=Cube("Facing marker",Vector3.zero,new Vector3(.12f,.12f,.3f),yellow);UnityEngine.Object.DestroyImmediate(head.GetComponent<Collider>());head.layer=2;head.transform.SetParent(o.transform,false);head.transform.localPosition=new Vector3(0,1.5f,.4f);
+        var head=Cube("Facing marker",Vector3.zero,new Vector3(.12f,.12f,.3f),yellow);UnityEngine.Object.DestroyImmediate(head.GetComponent<Collider>());head.layer=0;head.transform.SetParent(o.transform,false);head.transform.localPosition=new Vector3(0,1.5f,.4f);
         var w=o.AddComponent<NightObserver>();w.director=story;w.displayName=name;w.interval=interval;w.watchDuration=duration;w.startDelay=delay;w.child=child;
         watchers.Add(w);return w;
     }
@@ -78,6 +78,7 @@ public static class NightOneSetup
         controller.eyes.clearFlags=CameraClearFlags.SolidColor; controller.eyes.backgroundColor=new Color(.025f,.04f,.065f);
         var story=new GameObject("NightOneDirector").AddComponent<NightOneDirector>();story.player=controller;
         story.gameObject.AddComponent<NightOneHud>().story=story;
+        player.AddComponent<NightInjuryFeedback>().director=story;
         story.alleyStart=Marker("Checkpoint alley start",new Vector3(0,.08f,1.6f));
         story.parkingSpawn=Marker("Checkpoint parking",new Vector3(0,.08f,27.5f));
         // Continuous alley; recesses sit behind parked objects and door jambs.
@@ -123,10 +124,26 @@ public static class NightOneSetup
         Interact("Parking notice",new Vector3(-2.8f,1.4f,31),new Vector3(.15f,.65f,.8f),NightAction.Notice,"Đọc tờ giấy",yellow);
         Cube("Parking roof",new Vector3(0,3.8f,32),new Vector3(7,.15f,9),dark);
         Sign("NHA XE",new Vector3(0,3.1f,27));
+        story.parkingAlertLight=Lamp("Parking alert lamp",new Vector3(0,3.4f,32),new Color(1,.85f,.6f),4);story.parkingAlertLight.enabled=false;
+        var passing=new List<NightPassingBike>();
+        for(int i=0;i<2;i++)
+        {
+            var bikeRoot=new GameObject("Passing bike "+i);
+            var bike=bikeRoot.AddComponent<NightPassingBike>();bike.director=story;
+            bike.from=new Vector3(i==0?-.55f:.55f,0,i==0?1:35);bike.to=new Vector3(bike.from.x,0,i==0?35:1);bike.departure=15+i*13;
+            bikeRoot.transform.position=bike.from;bikeRoot.transform.rotation=Quaternion.LookRotation(bike.to-bike.from);
+            var frame=Cube("Bike placeholder",Vector3.zero,new Vector3(.45f,.7f,1.3f),dark);UnityEngine.Object.DestroyImmediate(frame.GetComponent<Collider>());frame.transform.SetParent(bikeRoot.transform,false);frame.transform.localPosition=Vector3.up*.5f;
+            var rider=Cube("Blue raincoat rider",Vector3.zero,new Vector3(.5f,.75f,.4f),accent);UnityEngine.Object.DestroyImmediate(rider.GetComponent<Collider>());rider.transform.SetParent(bikeRoot.transform,false);rider.transform.localPosition=new Vector3(0,1.15f,0);
+            var headlamp=new GameObject("Headlight");headlamp.transform.SetParent(bikeRoot.transform,false);headlamp.transform.localPosition=new Vector3(0,.9f,.7f);
+            bike.headlight=headlamp.AddComponent<Light>();bike.headlight.type=LightType.Spot;bike.headlight.range=9;bike.headlight.spotAngle=50;bike.headlight.intensity=4;bike.headlight.enabled=false;
+            passing.Add(bike);
+        }
+        story.passingBikes=passing.ToArray();
         // Gate and stairs: three flights, real walkable steps, no teleport interaction.
         Cube("Boarding floor",new Vector3(9,-.15f,20),new Vector3(11,.3f,16),ground);
         Interact("Lien gate plant",new Vector3(3.8f,.45f,19),new Vector3(.6f,.9f,.6f),NightAction.Gate,"Phụ cô Liên dựng chậu");
         Interact("Ask Lien keep phone",new Vector3(3.8f,1.2f,20.5f),new Vector3(.4f,.5f,.5f),NightAction.LienPhone,"Nhờ cô Liên giữ máy");
+        story.greyGlove=Cube("Grey glove found by Lien",new Vector3(3.8f,1.5f,20.5f),new Vector3(.15f,.05f,.25f),concrete);UnityEngine.Object.DestroyImmediate(story.greyGlove.GetComponent<Collider>());
         Sign("NHA TRO / PHONG 7 TANG 3",new Vector3(4,2.8f,18),90,.045f);
         for(int flight=0;flight<3;flight++)
         {
@@ -155,6 +172,8 @@ public static class NightOneSetup
         story.bagAtDoor=Marker("Bag beside door",new Vector3(14.7f,8.65f,22.1f));
         story.bed=Interact("Mattress",new Vector3(18.1f,8.6f,22.6f),new Vector3(1.5f,.4f,2),NightAction.Bed,"Ngồi xuống nệm / nghỉ",dark).transform;
         story.bag=Interact("Backpack",story.bagAtDoor.position,new Vector3(.4f,.5f,.35f),NightAction.Bag,"Xem kỹ ba lô",dark);
+        var flap=Cube("Backpack main pocket flap",Vector3.zero,new Vector3(.35f,.08f,.25f),accent);UnityEngine.Object.DestroyImmediate(flap.GetComponent<Collider>());flap.transform.SetParent(story.bag.transform,false);flap.transform.localPosition=Vector3.up*.5f;flap.transform.localScale=new Vector3(.85f,.15f,.8f);
+        var bagPresentation=story.bag.AddComponent<NightBagPresentation>();bagPresentation.director=story;bagPresentation.flap=flap.transform;
         Interact("Move bag",new Vector3(14.8f,8.7f,22.7f),new Vector3(.2f,.2f,.2f),NightAction.MoveBag,"Dời ba lô",accent);
         Interact("Deposit slip",new Vector3(17.8f,9.05f,18.4f),new Vector3(.4f,.08f,.3f),NightAction.Deposit,"Xem giấy nhận cọc",yellow);
         Interact("Phone box and charger",new Vector3(18.5f,9.05f,18.4f),new Vector3(.4f,.2f,.3f),NightAction.Charge,"Cắm sạc máy");
@@ -169,11 +188,12 @@ public static class NightOneSetup
         var sun=new GameObject("Moon").AddComponent<Light>();sun.type=LightType.Directional;sun.intensity=.7f;sun.color=new Color(.55f,.65f,.85f);sun.transform.rotation=Quaternion.Euler(45,30,0);
         RenderSettings.ambientLight=new Color(.25f,.3f,.38f);
         RenderSettings.fog=true;RenderSettings.fogColor=new Color(.06f,.09f,.12f);RenderSettings.fogDensity=.012f;
-        var nav=new GameObject("Night1 navigation").AddComponent<NavMeshSurface>();nav.useGeometry=NavMeshCollectGeometry.PhysicsColliders;nav.layerMask=~(1<<2);nav.BuildNavMesh();
+        var nav=new GameObject("Night1 navigation").AddComponent<NavMeshSurface>();nav.useGeometry=NavMeshCollectGeometry.PhysicsColliders;nav.layerMask=PlayerGeometry.WorldMask;nav.BuildNavMesh();
         if(nav.navMeshData!=null) { AssetDatabase.DeleteAsset(Root+"/NightOneNavMesh.asset"); AssetDatabase.CreateAsset(nav.navMeshData,Root+"/NightOneNavMesh.asset"); }
         EditorSceneManager.SaveScene(scene,Root+"/NightOneGraybox.unity");AssetDatabase.SaveAssets();
         Debug.Log("NIGHT_ONE_SCENE_CREATED");
     }
+    public static void RebuildReviewFixtures() { PlayerTestSetup.Create(); Create(); }
     public static void InspectPaths()
     {
         EditorSceneManager.OpenScene(Root+"/NightOneGraybox.unity");

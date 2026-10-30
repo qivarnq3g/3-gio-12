@@ -10,7 +10,9 @@ namespace BaGio12.Story
     public sealed class NightOneDirector : MonoBehaviour
     {
         public FirstPersonPlayer player;
-        public GameObject nganPhone, bag;
+        public GameObject nganPhone, bag, greyGlove;
+        public Light parkingAlertLight;
+        public NightPassingBike[] passingBikes;
         public Transform alleyStart, parkingSpawn, roomSpawn, bed, bagAtDoor;
         public Transform[] hidingPoints;
         public NightObserver[] observers;
@@ -19,7 +21,11 @@ namespace BaGio12.Story
         public StoryClock Clock { get; private set; }
         public readonly CheckpointService Checkpoints = new CheckpointService();
         public NightDialogue Dialogue { get; private set; }
-        public event Action<string, string> StoryEvent;
+        public event Action<string, string> InternalEvent;
+        public event Action<NightTelemetry> TelemetryProduced;
+        public bool PrologueDeparted { get; private set; }
+        public float PrologueElapsed { get; private set; }
+        public bool AlarmAudible => sound != null && sound.isPlaying;
         public string Objective { get; private set; }
         public string Subtitle { get; private set; }
         public string Modal { get; private set; } = "";
@@ -28,7 +34,20 @@ namespace BaGio12.Story
         public bool Busy { get; private set; }
         public bool InParking => player.transform.position.z >= 27 && player.transform.position.y < 2;
         public bool InRoom => player.transform.position.y > 7 && player.transform.position.x > 12;
-        public bool Dark => !alertLights.Any(x => x.enabled && Vector3.Distance(x.transform.position, player.transform.position) < 6);
+        public bool Dark => !IsIlluminated(player.eyes.transform.position);
+        public bool IsIlluminated(Vector3 point)
+        {
+            return alertLights.Any(light => LightReaches(light, point)) || LightReaches(parkingAlertLight, point)
+                || (passingBikes != null && passingBikes.Any(bike => LightReaches(bike.headlight, point)));
+        }
+        static bool LightReaches(Light light, Vector3 point)
+        {
+            if (light == null || !light.isActiveAndEnabled) return false;
+            var delta=point-light.transform.position;
+            if(delta.magnitude>light.range)return false;
+            if(light.type==LightType.Spot && Vector3.Angle(light.transform.forward,delta)>light.spotAngle*.5f)return false;
+            return !Physics.Raycast(light.transform.position,delta.normalized,delta.magnitude,PlayerGeometry.WorldMask,QueryTriggerInteraction.Ignore);
+        }
         public bool Hidden => hidingPoints.Any(x => Vector3.Distance(x.position, player.transform.position) < 1.3f) && !player.IsRunning;
         public bool CanPlace => State.stage == NightStage.Prologue && !State.phonePlaced && !Busy && !observers.Any(x => x.ActiveThreat);
         public bool NotebookOpen { get; private set; }
@@ -36,6 +55,9 @@ namespace BaGio12.Story
         float subtitleUntil, roomSeconds, unseenSeconds, immuneUntil;
         int shoutCount;
         bool leftStart;
+        float nightStartedAt;
+        static bool completedInSession;
+        bool isReplay;
         AudioSource sound;
         AudioClip alarmClip;
 
@@ -55,6 +77,9 @@ namespace BaGio12.Story
             player.CanOpenPhone = phone => !Busy && State.stage != NightStage.Prologue && State.stage != NightStage.Ended && (phone == 2 || State.hasNganPhone);
             player.PhoneChanged += PhoneChanged;
             player.FellOutOfWorld += RestoreCheckpoint;
+            nightStartedAt=Time.time;
+            isReplay=completedInSession;
+            TelemetryProduced?.Invoke(new NightStartedTelemetry(isReplay));
             Checkpoints.Save("n1.alley_start", State, alleyStart.position, 0);
             Objective = "Tới nhà xe cuối hẻm. Cúi và đặt chiếc máy dưới chân xe.";
             Say("Đừng để ai thấy.", 6);
@@ -67,10 +92,13 @@ namespace BaGio12.Story
         }
         void Update()
         {
+            if(player.IsPaused)return;
             if (Time.time > subtitleUntil) Subtitle = "";
             if (HoldProgress > 0) HoldProgress = Mathf.Max(0, HoldProgress - Time.deltaTime * .1f);
             if (State.stage == NightStage.Prologue && !Busy)
             {
+                if (!PrologueDeparted && player.transform.position.z > 3) PrologueDeparted=true;
+                if(PrologueDeparted)PrologueElapsed+=Time.deltaTime;
                 if (player.transform.position.z > 5) leftStart = true;
                 bool seen = observers.Any(x => x.CanSeePlayer());
                 unseenSeconds = seen ? 0 : unseenSeconds + Time.deltaTime;
@@ -93,12 +121,18 @@ namespace BaGio12.Story
             SyncWorld();
         }
         public void Say(string text, float duration = 5) { Subtitle = text; subtitleUntil = Time.time + duration; }
-        public void Emit(string type, string detail) { StoryEvent?.Invoke(type, detail); Debug.Log($"[Night1] {type}: {detail}"); }
-        public void OpenModal(string id) { Modal = id; player.SetPhone(0); player.SetOverlay(true); }
+        public void EmitInternal(string type, string detail) { InternalEvent?.Invoke(type, detail); Debug.Log($"[Night1 internal] {type}: {detail}"); }
+        void EmitChoice(string id) { TelemetryProduced?.Invoke(new ChoiceTelemetry(id)); }
+        public void HandInPhone()
+        {
+            if(!State.hasNganPhone || State.stage==NightStage.Prologue || State.stage==NightStage.Ended)return;
+            EmitChoice("0"); End("bystander");
+        }
+        public void OpenModal(string id) { if(id=="notebook" && State.stage==NightStage.Prologue)return; Modal = id; player.SetPhone(0); player.SetOverlay(true); }
         public void CloseModal() { Modal = ""; NotebookOpen = false; player.SetOverlay(false); }
         public void ToggleNotebook()
         {
-            if (Busy || State.stage == NightStage.Ended) return;
+            if (Busy || State.stage == NightStage.Ended || State.stage == NightStage.Prologue) return;
             if (NotebookOpen) CloseModal();
             else { OpenModal("notebook"); NotebookOpen = true; }
         }
@@ -107,7 +141,8 @@ namespace BaGio12.Story
             if (State.stage == NightStage.Room && InRoom)
             {
                 if (next != 0) { player.Teleport(bed.position + new Vector3(0,.23f,-.4f),90); player.SetCrouch(true); }
-                if (previous == 1 && next != 1 && !State.timeJumped) JumpTime();
+                if (previous == 1 && next != 1 && !State.timeJumped) JumpTime(true);
+                if(previous!=0 && next==0)ApplyBagChange(true);
             }
         }
         public void Act(NightAction action)
@@ -151,7 +186,7 @@ namespace BaGio12.Story
                 case NightAction.Gate:
                     if (State.stage == NightStage.Parking) { Say("Nhặt chiếc máy ở nhà xe trước."); break; }
                     State.helpedLien = true;
-                    Say((State.prologue_beaten > 0 ? "Cô Liên: Hồi nãy tụi nó đập một thằng ăn trộm ngoài nhà xe, mà nó vùng chạy mất. " : "") + "Cô Liên nhắc căn cước. Bạn phụ dựng chậu rồi lên phòng 7.", 8);
+                    Say((State.prologue_beaten > 0 ? "Cô Liên: Hồi nãy tụi nó đập một thằng ăn trộm ngoài nhà xe, mà nó vùng chạy mất. " : "") + (State.prologue_beaten>=2 ? "Cô Liên chìa chiếc găng xám nhặt được: Cô cất trong buồng. " : "") + "Cô Liên nhắc căn cước. Bạn phụ dựng chậu rồi lên phòng 7.", 10);
                     Objective = "Đi cầu thang lên tầng 3, vào phòng 7."; break;
                 case NightAction.Room: EnterRoom(); break;
                 case NightAction.Deposit: State.found_deposit_slip = true; State.Note("Phòng 7, nhận cọc ngày 22/11, không ghi tên"); Say("Giấy nhận cọc không ghi tên."); break;
@@ -159,8 +194,8 @@ namespace BaGio12.Story
                     State.bagInspected = true;
                     string contents = State.prologue_beaten >= 2 ? "Áo mưa rách, chỉ còn găng phải." : State.prologue_beaten == 1 ? "Áo mưa rách một tay, đôi găng xám." : "Áo mưa xanh còn ướt, đôi găng xám.";
                     State.Note("Ba lô: sạc dự phòng, chai nước, khẩu trang. " + contents);
-                    Say(State.timeJumped ? "Ủa... mình để nó trên nệm hồi nào ta. Ngăn nhỏ bị kẹt." : contents + " Ngăn nhỏ bị kẹt."); break;
-                case NightAction.MoveBag: State.bagDisplaced = true; bag.transform.position = bed.position + new Vector3(.9f,.3f,0); Say("Bạn dời ba lô sang cạnh nệm."); break;
+                    Say(State.bagMoved ? "Ủa... mình để nó trên nệm hồi nào ta. Ngăn nhỏ bị kẹt." : contents + (State.bagOpen ? " Ngăn chính mở hé." : "") + " Ngăn nhỏ bị kẹt."); break;
+                case NightAction.MoveBag: State.bagDisplaced = true; bag.transform.position = bed.position + new Vector3(.9f,.3f,0); State.bagPosition=bag.transform.position;State.hasBagPosition=true; Say("Bạn dời ba lô sang cạnh nệm."); break;
                 case NightAction.Wifi: State.Note("Mật khẩu Wi-Fi sau cửa phòng 7"); Say("Đã ghi Wi-Fi vào Sổ tay."); break;
                 case NightAction.Mirror: Say("Gương mờ quá, soi không ra mặt."); break;
                 case NightAction.Notice: State.Note("Ai để xe qua đêm tự khóa cổ, mất ráng chịu"); Say("Ai để xe qua đêm tự khóa cổ, mất ráng chịu."); break;
@@ -179,11 +214,11 @@ namespace BaGio12.Story
             if (State.stage >= NightStage.Room) { Say("Phòng 7."); return; }
             if (!State.helpedLien) { Say("Phụ cô Liên dựng chậu trước khi lên phòng."); return; }
             State.stage = NightStage.Room; Clock.Set("21:20");
-            bag.transform.position = bagAtDoor.position;
+            bag.transform.position = bagAtDoor.position; State.bagPosition=bag.transform.position;State.hasBagPosition=true;
             Checkpoints.Save("n1.room7", State, roomSpawn.position, 90);
             Objective = "Xem đồ trong phòng. Đọc hoặc gửi tin trên máy Ngân.";
             Say("Bạn đặt ba lô xuống sàn cạnh cửa.");
-            Emit("area_entered", "n1.room7");
+            EmitInternal("area_entered", "n1.room7");
         }
         public void PlacePhone()
         {
@@ -192,7 +227,7 @@ namespace BaGio12.Story
             foreach (var o in observers) o.ResetObserver(true);
             Objective = "Quay ra đầu hẻm.";
             Say("Chiếc máy đã nằm dưới chân xe.");
-            Emit("phone_placed", "n1.parking");
+            EmitInternal("phone_placed", "n1.parking");
         }
         public bool ExposedWhilePlacing()
         {
@@ -214,29 +249,47 @@ namespace BaGio12.Story
             player.RunMultiplier = 1;
             Checkpoints.Save("n1.parking", State, parkingSpawn.position,0);
             Objective = "Dựng xe, tắt máy và xem số đồng hồ.";
-            Emit("night_started", "1");
+
         }
-        public void JumpTime()
+        public void JumpTime(bool concealed = false)
         {
             if (State.timeJumped || State.stage != NightStage.Room) return;
             State.timeJumped = true; Clock.Set("21:26");
-            State.bagMoved = true;
-            bag.transform.position = bed.position + new Vector3(.5f,.3f,0);
+            State.bagChangePending = true;
+            if(concealed || player.ActivePhone!=0)ApplyBagChange(true);
+            // Closing a phone reveals changes between frames. Without a phone, conceal sitting down first.
+            else if(InRoom && Modal!="")ApplyBagChange(true);
+            else StartCoroutine(SitTransition());
             Deliver("Mẹ · 21:26: " + Dialogue.batchB);
             if (State.sent.Any(x => x.StartsWith("camera:"))) Deliver("Mẹ · 21:26: " + (State.linh_knows_shop_camera ? Dialogue.cameraYes : Dialogue.cameraNo));
             if (State.asked_mom_why_here) Deliver("Mẹ · 21:26: " + Dialogue.why);
             if (State.sent.Contains("call")) Deliver("Mẹ · 21:26: " + Dialogue.callReply);
             Deliver("Mẹ · 21:26: " + Dialogue.warning);
         }
+        IEnumerator SitTransition()
+        {
+            Busy=true;player.SetOverlay(true);BlackTitle=" ";
+            yield return new WaitForSeconds(.25f);
+            player.Teleport(bed.position+new Vector3(0,.23f,-.4f),90);player.SetCrouch(true);
+            ApplyBagChange(true);BlackTitle="";Busy=false;player.SetOverlay(false);
+        }
+        public void ApplyBagChange(bool concealed)
+        {
+            if(!State.bagChangePending || !concealed)return;
+            if(State.bagDisplaced)State.bagOpen=true;
+            else {bag.transform.position=bed.position+new Vector3(.5f,.3f,0);State.bagMoved=true;}
+            State.bagPosition=bag.transform.position;State.hasBagPosition=true;State.bagChangePending=false;
+        }
         public void Send(string id, string text)
         {
             if (!State.hasNganPhone || State.phone_powered_off || State.sent.Contains(id)) return;
             if (id.StartsWith("camera:") && State.sent.Any(x => x.StartsWith("camera:"))) return;
             if (id == "camera:yes" && !State.saw_shop_camera) return;
+            if(State.timeJumped)State.afterJumpQuestions.Add(id);
             State.sent.Add(id); State.messages.Add("Bạn · " + State.clock + " · Đã gửi: " + text);
             if (id == "camera:yes") State.linh_knows_shop_camera = true;
             if (id == "why") State.asked_mom_why_here = true;
-            Emit("choice_made", id);
+            EmitInternal("dialogue_choice", id);
             if (State.stage == NightStage.Room && InRoom && !State.timeJumped) JumpTime();
         }
         void Deliver(string line)
@@ -260,17 +313,23 @@ namespace BaGio12.Story
         public void ChooseNumber(string choice)
         {
             if (!State.numberArrived) return;
-            State.number_choice = choice; Emit("choice_made", "number:" + choice);
+            if(choice!="blocked" && choice!="replied" && choice!="ignored")return;
+            State.number_choice = choice; EmitChoice(choice=="blocked" ? "1a" : choice=="replied" ? "1b" : "1c");
             Say(choice == "replied" ? "Một người phụ nữ bắt máy. Bạn im lặng rồi tắt." : choice == "blocked" ? "Đã chặn số lạ." : "Bạn bỏ qua dãy số.");
         }
         public void LeavePhone()
         {
             if (!State.hasNganPhone) return;
-            State.hasNganPhone = false; State.phone_left_count++;
+            State.hasNganPhone = false; State.phone_left_count++; EmitChoice("0b");
             player.SetPhone(0); CloseModal(); Say("Bạn để máy lại chỗ cũ.");
             if (State.phone_left_count == 1 && State.timeJumped) RecallPhone();
         }
-        void RecallPhone() { Clock.Set("21:40"); Say("Cô Liên gọi: Xuống lấy máy đi, nó reo hoài!",8); }
+        void RecallPhone()
+        {
+            if(State.lienCalled)return;
+            State.lienCalled=true;Clock.Set("21:40");
+            Say("Cô Liên gọi: Xuống lấy máy đi, nó reo hoài!",8);EmitInternal("lien_called","0b");
+        }
         public void WaitUntilLate()
         {
             CloseModal(); State.stage = NightStage.LateNight; Clock.Set("22:30");
@@ -281,17 +340,19 @@ namespace BaGio12.Story
         IEnumerator RestSequence(bool sleep)
         {
             Busy = true; player.SetPhone(0); player.SetOverlay(true);
-            State.night1_slept = sleep; Emit("choice_made", sleep ? "sleep" : "stay_awake");
+            State.night1_slept = sleep; EmitInternal("sleep_choice", sleep ? "sleep" : "stay_awake");
             if (sleep)
             {
-                BlackTitle = ""; BlackTitle = "Đêm xuống"; Clock.Set("03:40"); State.batchD = true;
-                Deliver("Mẹ · 03:40: " + Dialogue.batchD); yield return new WaitForSeconds(2);
+                BlackTitle = ""; BlackTitle = "Đêm xuống"; Clock.Set("03:40",1); State.batchD = true;
+                if(State.afterJumpQuestions.Count==0)Deliver("Mẹ · 03:40: " + Dialogue.batchD);
+                foreach(string question in State.afterJumpQuestions)
+                    Deliver("Mẹ · 03:40: "+(question=="why"?Dialogue.why:question=="call"?Dialogue.callReply:question=="camera:yes"?Dialogue.cameraYes:question.StartsWith("camera:")?Dialogue.cameraNo:Dialogue.batchD)); yield return new WaitForSeconds(2);
             }
             else
             {
                 foreach (string t in new[] { "23:30", "00:30", "01:30", "02:30" })
-                { Clock.Set(t); Say(t == "23:30" ? "Tiếng xe máy ngang hẻm." : t == "00:30" ? "Đèn hành lang bật rồi tắt." : "Quạt kêu trong phòng."); yield return new WaitForSeconds(2); }
-                Clock.Set("03:12"); State.alarm = true; if (!State.phone_powered_off && State.phone_left_count < 2) sound.Play();
+                { Clock.Set(t,t.StartsWith("23:")?0:1); Say(t == "23:30" ? "Tiếng xe máy ngang hẻm." : t == "00:30" ? "Đèn hành lang bật rồi tắt." : "Quạt kêu trong phòng."); yield return new WaitForSeconds(2); }
+                Clock.Set("03:12",1); State.alarm = true; if (State.hasNganPhone && !State.phone_powered_off) sound.Play();
                 Busy = false; player.SetOverlay(false); OpenModal("alarm"); Objective = "Tắt báo thức trên máy Ngân, kiểm tra cửa rồi trở lại nệm.";
                 yield break;
             }
@@ -307,15 +368,16 @@ namespace BaGio12.Story
         {
             CloseModal(); Busy = false;
             if (!State.hasNganPhone && State.phone_left_count >= 2) { End("bystander"); return; }
-            State.stage = NightStage.Ended; State.ending = "night1_completed"; Clock.Set("06:29");
+            State.alarm=false;State.stage = NightStage.Ended; State.ending = "night1_completed"; Clock.Set("06:29",1);
             BlackTitle = "HẾT ĐÊM 1"; player.SetPhone(0); player.SetOverlay(true); sound.Stop();
-            Emit("night_completed", "1");
+            TelemetryProduced?.Invoke(new NightCompletedTelemetry(isReplay,Mathf.Max(0,Mathf.FloorToInt(Time.time-nightStartedAt))));
+            completedInSession=true;
         }
         public void End(string ending)
         {
-            CloseModal(); State.stage = NightStage.Ended; State.ending = ending;
+            CloseModal(); State.alarm=false; State.stage = NightStage.Ended; State.ending = ending;
             BlackTitle = "NGƯỜI QUA ĐƯỜNG"; player.SetPhone(0); player.SetOverlay(true); sound.Stop();
-            Emit("ending_reached", ending);
+            TelemetryProduced?.Invoke(new EndingTelemetry(ending));
         }
         public void Shout(NightObserver source)
         {
@@ -328,7 +390,7 @@ namespace BaGio12.Story
         public void Caught()
         {
             if (Busy || Time.time < immuneUntil || State.phonePlaced || State.stage != NightStage.Prologue) return;
-            Emit("player_caught", (InParking ? "n1.parking" : "n1.alley") + "|n1.alley_start");
+            TelemetryProduced?.Invoke(new CaughtTelemetry(InParking?"n1.parking":"n1.alley","n1.alley_start",player.transform.position));
             StartCoroutine(CaptureSequence());
         }
         IEnumerator CaptureSequence()
@@ -343,6 +405,7 @@ namespace BaGio12.Story
                 player.Teleport(nearest.position,0); player.SetCrouch(true);
                 foreach (var o in observers) o.ResetObserver(false);
                 foreach (var l in alertLights.Take(State.prologue_beaten+1)) l.enabled = true;
+                if(parkingAlertLight!=null)parkingAlertLight.enabled=true;
                 player.RunMultiplier = State.prologue_beaten >= 2 ? 2f/3 : 1;
             }
             BlackTitle = ""; Busy = false; player.SetOverlay(false); immuneUntil = Time.time + 5;
@@ -353,28 +416,43 @@ namespace BaGio12.Story
             player.Teleport(alleyStart.position); player.RunMultiplier = 1;
             foreach (var o in observers) o.ResetObserver(false);
             foreach (var l in alertLights) l.enabled = false;
-            leftStart = false; shoutCount = 0; unseenSeconds = 0;
+            leftStart = false; shoutCount = 0; unseenSeconds = 0;PrologueDeparted=false;PrologueElapsed=0;
+            if(parkingAlertLight!=null)parkingAlertLight.enabled=false;
             Objective = "Tới nhà xe cuối hẻm. Cúi và đặt chiếc máy dưới chân xe.";
         }
         public void RestoreCheckpoint()
         {
             if (Busy) return;
+            if(State.stage==NightStage.Prologue)
+            {
+                // A safety recovery must never clear persistent capture penalties.
+                player.Teleport(alleyStart.position);player.RunMultiplier=State.prologue_beaten>=2?2f/3:1;
+                foreach(var observer in observers)observer.ResetObserver(State.phonePlaced);
+                foreach(var light in alertLights)light.enabled=false;
+                foreach(var light in alertLights.Take(State.prologue_beaten>0?State.prologue_beaten+1:0))light.enabled=true;
+                if(parkingAlertLight!=null)parkingAlertLight.enabled=State.prologue_beaten>0;
+                leftStart=false;immuneUntil=Time.time+3;return;
+            }
+            bool replayFromEnd=State.stage==NightStage.Ended;
             CloseModal(); player.SetPhone(0); sound.Stop();
             if (!Checkpoints.Restore(out var state, out var point, out float yaw)) return;
             State = state; Clock = new StoryClock(State); player.Teleport(point,yaw);
+            if(replayFromEnd) {isReplay=completedInSession;nightStartedAt=Time.time;TelemetryProduced?.Invoke(new NightStartedTelemetry(isReplay));}
             player.RunMultiplier = State.stage == NightStage.Prologue && State.prologue_beaten >= 2 ? 2f/3 : 1;
             BlackTitle = ""; roomSeconds = 0;
             foreach (var o in observers) o.ResetObserver(State.phonePlaced);
             foreach (var l in alertLights) l.enabled = false;
-            if (State.stage == NightStage.Prologue) ResetPrologue();
             Objective = State.stage >= NightStage.Room ? "Khám phá phòng 7 rồi tới nệm." : "Khám phá hẻm, đọc tin và lên phòng 7.";
-            bag.transform.position = State.bagMoved || State.bagDisplaced ? bed.position + new Vector3(.5f,.3f,0) : bagAtDoor.position;
+            bag.transform.position = State.hasBagPosition ? State.bagPosition : bagAtDoor.position;
             SyncWorld();
         }
         void SyncWorld()
         {
             if (nganPhone != null) nganPhone.SetActive(State.phonePlaced && !State.hasNganPhone);
             if (bag != null) bag.SetActive(State.stage >= NightStage.Room);
+            if(greyGlove!=null)greyGlove.SetActive(State.helpedLien && State.prologue_beaten>=2);
+            if(State.alarm && State.stage!=NightStage.Ended && State.hasNganPhone && !State.phone_powered_off) {if(!sound.isPlaying)sound.Play();}
+            else if(sound.isPlaying)sound.Stop();
         }
     }
 }

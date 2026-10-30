@@ -15,6 +15,8 @@ namespace BaGio12.Gameplay
         public float RunMultiplier { get; set; } = 1f;
         public bool IsRunning { get; private set; }
         public bool IsPaused => paused;
+        public uint PoseRevision { get; private set; }
+        public bool PauseChangedThisFrame => pauseFrame == Time.frameCount;
         public System.Func<int, bool> CanOpenPhone;
         public event System.Action<int, int> PhoneChanged;
         public event System.Action FellOutOfWorld;
@@ -29,6 +31,9 @@ namespace BaGio12.Gameplay
         string notice = "";
         float noticeUntil;
         bool paused;
+        int pauseFrame = -1;
+        float previousTimeScale = 1;
+        bool previousAudioPause;
         GUIStyle text, title;
 
         void Awake()
@@ -46,9 +51,9 @@ namespace BaGio12.Gameplay
             cancel = map.AddAction("Close", InputActionType.Button, "<Keyboard>/escape");
         }
         void OnEnable() { inputs.Enable(); LockCursor(true); }
-        void OnDisable() { inputs.Disable(); LockCursor(false); }
+        void OnDisable() { if(inputs!=null) inputs.Disable(); SetPaused(false); LockCursor(false); }
         void OnDestroy() { if (inputs != null) Destroy(inputs); }
-        void OnApplicationFocus(bool focused) { if (!focused) { paused = true; LockCursor(false); } }
+        void OnApplicationFocus(bool focused) { if (!focused && Application.isPlaying) SetPaused(true); }
         static void LockCursor(bool locked)
         { Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None; Cursor.visible = !locked; }
 
@@ -56,8 +61,9 @@ namespace BaGio12.Gameplay
         {
             if (cancel.WasPressedThisFrame())
             {
-                if (ActivePhone != 0) SetPhone(0);
-                else if (!ExternalUI) { paused = !paused; LockCursor(!paused); }
+                if (paused) ResumeControl();
+                else if (ActivePhone != 0) SetPhone(0);
+                else if (!ExternalUI) SetPaused(!paused);
             }
             if (!paused)
             {
@@ -74,7 +80,7 @@ namespace BaGio12.Gameplay
                 pitch = Mathf.Clamp(pitch - delta.y * scale, -80, 80);
                 eyes.transform.localRotation = Quaternion.Euler(pitch, 0, 0);
                 if (crouch.WasPressedThisFrame()) SetCrouch(!IsCrouched);
-                if (Physics.Raycast(eyes.transform.position, eyes.transform.forward, out var hit, reach, ~(1 << 2), QueryTriggerInteraction.Ignore))
+                if (Physics.Raycast(eyes.transform.position, eyes.transform.forward, out var hit, reach, PlayerGeometry.WorldMask, QueryTriggerInteraction.Ignore))
                     target = hit.collider.GetComponentInParent<WorldInteractable>();
                 if (target != null) target.HandleInput(this, interact.WasPressedThisFrame(), interact.IsPressed());
             }
@@ -92,18 +98,25 @@ namespace BaGio12.Gameplay
             if (!value && IsCrouched)
             {
                 // Only the extra space above the crouched capsule needs checking.
-                Vector3 low = transform.position + Vector3.up * 0.98f;
-                Vector3 high = transform.position + Vector3.up * 1.5f;
-                if (Physics.CheckCapsule(low, high, 0.27f, ~(1 << 2), QueryTriggerInteraction.Ignore))
+                Vector3 low = transform.position + Vector3.up * (PlayerGeometry.CrouchedHeight - PlayerGeometry.Radius);
+                Vector3 high = transform.position + Vector3.up * (PlayerGeometry.StandingHeight - PlayerGeometry.Radius);
+                if (Physics.CheckCapsule(low, high, PlayerGeometry.Radius, PlayerGeometry.WorldMask, QueryTriggerInteraction.Ignore))
                 { Notify("Không đủ chỗ để đứng lên"); return false; }
             }
             IsCrouched = value;
-            body.height = value ? 1.1f : 1.8f;
+            body.height = value ? PlayerGeometry.CrouchedHeight : PlayerGeometry.StandingHeight;
             body.center = Vector3.up * (body.height / 2);
-            eyes.transform.localPosition = Vector3.up * (value ? 0.9f : 1.6f);
+            eyes.transform.localPosition = Vector3.up * (value ? PlayerGeometry.CrouchedEye : PlayerGeometry.StandingEye);
             return true;
         }
-        public void ResumeControl() { paused = false; LockCursor(ActivePhone == 0); }
+        public void SetPaused(bool value)
+        {
+            if (paused == value) return;
+            if (value) {previousTimeScale=Time.timeScale;previousAudioPause=AudioListener.pause;Time.timeScale=0;AudioListener.pause=true;}
+            else {Time.timeScale=previousTimeScale;AudioListener.pause=previousAudioPause;}
+            paused=value; pauseFrame=Time.frameCount; LockCursor(!value && ActivePhone==0 && !ExternalUI);
+        }
+        public void ResumeControl() { SetPaused(false); LockCursor(ActivePhone == 0 && !ExternalUI); }
         public void SetPhone(int phone)
         {
             if (phone != 0 && (ExternalUI || (CanOpenPhone != null && !CanOpenPhone(phone)))) return;
@@ -115,6 +128,7 @@ namespace BaGio12.Gameplay
         public void SetOverlay(bool open) { ExternalUI = open; LockCursor(!open && ActivePhone == 0 && !paused); }
         public void Teleport(Vector3 point, float yaw = 0)
         {
+            PoseRevision++;
             body.enabled = false; transform.SetPositionAndRotation(point, Quaternion.Euler(0, yaw, 0));
             body.enabled = true; fall = 0; pitch = 0; SetCrouch(false);
         }
@@ -123,6 +137,11 @@ namespace BaGio12.Gameplay
         void OnGUI()
         {
             if (text == null) { text = new GUIStyle(GUI.skin.label) { fontSize = 18, wordWrap = true }; title = new GUIStyle(text) { fontSize = 28, alignment = TextAnchor.MiddleCenter }; }
+            if (paused)
+            {
+                if(GUI.Button(new Rect(Screen.width/2-120,Screen.height/2,240,55),"Tiếp tục (Esc)"))ResumeControl();
+                return;
+            }
             if (!showTestHud)
             {
                 if (!paused && ActivePhone == 0 && !ExternalUI && target != null) GUI.Label(new Rect(Screen.width/2 - 220, Screen.height*.76f, 440, 65), "E — " + target.Prompt, title);
