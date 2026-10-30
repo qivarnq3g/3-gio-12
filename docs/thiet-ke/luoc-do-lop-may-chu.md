@@ -385,14 +385,14 @@ So mã băm là so chuỗi hex chữ thường đã kiểm định dạng; hợp
 
 `DateRange.Resolve` đổi `from`, `to` của yêu cầu thành khoảng nửa mở theo UTC: thiếu `to` thì lấy giờ hiện tại, thiếu `from` thì lấy 30 ngày trước `to`; `from` không trước `to` hoặc khoảng dài hơn 366 ngày thì báo lỗi 400.
 
-`DashboardService.GetSummaryAsync` chạy các truy vấn tổng hợp trên `telemetry_events` lọc theo `occurred_at`:
+`DashboardService.GetSummaryAsync` chạy các truy vấn tổng hợp trên `telemetry_events` lọc theo `received_at` (giờ máy chủ nhận), không theo giờ máy người chơi:
 
 | Số liệu | Cách tính |
 |---|---|
 | `players` | Đếm `installation_id` khác nhau |
 | `sessions` | Đếm `session_started` |
 | `playtime` | Tổng và trung bình `duration_seconds` của `session_ended` |
-| `nights` | Theo `night`: đếm `installation_id` khác nhau của `night_started` có `is_replay = false`, của `night_completed`; trung bình `duration_seconds` của `night_completed` |
+| `nights` | Theo `night`: đếm `installation_id` khác nhau của `night_started` và của `night_completed`, cùng có `is_replay = false`; trung bình `duration_seconds` của `night_completed` có `is_replay = false` |
 | `caughtLocations` | Nhóm `player_caught` theo `night`, `area_id` |
 | `quitLocations` | Nhóm `session_ended` có `night` theo `night`, `area_id` |
 | `endings` | Theo `ending_id`: đếm `installation_id` khác nhau của `ending_reached` |
@@ -519,10 +519,10 @@ erDiagram
 | `ending_id` | `varchar(32)` | null | Chỉ `ending_reached` |
 | `end_reason` | `varchar(16)` | null | Chỉ `session_ended`; trường `reason` của hợp đồng |
 | `duration_seconds` | `integer` | null, `>= 0` | `session_ended`, `night_completed` |
-| `is_replay` | `boolean` | null | Chỉ `night_started` |
+| `is_replay` | `boolean` | null | `night_started`, `night_completed` |
 | `position_x`, `position_y`, `position_z` | `double precision` | null | Chỉ `player_caught`, tùy chọn |
 
-Chỉ mục: `(installation_id)` cho việc xóa khi rút đồng ý; `(occurred_at, type)` cho dashboard và CSV.
+Chỉ mục: `(installation_id)` cho việc xóa khi rút đồng ý; `(received_at, type)` cho dashboard và CSV.
 
 Không có cột địa chỉ IP, User-Agent hay `platform`. Hợp đồng chỉ có một giá trị `platform` là `windows`, nên chưa cần lưu; thêm nền tảng thì thêm cột bằng migration.
 
