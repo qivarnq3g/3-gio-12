@@ -56,8 +56,11 @@ Chốt ngày 30/10/2026 (#3). Mẫu đã đi trọn quy trình: `game/Assets/Art
 ### Dựng trong Blender
 
 - Đơn vị mét, `Unit Scale` = 1. Đo theo vật thật: cửa 2,1 m, bậc thang cao 0,17 m, chậu kiểng khoảng 0,3 m, nhân vật nam 1,68 m.
-- Gốc tọa độ (origin) đặt ở giữa đáy vật, đúng chỗ vật chạm sàn. Vật đứng ở gốc thế giới, mặt trước quay về phía -Y của Blender.
+- Đồ vật và nhân vật: gốc tọa độ (origin) đặt ở giữa đáy vật, đúng chỗ vật chạm sàn. Vật đứng ở gốc thế giới, mặt trước quay về phía -Y của Blender.
+- Bối cảnh: dựng đúng tọa độ của khối thô `night1_3_blockout` (mở file khối thô, dựng đè lên khối cần thay), gốc tọa độ ở gốc thế giới. Kéo FBX vào cảnh ở vị trí (0, 0, 0) là khớp các điểm đánh dấu `CHECKPOINT_`, `PLACE_`, `DOOR_` của khối thô.
+- Phần chuyển động được (cửa, ngăn kéo, nắp) là một object riêng trong cùng file, gốc tọa độ đặt ở bản lề, dựng ở tư thế đóng.
 - Áp (apply) xoay và tỉ lệ trước khi xuất: `Ctrl+A` > `All Transforms`.
+- Mọi lưới phải có UV, kể cả khi không dùng ảnh vân. Lưới không có UV thì Unity không tính được tiếp tuyến (tangent) và shader `Toon/Toon` tô đen các mặt quay theo trục X. Cách nhanh: chế độ Edit, chọn hết, `U` > `Cube Projection` hoặc `Smart UV Project`.
 - Đồ vật nhỏ dưới 1.000 tam giác, đồ vật lớn và nhân vật phụ dưới 10.000. Không cần ảnh vân (texture): mỗi vùng màu là một vật liệu riêng.
 - Đặt tên vật liệu `M_<TenTiengAnh>` (ví dụ `M_PotTerracotta`). Hai model cùng màu thì dùng chung tên vật liệu.
 - File `.blend` lưu trên Drive của nhóm, cùng tên với file FBX.
@@ -86,7 +89,7 @@ Tên file `snake_case` tiếng Anh, bắt đầu bằng loại: `prop_` đồ v�
 
 1. Tạo vật liệu trước: trong `Assets/Art/Materials`, chuột phải > `Create > Material`, đặt đúng tên `M_...` như trong Blender, đổi shader thành `Toon/Toon` (gói Unity Toon Shader). Chỉnh `BaseColor`, `1st_ShadeColor` (tối hơn khoảng một phần ba), `2nd_ShadeColor` (tối hơn một nửa), `Outline_Width` khoảng 1, `Outline_Color` gần đen cùng tông. Nhanh nhất là nhân bản một vật liệu có sẵn rồi đổi màu.
 2. Kéo file FBX vào đúng thư mục. `Assets/Editor/ModelImportRules.cs` tự đặt tỉ lệ 1, không nhập camera và đèn, tắt animation cho đồ vật và bối cảnh, và tự gắn vật liệu trùng tên trong project.
-3. Chạy menu `3 Gio 12 > Check Art Models`. Lệnh báo lỗi khi gốc model có xoay hoặc tỉ lệ khác 1, khi đáy model không nằm ở y = 0, khi vật liệu nằm ngoài `Assets/Art/Materials` hoặc không dùng shader `Toon/Toon`. Sửa trong Blender rồi xuất lại, không chữa bằng Transform trong Unity.
+3. Chạy menu `3 Gio 12 > Check Art Models`. Lệnh báo lỗi khi gốc model có xoay hoặc tỉ lệ khác 1, khi đáy đồ vật hay nhân vật không nằm ở y = 0, khi lưới không có UV, khi vật liệu nằm ngoài `Assets/Art/Materials` hoặc không dùng shader `Toon/Toon`. Sửa trong Blender rồi xuất lại, không chữa bằng Transform trong Unity.
 4. Nếu Unity đã tự tạo thư mục `Materials` cạnh file FBX (do kéo FBX vào trước khi có vật liệu), xóa thư mục đó rồi chuột phải file FBX > `Reimport`.
 
 Chạy kiểm không cần mở Editor, ví dụ trước khi mở pull request:

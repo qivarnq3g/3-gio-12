@@ -42,6 +42,8 @@ public static class ArtPipelineCheck
             yield return AssetDatabase.GUIDToAssetPath(guid);
     }
 
+    static bool IsEnvironment(string path) => path.StartsWith(ModelImportRules.ModelsRoot + "Environment/");
+
     static List<string> CheckAll()
     {
         var failures = new List<string>();
@@ -59,8 +61,11 @@ public static class ArtPipelineCheck
             if (renderers.Length == 0) { failures.Add(path + ": no renderer"); continue; }
             var bounds = renderers[0].bounds;
             foreach (var r in renderers) bounds.Encapsulate(r.bounds);
-            if (Mathf.Abs(bounds.min.y) > 0.01f) failures.Add(path + ": pivot not at floor, min y " + bounds.min.y.ToString("F3"));
+            if (!IsEnvironment(path) && Mathf.Abs(bounds.min.y) > 0.01f) failures.Add(path + ": pivot not at floor, min y " + bounds.min.y.ToString("F3"));
             if (bounds.size.y < 0.01f || bounds.size.y > 30f) failures.Add(path + ": height " + bounds.size.y.ToString("F3") + " m");
+            foreach (var mf in root.GetComponentsInChildren<MeshFilter>())
+                if (mf.sharedMesh == null || mf.sharedMesh.uv.Length == 0)
+                    failures.Add(path + ": mesh " + mf.name + " has no UV map, Toon/Toon renders faces along X black");
             foreach (var r in renderers)
                 foreach (var m in r.sharedMaterials)
                 {
@@ -92,6 +97,7 @@ public static class ArtPipelineCheck
         float x = 0f;
         foreach (var path in ModelPaths())
         {
+            if (IsEnvironment(path)) continue;
             var go = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(path));
             go.transform.position = new Vector3(x, 0f, 0f);
             x += 0.8f;
