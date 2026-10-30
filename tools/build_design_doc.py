@@ -14,7 +14,7 @@ from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Pt, RGBColor
+from docx.shared import Cm, Pt, RGBColor
 
 ROOT = Path(__file__).resolve().parent.parent
 DESIGN_DIR = ROOT / "docs" / "thiet-ke"
@@ -272,6 +272,7 @@ def make_reference(path):
         style.paragraph_format.space_after = Pt(space)
         style.paragraph_format.space_before = Pt(space if name == "Cover Title" else 0)
     for section in doc.sections:
+        section.page_width, section.page_height = Cm(21), Cm(29.7)
         section.top_margin = section.bottom_margin = Pt(56.7)
         section.left_margin = Pt(85)
         section.right_margin = Pt(56.7)
