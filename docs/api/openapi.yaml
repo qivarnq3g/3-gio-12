@@ -284,7 +284,7 @@ components:
         occurredAt:
           type: string
           format: date-time
-          description: Giờ trên máy người chơi, UTC. Máy chủ lưu thêm giờ nhận riêng.
+          description: Giờ trên máy người chơi, UTC, chỉ dùng để sắp thứ tự sự kiện trong một lượt chơi. Máy chủ lưu thêm giờ nhận riêng; dashboard và CSV lọc theo giờ nhận.
         type:
           type: string
 
@@ -357,12 +357,15 @@ components:
       allOf:
         - $ref: '#/components/schemas/TelemetryEventBase'
         - type: object
-          required: [type, night, durationSeconds]
+          required: [type, night, isReplay, durationSeconds]
           properties:
             type:
               const: night_completed
             night:
               $ref: '#/components/schemas/Night'
+            isReplay:
+              type: boolean
+              description: true khi đêm vừa hết là lần chơi lại, cùng giá trị với night_started của lượt đó.
             durationSeconds:
               type: integer
               minimum: 0
