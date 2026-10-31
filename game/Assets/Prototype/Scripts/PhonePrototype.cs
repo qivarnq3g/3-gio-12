@@ -64,6 +64,7 @@ namespace BaGio12.Prototype
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
         {
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "SampleScene") return;
             if (FindAnyObjectByType<PhonePrototype>() != null) return;
             var go = new GameObject("PhonePrototype");
             go.AddComponent<PhonePrototype>();
