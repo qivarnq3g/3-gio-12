@@ -1,5 +1,10 @@
 # Quy ước làm việc
 
+## Công cụ
+
+- Unity `6000.3.26f1` (Unity 6.3 LTS), đúng như `game/ProjectSettings/ProjectVersion.txt`. Cài đúng bản này qua Unity Hub; mở project bằng bản khác thì Unity nâng cấp project và đổi hàng loạt file trong `ProjectSettings/`, `Packages/`. Đổi phiên bản phải mở issue riêng và cả nhóm đổi cùng lúc.
+- Blender 5.2 cho model 3D.
+
 ## Nhánh
 
 - `main` luôn chạy được. Không commit thẳng vào `main`.
@@ -48,9 +53,14 @@ Chốt ngày 30/10/2026 (#3). Mẫu đã đi trọn quy trình: `game/Assets/Art
 | 1 | Tự dựng trong Blender | Của nhóm | Đồ vật, bối cảnh, mọi thứ hình khối đơn giản |
 | 2 | Kenney, Poly Pizza (chỉ lọc CC0), Poly Haven | CC0, không cần ghi tên | Đồ vật phổ thông, chỉnh màu lại cho hợp kiểu hình |
 | 3 | Sketchfab | Xem từng model; chỉ lấy CC0 hoặc CC-BY và ghi tên tác giả | Thứ khó dựng mà nguồn 2 không có |
-| 4 | Tripo gói Free | Model công khai, không dùng thương mại | Chỉ nhân vật cần gắn xương, làm bản tạm |
+| 4 | Tripo gói Free | Tripo giữ quyền; chỉ dùng phi thương mại, ghi tên Tripo AI | Chỉ nhân vật cần gắn xương, làm bản tạm |
 
-- Tripo gói Free (200 điểm mỗi tháng, khoảng 13 model, tối đa 15 lần xuất) ghi rõ "Public Models · Non-Commercial Use". Đồ án nộp ở trường thì dùng được, nhưng model ai cũng xem được và không bán được. Gói Pro (20 USD mỗi tháng khi trả theo năm) mới có model riêng tư, dùng thương mại. Trước khi phát hành có thu tiền, model Tripo phải làm lại bằng gói trả phí hoặc thay bằng model tự dựng.
+- Ba trang chính thức của Tripo nói khác nhau về model tạo bằng gói Free (đọc ngày 31/10/2026):
+  - [Điều khoản sử dụng](https://www.tripo3d.ai/terms) (cập nhật 11/7/2025), mục 5.2.1: Tripo giữ mọi quyền với đầu vào và kết quả của người dùng miễn phí, gồm cả quyền sở hữu trí tuệ.
+  - [Bảng giá](https://www.tripo3d.ai/pricing): gói Free ghi "Public Models · Non-Commercial Use".
+  - [Bài blog ngày 14/8/2026](https://www.tripo3d.ai/blog/commercial-use-ai-3d-models): gói Free theo giấy phép CC BY 4.0, dùng thương mại được nếu ghi tên.
+- Điều khoản là văn bản ràng buộc nên nhóm theo cách chặt nhất, cách này thỏa cả ba trang: chỉ dùng trong đồ án, không bán, không đăng model ra ngoài như tài sản của nhóm; luôn ghi tên. Mỗi model Tripo có một dòng trong `game/Assets/Art/_Source/NGUON.md` (ngày tạo, gói đang dùng, ghi "Tạo bằng Tripo AI, tripo3d.ai"), và màn hình ghi công của game có dòng "Một số model 3D tạo bằng Tripo AI (tripo3d.ai)".
+- Gói Free có 200 điểm mỗi tháng (khoảng 13 model) và model để công khai. Gói Pro (20 USD mỗi tháng khi trả theo năm) mới cho model riêng tư và dùng thương mại. Trước khi phát hành có thu tiền, mọi model Tripo phải làm lại bằng gói trả phí hoặc thay bằng model tự dựng.
 - Không lấy model có thương hiệu thật (logo xe, biển hiệu) và không để nguyên model tả thực: game dùng hình cách điệu, màu phẳng, đường viền rõ.
 
 ### Dựng trong Blender
@@ -61,9 +71,33 @@ Chốt ngày 30/10/2026 (#3). Mẫu đã đi trọn quy trình: `game/Assets/Art
 - Phần chuyển động được (cửa, ngăn kéo, nắp) là một object riêng trong cùng file, gốc tọa độ đặt ở bản lề, dựng ở tư thế đóng.
 - Áp (apply) xoay và tỉ lệ trước khi xuất: `Ctrl+A` > `All Transforms`.
 - Mọi lưới phải có UV, kể cả khi không dùng ảnh vân. Lưới không có UV thì Unity không tính được tiếp tuyến (tangent) và shader `Toon/Toon` tô đen các mặt quay theo trục X. Cách nhanh: chế độ Edit, chọn hết, `U` > `Cube Projection` hoặc `Smart UV Project`.
-- Đồ vật nhỏ dưới 1.000 tam giác, đồ vật lớn và nhân vật phụ dưới 10.000. Không cần ảnh vân (texture): mỗi vùng màu là một vật liệu riêng.
+- Đồ vật nhỏ dưới 1.000 tam giác, đồ vật lớn và nhân vật phụ dưới 10.000. Phần lớn model không cần ảnh vân (texture): mỗi vùng màu là một vật liệu riêng. Riêng chữ và hình làm theo mục "Vật có chữ hoặc hình" bên dưới.
 - Đặt tên vật liệu `M_<TenTiengAnh>` (ví dụ `M_PotTerracotta`). Hai model cùng màu thì dùng chung tên vật liệu.
 - File `.blend` lưu trên Drive của nhóm, cùng tên với file FBX.
+
+### Vật có chữ hoặc hình
+
+Chọn cách làm theo việc chữ có đổi trong lúc chơi hay không, và người chơi có cần đọc kỹ hay không.
+
+| Trường hợp | Ví dụ | Cách làm |
+|---|---|---|
+| Chữ, hình cố định, chỉ cần nhìn thấy | Nhãn vỉ thuốc, giấy ghi mật khẩu wifi, tờ giấy dán cột | Ảnh vân dán lên một mặt riêng của model |
+| Chữ, số đổi trong lúc chơi | Số km trên đồng hồ xe (đổi theo nhánh), đồng hồ treo tường | Model để mặt trống, chữ do Unity vẽ bằng TextMeshPro |
+| Vật chứng người chơi phải đọc kỹ | Vỉ thuốc, phiếu gửi tiền, sổ ghi chép | Làm như một trong hai dòng trên, thêm ảnh 2D phóng to hiện trên giao diện khi tương tác |
+
+Ảnh vân dán lên model:
+
+- Trong Blender, tách vùng có chữ thành mặt riêng. Nếu vật cong hoặc nhiều mặt, đặt một tấm phẳng mỏng sát bề mặt, cách khoảng 1 mm để hai mặt không nhấp nháy khi chồng nhau. Trải UV của mặt đó phủ khít ảnh và gán vật liệu riêng `M_<TenTiengAnh>`.
+- Ảnh PNG, cạnh là lũy thừa của 2: 512 cho phần lớn đồ vật, 1024 khi chữ nhỏ mà người chơi phải đọc. Đặt tên `T_<TenTiengAnh>.png` trong `game/Assets/Art/Textures/`.
+- Vẽ phẳng đúng kiểu hình của game, không dùng ảnh chụp. Chữ tiếng Việt dùng phông có đủ dấu. Không có tên hay logo của thương hiệu thật.
+- Trong Unity, vật liệu vẫn dùng shader `Toon/Toon`: gán ảnh vào `BaseMap` và bật `Use BaseMap as 1st_ShadeMap` để chữ vẫn hiện trong vùng tối.
+
+Chữ, số đổi trong lúc chơi:
+
+- Model chỉ có mặt trống. Thêm một object `TextMeshPro` (bản 3D, không phải `TextMeshProUGUI` của giao diện) làm con của model, đặt sát mặt trống. Script của màn chơi gán nội dung, ví dụ số km lấy từ trạng thái của đêm.
+- Phông chữ phải có đủ dấu tiếng Việt.
+
+Ảnh 2D phóng to: chữ trên model nhìn từ góc nhìn thứ nhất thường nhỏ và nghiêng. Vật chứng cần đọc thì xuất thêm một ảnh 2D có cùng nội dung, để giao diện hiện lên khi người chơi tương tác (#24). Ảnh vân và ảnh 2D, kể cả ảnh tạo bằng AI, đều ghi nguồn vào `NGUON.md`.
 
 ### Xuất FBX
 
@@ -86,6 +120,7 @@ Tên file `snake_case` tiếng Anh, bắt đầu bằng loại: `prop_` đồ v�
 | Bối cảnh | `game/Assets/Art/Models/Environment/` |
 | Nhân vật | `game/Assets/Art/Models/Characters/` |
 | Vật liệu | `game/Assets/Art/Materials/` |
+| Ảnh vân | `game/Assets/Art/Textures/` |
 
 1. Tạo vật liệu trước: trong `Assets/Art/Materials`, chuột phải > `Create > Material`, đặt đúng tên `M_...` như trong Blender, đổi shader thành `Toon/Toon` (gói Unity Toon Shader). Chỉnh `BaseColor`, `1st_ShadeColor` (tối hơn khoảng một phần ba), `2nd_ShadeColor` (tối hơn một nửa), `Outline_Width` khoảng 1, `Outline_Color` gần đen cùng tông. Nhanh nhất là nhân bản một vật liệu có sẵn rồi đổi màu.
 2. Kéo file FBX vào đúng thư mục. `Assets/Editor/ModelImportRules.cs` tự đặt tỉ lệ 1, không nhập camera và đèn, tắt animation cho đồ vật và bối cảnh, và tự gắn vật liệu trùng tên trong project.
