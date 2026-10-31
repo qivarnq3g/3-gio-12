@@ -50,17 +50,11 @@ Chốt ngày 30/10/2026 (#3). Mẫu đã đi trọn quy trình: `game/Assets/Art
 
 | Thứ tự | Nguồn | Giấy phép | Dùng cho |
 |---|---|---|---|
-| 1 | Tự dựng trong Blender | Của nhóm | Đồ vật, bối cảnh, mọi thứ hình khối đơn giản |
+| 1 | Tự dựng trong Blender | Của nhóm | Mọi model: đồ vật, bối cảnh, nhân vật (tự gắn xương trong Blender) |
 | 2 | Kenney, Poly Pizza (chỉ lọc CC0), Poly Haven | CC0, không cần ghi tên | Đồ vật phổ thông, chỉnh màu lại cho hợp kiểu hình |
 | 3 | Sketchfab | Xem từng model; chỉ lấy CC0 hoặc CC-BY và ghi tên tác giả | Thứ khó dựng mà nguồn 2 không có |
-| 4 | Tripo gói Free | Tripo giữ quyền; chỉ dùng phi thương mại, ghi tên Tripo AI | Chỉ nhân vật cần gắn xương, làm bản tạm |
 
-- Ba trang chính thức của Tripo nói khác nhau về model tạo bằng gói Free (đọc ngày 31/10/2026):
-  - [Điều khoản sử dụng](https://www.tripo3d.ai/terms) (cập nhật 11/7/2025), mục 5.2.1: Tripo giữ mọi quyền với đầu vào và kết quả của người dùng miễn phí, gồm cả quyền sở hữu trí tuệ.
-  - [Bảng giá](https://www.tripo3d.ai/pricing): gói Free ghi "Public Models · Non-Commercial Use".
-  - [Bài blog ngày 14/8/2026](https://www.tripo3d.ai/blog/commercial-use-ai-3d-models): gói Free theo giấy phép CC BY 4.0, dùng thương mại được nếu ghi tên.
-- Điều khoản là văn bản ràng buộc nên nhóm theo cách chặt nhất, cách này thỏa cả ba trang: chỉ dùng trong đồ án, không bán, không đăng model ra ngoài như tài sản của nhóm; luôn ghi tên. Mỗi model Tripo có một dòng trong `game/Assets/Art/_Source/NGUON.md` (ngày tạo, gói đang dùng, ghi "Tạo bằng Tripo AI, tripo3d.ai"), và màn hình ghi công của game có dòng "Một số model 3D tạo bằng Tripo AI (tripo3d.ai)".
-- Gói Free có 200 điểm mỗi tháng (khoảng 13 model) và model để công khai. Gói Pro (20 USD mỗi tháng khi trả theo năm) mới cho model riêng tư và dùng thương mại. Trước khi phát hành có thu tiền, mọi model Tripo phải làm lại bằng gói trả phí hoặc thay bằng model tự dựng.
+- Không dùng công cụ AI tạo model 3D. Nhóm tự dựng (chốt 31/10/2026).
 - Không lấy model có thương hiệu thật (logo xe, biển hiệu) và không để nguyên model tả thực: game dùng hình cách điệu, màu phẳng, đường viền rõ.
 
 ### Dựng trong Blender
