@@ -143,6 +143,8 @@ public sealed class TelemetryBatchTests(PostgresApiFactory factory) : IClassFixt
     [InlineData("tooManyEvents")]
     [InlineData("badVersion")]
     [InlineData("badPlatform")]
+    [InlineData("versionTooLong")]
+    [InlineData("unknownField")]
     public async Task Rejects_a_broken_envelope_with_400(string variant)
     {
         using var client = factory.CreateClient();
@@ -158,6 +160,8 @@ public sealed class TelemetryBatchTests(PostgresApiFactory factory) : IClassFixt
                 break;
             case "badVersion": batch["gameVersion"] = "v0.3"; break;
             case "badPlatform": batch["platform"] = "linux"; break;
+            case "versionTooLong": batch["gameVersion"] = "12345678901234567.0.0"; break;
+            case "unknownField": batch["unexpected"] = "x"; break;
         }
 
         var response = await client.PostAsJsonAsync(BatchUrl, batch);
@@ -165,6 +169,40 @@ public sealed class TelemetryBatchTests(PostgresApiFactory factory) : IClassFixt
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         Assert.Equal(0, await CountEventsAsync(installationId));
+    }
+
+    [Fact]
+    public async Task Accepts_a_game_version_of_exactly_16_characters()
+    {
+        using var client = factory.CreateClient();
+        var installationId = Guid.NewGuid();
+        var batch = TelemetryPayloads.Batch(installationId, TelemetryPayloads.SessionStarted());
+        batch["gameVersion"] = "123456789012.0.0";
+
+        var response = await client.PostAsJsonAsync(BatchUrl, batch);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, await CountEventsAsync(installationId));
+    }
+
+    [Fact]
+    public async Task Leaves_event_id_out_of_a_rejection_when_it_is_missing_or_not_a_uuid()
+    {
+        using var client = factory.CreateClient();
+        var malformedId = TelemetryPayloads.SessionStarted();
+        malformedId["eventId"] = "not-a-uuid";
+        var batch = TelemetryPayloads.Batch(Guid.NewGuid(), new JsonObject(), malformedId);
+
+        var response = await client.PostAsJsonAsync(BatchUrl, batch);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var rejected = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("rejected");
+        Assert.Equal(2, rejected.GetArrayLength());
+        foreach (var entry in rejected.EnumerateArray())
+        {
+            Assert.False(entry.TryGetProperty("eventId", out _));
+            Assert.Equal("invalid", entry.GetProperty("reason").GetString());
+        }
     }
 
     [Fact]
