@@ -1,0 +1,75 @@
+{
+  "note": "Máy Ngân, đêm 1. Theo docs/kich-ban/dem-1.md mục 5.5 (PR #39). Lời thoại là bản nháp. Lô A nằm sẵn khi nhặt máy; game gửi lô B lúc nhảy giờ 21:26, lô C khoảng 21:35, lô D lúc 03:40 nếu người chơi đi ngủ.",
+  "scenarioId": "dem-1",
+  "lockTime": "21:00",
+  "lockDate": "Thứ Ba, 24 tháng 11",
+  "lockNotifyAgo": "4 phút trước",
+  "chatDay": "Hôm nay",
+  "albumDay": "Hôm nay",
+  "noTyping": true,
+  "startBatches": [ "A" ],
+  "contacts": [
+    {
+      "id": "me_ngan",
+      "name": "Mẹ",
+      "preview": "Ai đang cầm máy của con cô vậy? Cháu đọc được thì nhắn lại cho cô với.",
+      "status": "Không hoạt động",
+      "callNote": "Cuộc gọi đi, không ai bắt máy",
+      "messages": [
+        { "batch": "A", "from": "them", "time": "20:56", "text": "Ai đang cầm máy của con cô vậy? Cháu đọc được thì nhắn lại cho cô với." },
+        { "batch": "A", "from": "them", "time": "20:56", "text": "Cô là mẹ của Ngân, chủ cái máy này." },
+        { "batch": "A", "from": "them", "time": "20:56", "text": "Con bé giận cô, bỏ lên Đà Lạt từ hôm qua. Cô đang ở dưới Bến Tre, không lên kịp." },
+        { "batch": "A", "from": "them", "time": "20:56", "text": "Cháu giữ giùm cô cái máy vài hôm nha, nhớ sạc pin giùm cô." },
+        { "batch": "A", "from": "them", "time": "20:56", "text": "Cô xin cháu đừng đem lên công an. Con bé đang làm hồ sơ học bổng, dính tới công an là hỏng hết." },
+        { "batch": "A", "from": "them", "time": "20:56", "text": "Chỗ cháu nhặt máy có camera không cháu?" },
+
+        { "batch": "B", "from": "them", "time": "21:26", "text": "Cô cảm ơn cháu nhiều lắm." },
+        { "batch": "B", "answers": "giu_may", "from": "them", "time": "21:26", "text": "Vậy cô yên tâm rồi. Có gì cháu cứ nhắn cho cô." },
+        { "batch": "B", "answers": "cam_khong", "from": "them", "time": "21:26", "text": "Vậy thì thôi, không sao đâu cháu." },
+        { "batch": "B", "answers": "cam_co", "from": "them", "time": "21:26", "text": "Tiệm đầu hẻm hả cháu. Ừ, cô biết rồi." },
+        { "batch": "B", "answers": "cam_khong_biet", "from": "them", "time": "21:26", "text": "Không sao, cô hỏi vậy thôi." },
+        { "batch": "B", "answers": "hoi_nha_xe", "from": "them", "time": "21:26", "text": "Con bé cố tình bỏ lại đó cháu. Nó không muốn cô gọi được nó." },
+        { "batch": "B", "answers": "call", "from": "them", "time": "21:26", "text": "Cô đang ở chỗ đông người, cháu nhắn cho cô nhé." },
+        { "batch": "B", "from": "them", "time": "21:26", "text": "À, cô dặn cháu cái này: sẽ có một số lạ nhắn vô máy này, xưng là mẹ con Ngân." },
+        { "batch": "B", "from": "them", "time": "21:26", "text": "Đó là thằng bồ cũ của con bé giả làm cô. Cháu đừng trả lời nó nha." },
+
+        { "batch": "D", "answers": "giu_may", "from": "them", "time": "03:40", "text": "Vậy cô yên tâm rồi. Có gì cháu cứ nhắn cho cô." },
+        { "batch": "D", "answers": "cam_khong", "from": "them", "time": "03:40", "text": "Vậy thì thôi, không sao đâu cháu." },
+        { "batch": "D", "answers": "cam_co", "from": "them", "time": "03:40", "text": "Tiệm đầu hẻm hả cháu. Ừ, cô biết rồi." },
+        { "batch": "D", "answers": "cam_khong_biet", "from": "them", "time": "03:40", "text": "Không sao, cô hỏi vậy thôi." },
+        { "batch": "D", "answers": "hoi_nha_xe", "from": "them", "time": "03:40", "text": "Con bé cố tình bỏ lại đó cháu. Nó không muốn cô gọi được nó." },
+        { "batch": "D", "answers": "call", "from": "them", "time": "03:40", "text": "Cô đang ở chỗ đông người, cháu nhắn cho cô nhé." }
+      ],
+      "choices": [
+        { "id": "giu_may", "group": "giu_may", "text": "Dạ, cháu giữ máy giùm cô vài hôm." },
+        { "id": "cam_khong", "group": "camera", "text": "Dạ chỗ đó không có camera đâu cô." },
+        { "id": "cam_co", "group": "camera", "requires": "saw_shop_camera", "sets": "linh_knows_shop_camera", "text": "Dạ có, tiệm đầu hẻm có camera quay ra hẻm." },
+        { "id": "cam_khong_biet", "group": "camera", "text": "Dạ cháu cũng không biết nữa." },
+        { "id": "hoi_nha_xe", "group": "hoi_nha_xe", "sets": "asked_mom_why_here", "text": "Sao máy chị Ngân lại nằm dưới nhà xe vậy cô?" }
+      ]
+    },
+    {
+      "id": "so_la",
+      "name": "0918 352 476",
+      "preview": "Bong oi",
+      "autoRead": true,
+      "callNote": "Cuộc gọi đi 0:07, có người bắt máy, bạn không nói gì rồi tắt",
+      "callSets": "number_choice=replied",
+      "messages": [
+        { "batch": "C", "from": "them", "time": "21:35", "text": "Bong oi" },
+        { "batch": "C", "from": "them", "time": "21:35", "text": "Bong oi con o dau" },
+        { "batch": "C", "from": "them", "time": "21:36", "text": "Me goi con hoai ma khong duoc" },
+        { "batch": "C", "from": "them", "time": "21:36", "text": "Con nghe may di Bong" },
+        { "batch": "C", "from": "them", "time": "21:37", "text": "Con co sao khong, nhan cho me mot chu thoi cung duoc" },
+        { "batch": "C", "from": "them", "time": "21:37", "text": "Me lo lam" },
+        { "batch": "C", "from": "them", "time": "21:38", "text": "Bong oi con o dau" }
+      ],
+      "choices": [
+        { "id": "tra_loi", "group": "so_la", "sets": "number_choice=replied", "text": "Ai vậy ạ?" },
+        { "id": "chan", "group": "so_la", "block": true, "sets": "number_choice=blocked", "text": "Chặn số này" }
+      ]
+    }
+  ],
+  "photos": [],
+  "voiceMemos": []
+}
