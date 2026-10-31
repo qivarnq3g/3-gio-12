@@ -248,9 +248,10 @@ Giới hạn đã chấp nhận: game chạy offline nên người sửa tệp l
 
 | Tác nhân | Tương tác với | Yêu cầu |
 |---|---|---|
-| Người chơi | Game, website câu đố | 1 đến 8 |
+| Người chơi | Game, website câu đố; máy chủ API qua game | 1 đến 8, 13, 14 |
 | Quản trị viên | Trang quản trị | 9 đến 12 |
-| Game (tác nhân hệ thống) | Máy chủ API | 13, 14 |
+
+Game là một phần của hệ thống nên không phải tác nhân; khi game gọi API, game làm thay người chơi.
 
 ## 8. Quyết định và lý do
 
