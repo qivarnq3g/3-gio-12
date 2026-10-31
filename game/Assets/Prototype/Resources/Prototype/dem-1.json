@@ -1,5 +1,5 @@
 {
-  "note": "Máy Ngân, đêm 1. Khớp docs/kich-ban/dem-1.md mục 5.5. Lô A sẵn khi nhặt; lô B lúc 21:26 sau nhảy giờ; lô C khoảng 21:35; lô D lúc 03:40 nếu đi ngủ.",
+  "note": "Máy Ngân, đêm 1, theo docs/kich-ban/dem-1.md mục 5.5. Câu chữ lấy từ Story/night-one-dialogue.json qua 'line'; tệp này chỉ ghi lô và câu đáp. NightOneDirector gửi lô A khi nhặt máy, B lúc nhảy giờ 21:26, C lúc 21:35, D lúc 03:40 nếu đi ngủ.",
   "scenarioId": "dem-1",
   "lockTime": "21:00",
   "lockDate": "Thứ Ba, 24 tháng 11",
@@ -12,54 +12,188 @@
     {
       "id": "me_ngan",
       "name": "Mẹ",
-      "preview": "Chỗ cháu nhặt máy có camera không cháu?",
       "status": "Không hoạt động",
       "callNote": "Cuộc gọi đi, không ai nghe",
       "messages": [
-        { "batch": "A", "from": "them", "time": "20:56", "text": "Ai đang cầm máy của Ngân vậy cháu?" },
-        { "batch": "A", "from": "them", "time": "20:56", "text": "Cô là mẹ Ngân. Con bé đang đi Đà Lạt, giận cô." },
-        { "batch": "A", "from": "them", "time": "20:56", "text": "Cô đang ở Bến Tre, chưa lên lấy được." },
-        { "batch": "A", "from": "them", "time": "20:56", "text": "Cháu giữ máy giúp cô vài hôm, nhớ sạc giúp cô nhé." },
-        { "batch": "A", "from": "them", "time": "20:56", "text": "Cháu đừng đem lên công an, con bé đang làm hồ sơ học bổng." },
-        { "batch": "A", "from": "them", "time": "20:56", "text": "Chỗ cháu nhặt máy có camera không cháu?" },
-
-        { "batch": "B", "from": "them", "time": "21:26", "text": "Cô cảm ơn cháu đã giữ máy giúp." },
-        { "batch": "B", "answers": "camera:no", "from": "them", "time": "21:26", "text": "Ừ, cô hiểu rồi cháu." },
-        { "batch": "B", "answers": "camera:yes", "from": "them", "time": "21:26", "text": "Cô biết rồi, tiệm đầu hẻm phải không cháu." },
-        { "batch": "B", "answers": "camera:unknown", "from": "them", "time": "21:26", "text": "Ừ, cô hiểu rồi cháu." },
-        { "batch": "B", "answers": "why", "from": "them", "time": "21:26", "text": "Con bé cố tình bỏ máy lại vì giận cô." },
-        { "batch": "B", "answers": "call", "from": "them", "time": "21:26", "text": "Cô đang ở chỗ đông người, cháu nhắn cho cô nhé." },
-        { "batch": "B", "from": "them", "time": "21:26", "text": "Có số lạ xưng là mẹ nhắn tới. Đó là người yêu cũ giả làm cô, cháu đừng trả lời." },
-
-        { "batch": "D", "from": "them", "time": "03:40", "text": "Cô đã đọc những điều cháu hỏi tối qua. Sáng cháu đọc tin cô nhé." },
-        { "batch": "D", "answers": "camera:no", "from": "them", "time": "03:40", "text": "Ừ, cô hiểu rồi cháu." },
-        { "batch": "D", "answers": "camera:yes", "from": "them", "time": "03:40", "text": "Cô biết rồi, tiệm đầu hẻm phải không cháu." },
-        { "batch": "D", "answers": "camera:unknown", "from": "them", "time": "03:40", "text": "Ừ, cô hiểu rồi cháu." },
-        { "batch": "D", "answers": "why", "from": "them", "time": "03:40", "text": "Con bé cố tình bỏ máy lại vì giận cô." },
-        { "batch": "D", "answers": "call", "from": "them", "time": "03:40", "text": "Cô đang ở chỗ đông người, cháu nhắn cho cô nhé." }
+        {
+          "batch": "A",
+          "from": "them",
+          "time": "20:56",
+          "line": "batchA.0"
+        },
+        {
+          "batch": "A",
+          "from": "them",
+          "time": "20:56",
+          "line": "batchA.1"
+        },
+        {
+          "batch": "A",
+          "from": "them",
+          "time": "20:56",
+          "line": "batchA.2"
+        },
+        {
+          "batch": "A",
+          "from": "them",
+          "time": "20:56",
+          "line": "batchA.3"
+        },
+        {
+          "batch": "A",
+          "from": "them",
+          "time": "20:56",
+          "line": "batchA.4"
+        },
+        {
+          "batch": "A",
+          "from": "them",
+          "time": "20:56",
+          "line": "batchA.5"
+        },
+        {
+          "batch": "B",
+          "from": "them",
+          "time": "21:26",
+          "line": "batchB"
+        },
+        {
+          "batch": "B",
+          "answers": "camera:no",
+          "from": "them",
+          "time": "21:26",
+          "line": "cameraNo"
+        },
+        {
+          "batch": "B",
+          "answers": "camera:yes",
+          "from": "them",
+          "time": "21:26",
+          "line": "cameraYes"
+        },
+        {
+          "batch": "B",
+          "answers": "camera:unknown",
+          "from": "them",
+          "time": "21:26",
+          "line": "cameraNo"
+        },
+        {
+          "batch": "B",
+          "answers": "why",
+          "from": "them",
+          "time": "21:26",
+          "line": "why"
+        },
+        {
+          "batch": "B",
+          "answers": "call",
+          "from": "them",
+          "time": "21:26",
+          "line": "callReply"
+        },
+        {
+          "batch": "B",
+          "from": "them",
+          "time": "21:26",
+          "line": "warning"
+        },
+        {
+          "batch": "D",
+          "from": "them",
+          "time": "03:40",
+          "line": "batchD"
+        },
+        {
+          "batch": "D",
+          "answers": "camera:no",
+          "from": "them",
+          "time": "03:40",
+          "line": "cameraNo"
+        },
+        {
+          "batch": "D",
+          "answers": "camera:yes",
+          "from": "them",
+          "time": "03:40",
+          "line": "cameraYes"
+        },
+        {
+          "batch": "D",
+          "answers": "camera:unknown",
+          "from": "them",
+          "time": "03:40",
+          "line": "cameraNo"
+        },
+        {
+          "batch": "D",
+          "answers": "why",
+          "from": "them",
+          "time": "03:40",
+          "line": "why"
+        },
+        {
+          "batch": "D",
+          "answers": "call",
+          "from": "them",
+          "time": "03:40",
+          "line": "callReply"
+        }
       ],
       "choices": [
-        { "id": "camera:unknown", "group": "camera", "text": "Cháu không biết." },
-        { "id": "camera:no", "group": "camera", "text": "Ở nhà xe không có camera." },
-        { "id": "camera:yes", "group": "camera", "requires": "saw_shop_camera", "sets": "linh_knows_shop_camera", "text": "Có, tiệm đầu hẻm có camera." },
-        { "id": "why", "group": "why", "sets": "asked_mom_why_here", "text": "Vì sao máy ở nhà xe?" },
-        { "id": "call", "group": "call", "text": "Gọi Mẹ" }
+        {
+          "id": "camera:unknown",
+          "group": "camera",
+          "text": "Cháu không biết."
+        },
+        {
+          "id": "camera:no",
+          "group": "camera",
+          "text": "Ở nhà xe không có camera."
+        },
+        {
+          "id": "camera:yes",
+          "group": "camera",
+          "requires": "saw_shop_camera",
+          "sets": "linh_knows_shop_camera",
+          "text": "Có, tiệm đầu hẻm có camera."
+        },
+        {
+          "id": "why",
+          "group": "why",
+          "sets": "asked_mom_why_here",
+          "text": "Vì sao máy ở nhà xe?"
+        }
       ]
     },
     {
       "id": "so_la",
       "name": "0918 352 476",
-      "preview": "Bong oi",
       "autoRead": true,
       "callNote": "Cuộc gọi đi, có người phụ nữ bắt máy, bạn im lặng rồi tắt",
       "callSets": "number_choice=replied",
       "messages": [
-        { "batch": "C", "from": "them", "time": "21:35", "text": "Bong oi con o dau. Nghe may cua me di con." }
+        {
+          "batch": "C",
+          "from": "them",
+          "time": "21:35",
+          "line": "stranger"
+        }
       ],
       "choices": [
-        { "id": "blocked", "group": "so_la", "block": true, "sets": "number_choice=blocked", "text": "Chặn số này" },
-        { "id": "replied", "group": "so_la", "sets": "number_choice=replied", "text": "Trả lời / gọi lại số lạ" },
-        { "id": "ignored", "group": "so_la", "sets": "number_choice=ignored", "text": "Kệ số lạ" }
+        {
+          "id": "blocked",
+          "group": "so_la",
+          "block": true,
+          "sets": "number_choice=blocked",
+          "text": "Chặn số này"
+        },
+        {
+          "id": "replied",
+          "group": "so_la",
+          "sets": "number_choice=replied",
+          "text": "Ai vậy ạ?"
+        }
       ]
     }
   ],

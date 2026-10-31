@@ -44,6 +44,7 @@ namespace BaGio12.Prototype
     {
         public string from;     // "them", "me" or "system" (centred note such as a call or a block)
         public string text;
+        public string line;     // key into Story/night-one-dialogue.json ("batchA.0", "cameraYes"...); replaces text
         public string time;
         public float delay;     // seconds of "typing" before the message appears
         public string batch;    // batch it arrives with, e.g. "B"; empty = from the start

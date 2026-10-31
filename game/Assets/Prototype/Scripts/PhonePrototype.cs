@@ -187,6 +187,48 @@ namespace BaGio12.Prototype
                 data = new PrototypeData { lockTime = "21:00", lockDate = "Thứ Ba, 24 tháng 11" };
             }
             if (!string.IsNullOrEmpty(data.lockTime)) now = data.lockTime;
+            ResolveDialogueLines();
+        }
+
+        // Story lines live only in Story/night-one-dialogue.json (shared with NightOneDirector);
+        // the scenario file just says which line arrives in which batch.
+        void ResolveDialogueLines()
+        {
+            if (data?.contacts == null) return;
+            var asset = Resources.Load<TextAsset>("Story/night-one-dialogue");
+            var dialogue = asset != null ? JsonUtility.FromJson<NightDialogue>(asset.text) : null;
+            foreach (var c in data.contacts)
+                foreach (var m in c.messages)
+                    if (!string.IsNullOrEmpty(m.line)) m.text = DialogueLine(dialogue, m.line) ?? m.text ?? m.line;
+        }
+
+        static string DialogueLine(NightDialogue d, string key)
+        {
+            if (d == null) return null;
+            if (key.StartsWith("batchA."))
+                return int.TryParse(key.Substring(7), out int i) && d.batchA != null && i >= 0 && i < d.batchA.Length ? d.batchA[i] : null;
+            switch (key)
+            {
+                case "batchB": return d.batchB;
+                case "cameraYes": return d.cameraYes;
+                case "cameraNo": return d.cameraNo;
+                case "why": return d.why;
+                case "warning": return d.warning;
+                case "stranger": return d.stranger;
+                case "batchD": return d.batchD;
+                case "callReply": return d.callReply;
+                default: return null;
+            }
+        }
+
+        // Text the player sees for a choice, so NightOneDirector logs the same words.
+        public string ChoiceText(string contactId, string choiceId)
+        {
+            var c = data?.contacts?.Find(x => x.id == contactId);
+            if (c == null) return null;
+            if (choiceId == "call") return c.callNote;
+            var ch = c.choices?.Find(x => ChoiceId(x) == choiceId);
+            return ch?.text;
         }
 
         void LoadInitialBatches()
@@ -292,18 +334,18 @@ namespace BaGio12.Prototype
                 ApplyBatch("A");
             }
 
+            // Times of past sends are not kept in NightOneState, so they show the restored clock.
+            var afterJump = state.afterJumpQuestions ?? new List<string>();
             if (state.sent != null)
-            {
                 foreach (var s in state.sent)
-                {
-                    ApplySent("me_ngan/" + s, state.clock);
-                }
-            }
+                    if (!afterJump.Contains(s)) RestoreSent(s, state.clock);
 
             if (state.timeJumped)
             {
                 ApplyBatch("B");
             }
+
+            foreach (var s in afterJump) RestoreSent(s, state.clock);
 
             if (state.numberArrived)
             {
@@ -318,7 +360,7 @@ namespace BaGio12.Prototype
             }
             else if (state.number_choice == "replied")
             {
-                ApplyFlag("number_choice=replied");
+                ApplySent("so_la/replied", state.clock);
             }
 
             if (state.batchD)
@@ -327,6 +369,12 @@ namespace BaGio12.Prototype
             }
 
             Refresh();
+        }
+
+        void RestoreSent(string id, string time)
+        {
+            if (id == "call") ApplyCall("me_ngan", time);
+            else ApplySent("me_ngan/" + id, time);
         }
 
         void Apply(string entry)
@@ -681,7 +729,8 @@ namespace BaGio12.Prototype
                 var when = T(string.IsNullOrEmpty(data.lockNotifyAgo) ? "4 phút trước" : data.lockNotifyAgo, 26, Faint); when.style.marginLeft = 12; when.style.flexGrow = 1; head.Add(when);
                 note.Add(head);
                 var who = T(c.name, 34, Ink, boldFont); who.style.marginTop = 16; note.Add(who);
-                note.Add(T(c.preview, 34, Ink));
+                var tr = Transcript(c.id);
+                note.Add(T(tr.Count > 0 ? tr[tr.Count - 1].text : c.preview, 34, Ink));
                 s.Add(note);
             }
 

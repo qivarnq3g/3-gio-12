@@ -341,13 +341,7 @@ namespace BaGio12.Story
         {
             if (contactId == "me_ngan")
             {
-                string text = choiceId == "call" ? "Gọi Mẹ"
-                    : choiceId == "why" ? "Vì sao máy ở nhà xe?"
-                    : choiceId == "camera:yes" ? "Có, tiệm đầu hẻm có camera."
-                    : choiceId == "camera:no" ? "Ở nhà xe không có camera."
-                    : choiceId == "camera:unknown" ? "Cháu không biết."
-                    : choiceId;
-                Send(choiceId, text);
+                Send(choiceId, PhonePrototype.Instance?.ChoiceText(contactId, choiceId) ?? choiceId);
             }
             else if (contactId == "so_la")
             {
