@@ -292,9 +292,16 @@ def make_reference(path):
     doc.save(str(path))
 
 
-def finish_docx(path):
+def finish_docx(path, widths):
     doc = Document(str(path))
     doc.paragraphs[0].style = doc.styles["Cover Org"]
+    shapes = doc.inline_shapes
+    if len(shapes) != len(widths):
+        sys.exit(f"Số hình trong bản Word ({len(shapes)}) khác số hình đã dựng ({len(widths)})")
+    for shape, width in zip(shapes, widths):
+        target = Cm(width)
+        shape.height = int(shape.height * target / shape.width)
+        shape.width = target
     for table in doc.tables:
         rows = table.rows
         if not rows:
@@ -353,7 +360,7 @@ def main():
         reference = work / "reference.docx"
         make_reference(reference)
         subprocess.run(["pandoc", str(source), "-f", "markdown-auto_identifiers", "-o", str(output), "--reference-doc", str(reference), "--resource-path", str(ROOT), "--columns", "10000"], check=True)
-    finish_docx(output)
+    finish_docx(output, [float(w) for w in re.findall(r"\{width=([\d.]+)cm\}", combined)])
     print(f"Đã ghi {output}")
     for item in missing:
         print(f"Thiếu phần: {item}")
