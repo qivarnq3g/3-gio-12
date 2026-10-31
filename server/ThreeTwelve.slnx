@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ThreeTwelve.Api/ThreeTwelve.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ThreeTwelve.Api.Tests/ThreeTwelve.Api.Tests.csproj" />
+  </Folder>
+</Solution>
