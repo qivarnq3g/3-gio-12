@@ -89,11 +89,11 @@ Hai nhóm API:
 | API công khai | `/api/v1/telemetry/...`, `/api/v1/puzzles/...`, `/health` | Game | Không; chống lạm dụng bằng giới hạn tần suất theo địa chỉ IP (trong bộ nhớ) và giới hạn lượt sai theo mã cài đặt (trong cơ sở dữ liệu) |
 | API quản trị | `/api/admin/...`: đăng nhập, tài khoản, dashboard, xuất CSV, cấu hình câu đố, lịch sử gửi | Trang quản trị | ASP.NET Core Identity, cookie phiên |
 
-Đường dẫn chi tiết của API quản trị chốt ở task #12 và thêm vào `openapi.yaml`.
+Đường dẫn chi tiết của API quản trị nằm trong `openapi.yaml`; lớp và dịch vụ bên trong máy chủ ở [`luoc-do-lop-may-chu.md`](luoc-do-lop-may-chu.md) (task #12).
 
 ### 2.3. Cơ sở dữ liệu
 
-Các nhóm dữ liệu chính (lược đồ chi tiết ở task #12):
+Các nhóm dữ liệu chính (lược đồ chi tiết ở [`luoc-do-lop-may-chu.md`](luoc-do-lop-may-chu.md), task #12):
 
 | Dữ liệu | Nguồn ghi | Ghi chú |
 |---|---|---|
