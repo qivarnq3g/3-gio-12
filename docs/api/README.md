@@ -11,7 +11,24 @@ Nguồn duy nhất là [`openapi.yaml`](openapi.yaml) (OpenAPI 3.1). Tệp này 
 | `POST` | `/api/v1/puzzles/{puzzleId}/submissions` | Gửi bằng chứng của câu đố ngoài game | 7, 14 |
 | `GET` | `/health` | Kiểm máy chủ còn sống | |
 
-Các API cho trang quản trị (đăng nhập, dashboard, cấu hình câu đố) chưa nằm trong tệp này; chúng sẽ được thêm cùng task #12.
+API của trang quản trị, mọi đường dẫn bắt đầu bằng `/api/admin`:
+
+| Phương thức | Đường dẫn | Dùng khi | Yêu cầu chức năng |
+|---|---|---|---|
+| `POST` | `/auth/login`, `/auth/logout` | Đăng nhập, đăng xuất | 9 |
+| `GET` | `/auth/me` | Biết đã đăng nhập chưa, là ai | 9 |
+| `POST` | `/auth/password` | Đổi mật khẩu của chính mình | 9 |
+| `GET`, `POST` | `/accounts` | Xem, tạo tài khoản quản trị viên | 9 |
+| `PATCH`, `DELETE` | `/accounts/{accountId}` | Đổi tên, khóa, mở khóa, xóa tài khoản | 9 |
+| `POST` | `/accounts/{accountId}/password` | Đặt lại mật khẩu cho người khác | 9 |
+| `GET` | `/dashboard` | Số liệu dashboard theo khoảng thời gian | 10 |
+| `GET` | `/exports/{dataset}` | Xuất CSV số liệu tổng hợp hoặc toàn bộ sự kiện | 11 |
+| `GET` | `/puzzles`, `/puzzles/{puzzleId}` | Xem cấu hình câu đố | 12 |
+| `PATCH` | `/puzzles/{puzzleId}` | Bật, tắt, đổi giới hạn lượt gửi | 12 |
+| `POST`, `DELETE` | `/puzzles/{puzzleId}/solutions` | Thêm, bỏ mã băm hợp lệ | 12 |
+| `GET` | `/puzzles/{puzzleId}/submissions` | Lịch sử gửi | 12 |
+
+Lớp và bảng dữ liệu phía máy chủ ở `docs/thiet-ke/luoc-do-lop-may-chu.md`.
 
 ## Mã cài đặt và quyền riêng tư
 
@@ -85,11 +102,22 @@ Câu đố duy nhất theo kịch bản bản 5 có `puzzleId` là `red-thread-s
 - Hết lượt thì mọi lần gửi trong cửa sổ đều nhận `429`, kể cả bằng chứng đúng.
 - Gửi đúng không trừ lượt. Gửi lại bằng chứng đúng vẫn nhận `accepted`.
 - Thêm một giới hạn theo địa chỉ IP (20 lần mỗi phút) để chặn việc đổi `installationId` liên tục.
-- Máy chủ lưu mọi lần gửi (mã cài đặt, mã băm đã gửi, kết quả, thời gian) để trang quản trị xem lịch sử.
+- Máy chủ lưu mọi lần gửi (mã cài đặt, mã băm đã gửi, kết quả, thời gian) để trang quản trị xem lịch sử. Lần gửi bị chặn vì hết lượt được lưu với kết quả `blocked`; lần bị giới hạn theo địa chỉ IP thì không lưu.
+- Cửa sổ thời gian là cửa sổ trượt: số lượt sai là số lần `rejected` trong `attemptWindowMinutes` phút gần nhất. `windowResetsAt` là lúc lượt sai mới nhất trong cửa sổ hết hạn; chưa có lượt sai nào thì bằng giờ hiện tại. Khi bị chặn, `Retry-After` tính tới lúc lượt sai cũ nhất trong cửa sổ hết hạn, vì lúc đó có lại một lượt.
 
 ### Giới hạn đã chấp nhận
 
 Game chạy offline nên người chơi sửa tệp lưu vẫn tự mở được kết thúc 6.7. Hợp đồng này không chống gian lận phía máy; nó chỉ bảo đảm lời giải nằm ở máy chủ, không nằm trong bản build để bị đọc ra.
+
+## Trang quản trị
+
+- Trang quản trị và API cùng tên miền, nên đăng nhập dùng cookie phiên (`HttpOnly`, `Secure`, `SameSite=Strict`), không dùng token. Cookie hết hạn sau 8 giờ không hoạt động.
+- Không có cookie hợp lệ thì API trả `401`, không chuyển hướng sang trang đăng nhập; trang quản trị tự đưa người dùng về màn hình đăng nhập.
+- Mọi quản trị viên có cùng quyền. Đồ án không chia vai trò.
+- Tài khoản đầu tiên tạo lúc máy chủ khởi động nếu chưa có tài khoản nào, lấy email và mật khẩu từ biến môi trường `Admin__Email`, `Admin__Password`. Không ghi mật khẩu thật vào repo.
+- Luôn còn ít nhất một tài khoản hoạt động: không khóa, không xóa được tài khoản hoạt động cuối cùng, và không tự khóa hay tự xóa chính mình.
+- Khoảng thời gian `from`, `to` là nửa mở: tính `from`, không tính `to`. Trang quản trị gửi mốc nửa đêm theo giờ Việt Nam, ví dụ `2026-11-01T00:00:00+07:00`; máy chủ đổi sang UTC trước khi lọc.
+- Dashboard và CSV lọc theo giờ máy chủ nhận sự kiện (`receivedAt`), không theo `occurredAt`; lý do ở mục "Quy ước chung".
 
 ## Quy ước chung
 
