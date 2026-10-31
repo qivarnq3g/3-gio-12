@@ -206,6 +206,7 @@ public sealed class PuzzleSubmissionTests(PuzzleApiFactory factory) : IClassFixt
     [InlineData("""{"gameVersion":"0.3.0","sha256":"3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b"}""")]
     [InlineData("""{"installationId":"00000000-0000-0000-0000-000000000000","gameVersion":"0.3.0","sha256":"3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b"}""")]
     [InlineData("""{"installationId":"6f1c2a9e-3b7d-4c51-9a2e-0d8f4b6e1a73","gameVersion":"beta","sha256":"3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b"}""")]
+    [InlineData("""{"installationId":"6f1c2a9e-3b7d-4c51-9a2e-0d8f4b6e1a73","gameVersion":"12345678901234567.0.0","sha256":"3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b"}""")]
     [InlineData("""{"installationId":"6f1c2a9e-3b7d-4c51-9a2e-0d8f4b6e1a73","gameVersion":"0.3.0","sha256":"3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b","file":"x"}""")]
     public async Task Malformed_submissions_answer_400_and_store_nothing(string json)
     {
@@ -216,6 +217,20 @@ public sealed class PuzzleSubmissionTests(PuzzleApiFactory factory) : IClassFixt
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Empty(await factory.SubmissionResultsAsync(puzzleId, Guid.Parse("6f1c2a9e-3b7d-4c51-9a2e-0d8f4b6e1a73")));
+    }
+
+    [Fact]
+    public async Task Accepts_a_game_version_of_exactly_16_characters()
+    {
+        using var client = factory.CreateClient();
+        var puzzleId = await factory.CreatePuzzleAsync(solutions: Correct);
+        var installationId = Guid.NewGuid();
+
+        var response = await client.PostAsJsonAsync(Url(puzzleId),
+            new { installationId, gameVersion = "123456789012.0.0", sha256 = Correct });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(["accepted"], await factory.SubmissionResultsAsync(puzzleId, installationId));
     }
 
     [Fact]
