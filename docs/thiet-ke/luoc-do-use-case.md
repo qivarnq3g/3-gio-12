@@ -6,11 +6,10 @@ Tài liệu cho task #9, một trong ba phần bắt buộc của thuyết minh 
 
 | Tác nhân | Là ai | Dùng phần nào | Yêu cầu |
 |---|---|---|---|
-| Người chơi | Người cài và chơi game, không có tài khoản | Game | 1 đến 8 |
+| Người chơi | Người cài và chơi game, không có tài khoản | Game; máy chủ API (qua game) | 1 đến 8, 13, 14 |
 | Quản trị viên | Thành viên nhóm vận hành máy chủ | Trang quản trị | 9 đến 12 |
-| Game | Bản game đã cài, gọi API của máy chủ | Máy chủ API | 6, 13, 14 |
 
-Ở lược đồ tổng quát, game nằm bên trong hệ thống nên không phải tác nhân. Ở lược đồ phân hệ máy chủ, game là hệ thống bên ngoài gọi API vào, nên được vẽ thành tác nhân hệ thống.
+Game là một phần của hệ thống nên không vẽ thành tác nhân, kể cả ở lược đồ phân hệ máy chủ. Khi game gọi API (gửi thống kê, xóa thống kê, gửi bằng chứng), game làm thay người chơi, nên các use case đó nối với tác nhân Người chơi.
 
 Website câu đố là trang tĩnh, không nói chuyện với máy chủ và không thu dữ liệu (mục 2.5 của tài liệu kiến trúc), nên không có use case riêng. Người chơi tải tệp ở đó rồi gửi bằng chứng qua game.
 
@@ -34,7 +33,7 @@ Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Cá
 ![Lược đồ use case phân hệ máy chủ và trang quản trị](use-case/phan-he-may-chu.png)
 
 - Bốn việc của quản trị viên đều cần phiên đăng nhập, nên cùng «include» "Đăng nhập" (9). Phần quản lý tài khoản thuộc yêu cầu 9 (đăng nhập, tài khoản quản trị).
-- Ba use case của tác nhân Game ứng với ba API công khai: gửi lô thống kê (13), xóa thống kê theo mã cài đặt (6), gửi mã băm bằng chứng (14).
+- Ba use case của người chơi ở phía máy chủ ứng với ba API công khai mà game gọi thay người chơi: gửi lô thống kê (13), xóa thống kê theo mã cài đặt (6), gửi mã băm bằng chứng (14).
 
 ## 5. Đặc tả use case
 
@@ -70,7 +69,7 @@ Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Cá
 
 | Mục | Nội dung |
 |---|---|
-| Tác nhân | Người chơi; Game (phía máy chủ) |
+| Tác nhân | Người chơi |
 | Yêu cầu | 6 |
 | Luồng chính | 1. Lần chạy đầu, game hỏi người chơi có đồng ý gửi thống kê ẩn danh không. 2. Người chơi đồng ý. 3. Game tạo mã cài đặt (installationId), từ đó ghi sự kiện vào hàng đợi trên đĩa. |
 | Luồng khác | 2a. Người chơi từ chối: game không ghi sự kiện nào. 4. Sau này người chơi rút đồng ý trong Cài đặt: game xóa hàng đợi trên máy và gọi API xóa mọi sự kiện của mã cài đặt trên máy chủ. |
@@ -79,7 +78,7 @@ Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Cá
 
 | Mục | Nội dung |
 |---|---|
-| Tác nhân | Người chơi; Game (phía máy chủ) |
+| Tác nhân | Người chơi |
 | Yêu cầu | 7, 14 |
 | Tiền điều kiện | Câu đố đang bật; người chơi đã giải mã tệp lấy từ website câu đố |
 | Luồng chính | 1. Người chơi chọn tệp bằng chứng trong game. 2. Game tính mã băm SHA-256 trên máy; tệp không rời máy. 3. Game gửi mã băm lên máy chủ. 4. Máy chủ so với các mã băm hợp lệ. 5. Đúng: game nhận mã mở khóa và mở kết thúc thật. |
@@ -134,7 +133,7 @@ Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Cá
 
 | Mục | Nội dung |
 |---|---|
-| Tác nhân | Game |
+| Tác nhân | Người chơi (game tự gửi sau khi người chơi đồng ý) |
 | Yêu cầu | 13 |
 | Tiền điều kiện | Người chơi đã đồng ý gửi thống kê; có mạng |
 | Luồng chính | 1. Game lấy tối đa 100 sự kiện từ hàng đợi. 2. Gửi lên máy chủ. 3. Máy chủ lưu, bỏ qua sự kiện trùng mã. 4. Game xóa lô đã gửi khỏi hàng đợi. |
