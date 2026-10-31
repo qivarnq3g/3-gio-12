@@ -43,7 +43,7 @@ namespace BaGio12.Story
                     if(GUI.Button(new Rect(560,455,250,50),"Chơi lại đêm 1"))UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
                 }
             }
-            else if(story.player.ActivePhone!=0 && !story.Busy)DrawPhone();
+            else if(story.player.ActivePhone!=0 && !story.Busy && (story.player.ActivePhone==2 || BaGio12.Prototype.PhonePrototype.Instance==null))DrawPhone();
             else if(story.Modal!="")DrawModal();
             else if(!story.Busy)
             {

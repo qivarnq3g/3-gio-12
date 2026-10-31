@@ -4,12 +4,14 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
+using BaGio12.Gameplay;
+using BaGio12.Story;
 
 namespace BaGio12.Prototype
 {
     // Interactive in-game phone system: lock screen, home screen, Tic (chat),
     // Nimbo (photos), Ghi am (voice memos), Mosa (ARG/offline).
-    // Supports opening/closing during gameplay, choice persistence, and scenario loading.
+    // Synchronized with FirstPersonPlayer and NightOneDirector during gameplay.
     public class PhonePrototype : MonoBehaviour
     {
         public static PhonePrototype Instance { get; private set; }
@@ -41,30 +43,28 @@ namespace BaGio12.Prototype
         VisualElement hudPill;
         Label hudBadge, hudTime, clock;
         readonly Stack<System.Action> back = new Stack<System.Action>();
-        // shown[c] is always a prefix of transcript[c]; the rest is unread.
         readonly Dictionary<string, List<Message>> shown = new Dictionary<string, List<Message>>();
         readonly Dictionary<string, List<Message>> transcript = new Dictionary<string, List<Message>>();
 
-        // Story log, saved per scenario and replayed on load. Entries:
-        // "batch:B", "sent:me/cam_no@21:12", "call:me@21:15", "flag:saw_shop_camera=true".
+        // In-memory story state (does not pollute PlayerPrefs; synced with NightOneState and checkpoints).
         readonly List<string> log = new List<string>();
         readonly HashSet<string> delivered = new HashSet<string>();
         readonly HashSet<string> sent = new HashSet<string>();      // "contactId/choiceId", "contactId/call"
         readonly HashSet<string> answered = new HashSet<string>();  // same keys, once a batch has answered them
         readonly HashSet<string> blocked = new HashSet<string>();
         readonly Dictionary<string, string> flags = new Dictionary<string, string>();
-        string now;
+        string now = "21:00";
         Contact openChat;
         Coroutine typing;
         Coroutine audioPlayingCoroutine;
 
-        public bool IsOpen { get; private set; } = true;
+        public bool IsOpen { get; private set; } = false;
         private string currentScenario = "Prototype/dem-1";
+        FirstPersonPlayer boundPlayer;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
         {
-            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "SampleScene") return;
             if (FindAnyObjectByType<PhonePrototype>() != null) return;
             var go = new GameObject("PhonePrototype");
             go.AddComponent<PhonePrototype>();
@@ -84,7 +84,7 @@ namespace BaGio12.Prototype
         void Start()
         {
             LoadScenarioData(currentScenario);
-            LoadState();
+            LoadInitialBatches();
 
             uiFont = Resources.Load<Font>("Fonts/NotoSans-Regular") ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             boldFont = Resources.Load<Font>("Fonts/NotoSans-Bold") ?? uiFont;
@@ -106,38 +106,57 @@ namespace BaGio12.Prototype
             BuildHUD(rootContainer);
             BuildPhone(rootContainer);
 
-            // Default display: Phone open
-            SetPhoneOpen(true);
+            // Default display: Phone closed
+            SetPhoneOpen(false);
             ShowLock();
+
+            HookPlayer();
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+
+            var director = FindAnyObjectByType<NightOneDirector>();
+            if (director != null)
+            {
+                SyncWithState(director.State);
+            }
         }
 
-        void Update()
+        void OnDestroy()
         {
-            var kb = UnityEngine.InputSystem.Keyboard.current;
-            if (kb == null) return;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+            if (boundPlayer != null) boundPlayer.PhoneChanged -= OnPlayerPhoneChanged;
+        }
 
-            // Stand-ins for story events until the night-1 scene sends them (task #14). Editor and dev builds only.
-            if (Debug.isDebugBuild)
+        void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            HookPlayer();
+            var director = FindAnyObjectByType<NightOneDirector>();
+            if (director != null)
             {
-                if (kb.f5Key.wasPressedThisFrame) DeliverNextBatch();
-                if (kb.f6Key.wasPressedThisFrame) SetFlag("saw_shop_camera");
-                if (kb.f8Key.wasPressedThisFrame) { PlayerPrefs.DeleteKey(LogKey()); LoadScenario(currentScenario); }
+                SyncWithState(director.State);
             }
+        }
 
-            if (kb.tabKey.wasPressedThisFrame || kb.pKey.wasPressedThisFrame)
+        void HookPlayer()
+        {
+            if (boundPlayer != null) boundPlayer.PhoneChanged -= OnPlayerPhoneChanged;
+            boundPlayer = FindAnyObjectByType<FirstPersonPlayer>();
+            if (boundPlayer != null)
             {
-                TogglePhone();
+                boundPlayer.PhoneChanged += OnPlayerPhoneChanged;
+                if (hudPill != null) hudPill.style.display = DisplayStyle.None;
             }
-            else if (kb.escapeKey.wasPressedThisFrame && IsOpen)
+        }
+
+        void OnPlayerPhoneChanged(int previous, int next)
+        {
+            if (next == 1)
             {
-                if (back.Count > 0)
-                {
-                    GoBack();
-                }
-                else
-                {
-                    ClosePhone();
-                }
+                SetPhoneOpen(true);
+                ShowHome();
+            }
+            else
+            {
+                SetPhoneOpen(false);
             }
         }
 
@@ -145,7 +164,7 @@ namespace BaGio12.Prototype
         {
             currentScenario = scenarioResourcePath;
             LoadScenarioData(currentScenario);
-            LoadState();
+            LoadInitialBatches();
             SetClock(now);
             if (IsOpen) ShowHome();
             UpdateHudBadge();
@@ -165,17 +184,29 @@ namespace BaGio12.Prototype
             }
             else
             {
-                data = new PrototypeData { lockTime = "3:12", lockDate = "Thứ năm, 26 tháng 11" };
+                data = new PrototypeData { lockTime = "21:00", lockDate = "Thứ Ba, 24 tháng 11" };
             }
-            now = data.lockTime;
+            if (!string.IsNullOrEmpty(data.lockTime)) now = data.lockTime;
         }
 
-        // ---------- Story state (batches, sent lines, flags) ----------
+        void LoadInitialBatches()
+        {
+            log.Clear(); delivered.Clear(); sent.Clear(); answered.Clear(); blocked.Clear(); flags.Clear();
+            shown.Clear(); transcript.Clear();
+            if (data?.contacts == null) return;
 
-        // Called by the game on story events: "B" when the clock jumps to 21:26, "C" at 21:35, "D" if the player sleeps.
+            ApplyBatch(""); // messages with no batch
+            if (data.startBatches != null)
+            {
+                foreach (var b in data.startBatches) DeliverBatch(b);
+            }
+        }
+
+        // ---------- Story state synchronization (batches, sent lines, flags) ----------
+
         public void DeliverBatch(string batch)
         {
-            if (delivered.Contains(batch)) return;
+            if (string.IsNullOrEmpty(batch) || delivered.Contains(batch)) return;
             Record("batch:" + batch);
             Refresh();
         }
@@ -190,7 +221,6 @@ namespace BaGio12.Prototype
 
         public bool HasSent(string contactId, string choiceId) => sent.Contains(contactId + "/" + choiceId);
 
-        // Lines the player has sent to a contact, in order (night 2 needs what was sent to "Mẹ").
         public List<string> SentLines(string contactId)
         {
             var lines = new List<string>();
@@ -198,53 +228,105 @@ namespace BaGio12.Prototype
             return lines;
         }
 
-        // The clock follows story milestones (luật 7), so the game sets it; messages never move it.
         public string Now => now;
 
         public void SetClock(string time)
         {
             now = time;
             if (clock != null) clock.text = time;
-            if (hudTime != null) hudTime.text = time + "  [Tab]";
-        }
-
-        string LogKey()
-        {
-            string scenario = string.IsNullOrEmpty(data.scenarioId) ? currentScenario : data.scenarioId;
-            return $"BaGio12_{scenario}_Log";
+            if (hudTime != null) hudTime.text = time + "  [1]";
         }
 
         static string ChoiceId(Choice ch) => string.IsNullOrEmpty(ch.id) ? ch.text : ch.id;
-
-        void LoadState()
-        {
-            log.Clear(); delivered.Clear(); sent.Clear(); answered.Clear(); blocked.Clear(); flags.Clear();
-            shown.Clear(); transcript.Clear();
-            if (data?.contacts == null) return;
-
-            ApplyBatch("");  // messages with no batch
-            string saved = PlayerPrefs.GetString(LogKey(), "");
-            if (saved.Length == 0)
-            {
-                foreach (var b in data.startBatches) Record("batch:" + b);
-                return;
-            }
-            foreach (var entry in saved.Split('\n'))
-            {
-                if (entry.Length == 0) continue;
-                log.Add(entry);
-                Apply(entry);
-            }
-            // Everything before the save was already on screen once.
-            foreach (var c in data.contacts) MarkRead(c);
-        }
 
         void Record(string entry)
         {
             log.Add(entry);
             Apply(entry);
-            PlayerPrefs.SetString(LogKey(), string.Join("\n", log));
-            PlayerPrefs.Save();
+        }
+
+        public void RecordSentExternal(string choiceId, string text, string time)
+        {
+            string key = "me_ngan/" + choiceId;
+            if (sent.Contains(key)) return;
+            Record($"sent:{key}@{time}");
+            Refresh();
+        }
+
+        public void RecordChoiceExternal(string contactId, string choiceId)
+        {
+            if (contactId == "so_la")
+            {
+                if (choiceId == "blocked")
+                {
+                    ApplyFlag("number_choice=blocked");
+                    blocked.Add("so_la");
+                    Transcript("so_la").Add(new Message { from = "system", text = "Bạn đã chặn số này", time = now });
+                }
+                else if (choiceId == "replied")
+                {
+                    ApplyFlag("number_choice=replied");
+                }
+                else if (choiceId == "ignored")
+                {
+                    ApplyFlag("number_choice=ignored");
+                }
+                Refresh();
+            }
+        }
+
+        public void SyncWithState(NightOneState state)
+        {
+            if (state == null) return;
+            log.Clear(); delivered.Clear(); sent.Clear(); answered.Clear(); blocked.Clear(); flags.Clear();
+            shown.Clear(); transcript.Clear();
+            if (data?.contacts == null) return;
+
+            ApplyBatch("");
+            SetClock(state.clock);
+
+            if (state.saw_shop_camera) SetFlag("saw_shop_camera");
+
+            if (state.phoneEverPicked)
+            {
+                ApplyBatch("A");
+            }
+
+            if (state.sent != null)
+            {
+                foreach (var s in state.sent)
+                {
+                    ApplySent("me_ngan/" + s, state.clock);
+                }
+            }
+
+            if (state.timeJumped)
+            {
+                ApplyBatch("B");
+            }
+
+            if (state.numberArrived)
+            {
+                ApplyBatch("C");
+            }
+
+            if (state.number_choice == "blocked")
+            {
+                ApplyFlag("number_choice=blocked");
+                blocked.Add("so_la");
+                Transcript("so_la").Add(new Message { from = "system", text = "Bạn đã chặn số này", time = state.clock });
+            }
+            else if (state.number_choice == "replied")
+            {
+                ApplyFlag("number_choice=replied");
+            }
+
+            if (state.batchD)
+            {
+                ApplyBatch("D");
+            }
+
+            Refresh();
         }
 
         void Apply(string entry)
@@ -277,7 +359,7 @@ namespace BaGio12.Prototype
                     {
                         string key = c.id + "/" + m.answers;
                         if (!sent.Contains(key) || answered.Contains(key)) continue;
-                        nowAnswered.Add(key);  // several lines may answer the same question in one batch
+                        nowAnswered.Add(key);
                     }
                     Transcript(c.id).Add(m);
                 }
@@ -292,19 +374,22 @@ namespace BaGio12.Prototype
         {
             int slash = key.IndexOf('/');
             if (slash < 0) return;
-            var c = data.contacts.Find(x => x.id == key.Substring(0, slash));
-            var ch = c?.choices?.Find(x => ChoiceId(x) == key.Substring(slash + 1));
-            if (ch == null) return;  // script changed since the save
+            string contactId = key.Substring(0, slash);
+            string choiceId = key.Substring(slash + 1);
+            var c = data.contacts.Find(x => x.id == contactId);
+            var ch = c?.choices?.Find(x => ChoiceId(x) == choiceId);
+
             sent.Add(key);
-            if (!string.IsNullOrEmpty(ch.sets)) ApplyFlag(ch.sets);
-            if (ch.block)
+            if (ch != null && !string.IsNullOrEmpty(ch.sets)) ApplyFlag(ch.sets);
+            if (ch != null && ch.block)
             {
                 blocked.Add(c.id);
                 Transcript(c.id).Add(new Message { from = "system", text = "Bạn đã chặn số này", time = time });
                 return;
             }
-            Transcript(c.id).Add(new Message { from = "me", text = ch.text, time = time });
-            if (ch.replies != null) Transcript(c.id).AddRange(ch.replies);
+            string text = ch != null ? ch.text : choiceId;
+            Transcript(contactId).Add(new Message { from = "me", text = text, time = time });
+            if (ch != null && ch.replies != null) Transcript(contactId).AddRange(ch.replies);
         }
 
         void ApplyCall(string contactId, string time)
@@ -340,7 +425,6 @@ namespace BaGio12.Prototype
             sh.AddRange(Transcript(c.id));
         }
 
-        // Redraw whatever is on screen after the story state changed.
         void Refresh()
         {
             UpdateHudBadge();
@@ -350,24 +434,6 @@ namespace BaGio12.Prototype
                 case "tic": ShowTicList(); break;
                 case "chat": if (openChat != null) ShowChat(openChat); break;
                 case "lock": ShowLock(); break;
-            }
-        }
-
-        // F5: deliver the next batch in name order and move the clock to its first line.
-        void DeliverNextBatch()
-        {
-            var all = new SortedSet<string>();
-            foreach (var c in data.contacts)
-                foreach (var m in c.messages)
-                    if (!string.IsNullOrEmpty(m.batch)) all.Add(m.batch);
-            foreach (var b in all)
-            {
-                if (delivered.Contains(b)) continue;
-                var first = data.contacts.SelectMany(c => c.messages).FirstOrDefault(m => InBatch(m, b) && string.IsNullOrEmpty(m.answers));
-                if (first != null && !string.IsNullOrEmpty(first.time)) SetClock(first.time);
-                Debug.Log($"[PhonePrototype] Lô tin {b}");
-                DeliverBatch(b);
-                return;
             }
         }
 
@@ -385,17 +451,23 @@ namespace BaGio12.Prototype
             }
             if (hudPill != null)
             {
-                hudPill.style.display = open ? DisplayStyle.None : DisplayStyle.Flex;
+                hudPill.style.display = (open || boundPlayer != null) ? DisplayStyle.None : DisplayStyle.Flex;
                 UpdateHudBadge();
             }
 
-            if (open)
-            {
-                UnityEngine.Cursor.visible = true;
-                UnityEngine.Cursor.lockState = CursorLockMode.None;
-            }
-
             OnPhoneVisibilityChanged?.Invoke(open);
+        }
+
+        void CloseViaPlayerOrDirect()
+        {
+            if (boundPlayer != null && boundPlayer.ActivePhone != 0)
+            {
+                boundPlayer.SetPhone(0);
+            }
+            else
+            {
+                SetPhoneOpen(false);
+            }
         }
 
         void BuildHUD(VisualElement root)
@@ -417,7 +489,7 @@ namespace BaGio12.Prototype
             phoneIc.style.marginRight = 14;
             hudPill.Add(phoneIc);
 
-            hudTime = T(now + "  [Tab]", 26, Ink, boldFont);
+            hudTime = T(now + "  [1]", 26, Ink, boldFont);
             hudPill.Add(hudTime);
 
             hudBadge = new Label("1");
@@ -474,7 +546,7 @@ namespace BaGio12.Prototype
             phoneContainer.style.height = Length.Percent(100);
             phoneContainer.style.alignItems = Align.Center;
             phoneContainer.style.justifyContent = Justify.Center;
-            phoneContainer.style.backgroundColor = new Color(0, 0, 0, 0.65f); // semi-transparent backdrop
+            phoneContainer.style.backgroundColor = new Color(0, 0, 0, 0.65f);
 
             // Bezel
             var bezel = new VisualElement();
@@ -497,10 +569,10 @@ namespace BaGio12.Prototype
             Radius(topBar, 20);
             var closeIcon = Icon(IcClose, 26, Dim);
             topBar.Add(closeIcon);
-            var closeTxt = T(" Đóng [Tab]", 24, Dim, boldFont);
+            var closeTxt = T(" Đóng (Esc)", 24, Dim, boldFont);
             closeTxt.style.marginLeft = 8;
             topBar.Add(closeTxt);
-            topBar.RegisterCallback<PointerUpEvent>(_ => ClosePhone());
+            topBar.RegisterCallback<PointerUpEvent>(_ => CloseViaPlayerOrDirect());
             phoneContainer.Add(topBar);
 
             phoneContainer.Add(bezel);
@@ -558,6 +630,7 @@ namespace BaGio12.Prototype
             Pad(body, 3);
             var fill = new VisualElement(); fill.style.width = Length.Percent(level * 100); fill.style.flexGrow = 0; fill.style.height = Length.Percent(100);
             fill.style.backgroundColor = new Color(0.95f, 0.36f, 0.3f); Radius(fill, 3); body.Add(fill);
+            w.Add(body);
             var cap = new VisualElement(); cap.style.width = 4; cap.style.height = 10; cap.style.backgroundColor = Dim; cap.style.marginLeft = 2; Radius(cap, 2);
             w.Add(cap);
             return w;
@@ -605,7 +678,7 @@ namespace BaGio12.Prototype
                 var head = Row();
                 head.Add(AppIcon("Icons/icon-tic", 52));
                 var app = T("Tíc", 28, Dim, boldFont); app.style.marginLeft = 16; head.Add(app);
-                var when = T(string.IsNullOrEmpty(data.lockNotifyAgo) ? "vừa xong" : data.lockNotifyAgo, 26, Faint); when.style.marginLeft = 12; when.style.flexGrow = 1; head.Add(when);
+                var when = T(string.IsNullOrEmpty(data.lockNotifyAgo) ? "4 phút trước" : data.lockNotifyAgo, 26, Faint); when.style.marginLeft = 12; when.style.flexGrow = 1; head.Add(when);
                 note.Add(head);
                 var who = T(c.name, 34, Ink, boldFont); who.style.marginTop = 16; note.Add(who);
                 note.Add(T(c.preview, 34, Ink));
@@ -634,7 +707,6 @@ namespace BaGio12.Prototype
             var wd = T(data.lockDate, 34, Ink); Shadow(wd); widget.Add(wd);
             s.Add(widget);
 
-            // 4 Apps: Tic (chat), Nimbo (photos), Ghi am (voice memos), Mosa (ARG/browser)
             var grid = Row(); grid.style.marginTop = 110; grid.style.paddingLeft = 32; grid.style.paddingRight = 32; grid.style.justifyContent = Justify.SpaceAround;
             grid.Add(App("Icons/icon-tic", "Tíc", ShowTicList));
             grid.Add(App("Icons/icon-nimbo", "Nimbo", ShowNimbo));
@@ -665,7 +737,7 @@ namespace BaGio12.Prototype
             foreach (var c in data.contacts)
             {
                 var tr = Transcript(c.id);
-                if (tr.Count == 0) continue;  // nothing has arrived from this contact yet
+                if (tr.Count == 0) continue;
                 var row = Row(); row.style.paddingLeft = 48; row.style.paddingRight = 48; row.style.height = 168;
                 row.Add(Avatar(c.name, 108));
                 var col = new VisualElement(); col.style.marginLeft = 30; col.style.flexGrow = 1; col.style.flexShrink = 1;
@@ -728,7 +800,7 @@ namespace BaGio12.Prototype
 
             var choiceBox = new ScrollView(ScrollViewMode.Vertical); choiceBox.style.paddingLeft = 36; choiceBox.style.paddingRight = 36;
             choiceBox.style.flexShrink = 0; choiceBox.style.maxHeight = Length.Percent(40);
-            choiceBox.style.display = DisplayStyle.None;  // opened by tapping the input field
+            choiceBox.style.display = DisplayStyle.None;
             s.Add(choiceBox);
 
             var input = Row(); input.style.flexShrink = 0; input.style.marginLeft = 28; input.style.marginRight = 28; input.style.marginTop = 14; input.style.marginBottom = 76;
@@ -746,13 +818,12 @@ namespace BaGio12.Prototype
             Switch(s, ShowTicList, "chat");
 
             Message prev = null;
-            foreach (var m in Shown(c)) { cc.Add(Bubble(m, prev)); prev = m; }
+            foreach (var m in Shown(c)) { cc.Add(Bubble(m, prev, c)); prev = m; }
             typing = StartCoroutine(Play(c, scroll, presence, () => OfferChoices(c, scroll, presence, choiceBox, placeholder)));
         }
 
         string Status(Contact c) => string.IsNullOrEmpty(c.status) ? "Đang hoạt động" : c.status;
 
-        // Plays whatever has arrived but is not on screen yet, including lines added while it runs.
         IEnumerator Play(Contact c, ScrollView scroll, Label presence, System.Action done)
         {
             var cc = scroll.contentContainer;
@@ -773,8 +844,7 @@ namespace BaGio12.Prototype
                 var prev = sh.Count > 0 ? sh[sh.Count - 1] : null;
                 sh.Add(m);
                 if (m.from == "them") OnMessageReceived?.Invoke(m.text);
-                var b = Bubble(m, prev); cc.Add(b); ScrollEnd(scroll, b);
-                // Lines already waiting in the phone (lô tin nằm sẵn) show at once; typed ones get a beat.
+                var b = Bubble(m, prev, c); cc.Add(b); ScrollEnd(scroll, b);
                 if (animate || m.from == "me") yield return new WaitForSeconds(0.35f);
             }
             typing = null;
@@ -782,7 +852,6 @@ namespace BaGio12.Prototype
             done?.Invoke();
         }
 
-        // Fills the reply list; it stays closed until the player taps the input field.
         void OfferChoices(Contact c, ScrollView scroll, Label presence, ScrollView box, Label placeholder)
         {
             box.Clear();
@@ -808,7 +877,7 @@ namespace BaGio12.Prototype
                     box.Clear();
                     box.style.display = DisplayStyle.None;
                     placeholder.text = "Nhập tin nhắn..."; placeholder.style.color = Faint;
-                    if (blocked.Contains(c.id)) { ShowChat(c); return; }  // redraw the input as blocked
+                    if (blocked.Contains(c.id)) { ShowChat(c); return; }
                     typing = StartCoroutine(Play(c, scroll, presence, () => OfferChoices(c, scroll, presence, box, placeholder)));
                 });
                 box.Add(btn);
@@ -823,7 +892,7 @@ namespace BaGio12.Prototype
             head.Add(T("Ảnh", 68, Ink, boldFont)); head.Add(Icon(IcSearch, 40, Ink)); s.Add(head);
             var sync = Row(); sync.style.marginLeft = 56; sync.style.marginTop = 8;
             var dot = new VisualElement(); dot.style.width = dot.style.height = 14; Radius(dot, 7); dot.style.backgroundColor = new Color(0.95f, 0.65f, 0.25f); sync.Add(dot);
-            var st = T("Đã đồng bộ ảnh hiện trường", 28, Dim); st.style.marginLeft = 14; sync.Add(st); s.Add(sync);
+            var st = T("Đã sao lưu lên Nimbo", 28, Dim); st.style.marginLeft = 14; sync.Add(st); s.Add(sync);
             var day = T(string.IsNullOrEmpty(data.albumDay) ? "Hôm nay" : data.albumDay, 34, Ink, boldFont); day.style.marginLeft = 56; day.style.marginTop = 50; day.style.marginBottom = 18; s.Add(day);
 
             var grid = Row(); grid.style.flexWrap = Wrap.Wrap; grid.style.alignItems = Align.FlexStart; grid.style.paddingLeft = 20; grid.style.paddingRight = 20;
@@ -923,12 +992,10 @@ namespace BaGio12.Prototype
             head.Add(titleBox);
             s.Add(head);
 
-            // Audio Player Controls & Waveform simulation
             var playerBox = Glass();
             playerBox.style.marginTop = 36; playerBox.style.marginLeft = playerBox.style.marginRight = 40;
             playerBox.style.alignItems = Align.Center;
 
-            // Waveform equalizer bars
             var waveRow = Row(); waveRow.style.height = 90; waveRow.style.alignItems = Align.Center; waveRow.style.justifyContent = Justify.Center;
             var bars = new List<VisualElement>();
             for (int i = 0; i < 28; i++)
@@ -946,7 +1013,6 @@ namespace BaGio12.Prototype
             timer.style.marginTop = 16;
             playerBox.Add(timer);
 
-            // Play / Pause button
             var playButton = Circle(IcPlay);
             playButton.style.marginTop = 24;
             playButton.style.backgroundColor = Accent;
@@ -959,7 +1025,7 @@ namespace BaGio12.Prototype
                 if (isPlaying)
                 {
                     if (audioPlayingCoroutine != null) StopCoroutine(audioPlayingCoroutine);
-                    audioPlayingCoroutine = StartCoroutine(AnimateWaveform(bars, timer, memo.duration));
+                    audioPlayingCoroutine = StartCoroutine(AnimateWaveform(bars, timer, memo.duration, playButton, () => isPlaying = false));
                 }
                 else
                 {
@@ -969,10 +1035,9 @@ namespace BaGio12.Prototype
             playerBox.Add(playButton);
             s.Add(playerBox);
 
-            // Transcript (Giải mã âm thanh)
             var transBox = new VisualElement();
             transBox.style.marginTop = 36; transBox.style.marginLeft = transBox.style.marginRight = 40;
-            transBox.Add(T("Giải mã bản ghi âm:", 30, Faint, boldFont));
+            transBox.Add(T("Nội dung ghi âm:", 30, Faint, boldFont));
             var transCard = Glass(); transCard.style.marginTop = 14; transCard.style.backgroundColor = Raised;
             var transText = T(memo.transcript, 30, Ink);
             transText.style.whiteSpace = WhiteSpace.Normal;
@@ -983,14 +1048,25 @@ namespace BaGio12.Prototype
             Switch(s, ShowVoiceMemos, "memo_detail");
         }
 
-        IEnumerator AnimateWaveform(List<VisualElement> bars, Label timer, string totalDuration)
+        IEnumerator AnimateWaveform(List<VisualElement> bars, Label timer, string totalDuration, VisualElement playButton, System.Action onFinished)
         {
+            float totalSeconds = 0f;
+            var parts = (totalDuration ?? "").Split(':');
+            if (parts.Length == 2 && float.TryParse(parts[0], out float mins) && float.TryParse(parts[1], out float secs))
+            {
+                totalSeconds = mins * 60f + secs;
+            }
+            if (totalSeconds <= 0f) totalSeconds = 30f;
+
             float elapsed = 0f;
-            while (true)
+            while (elapsed < totalSeconds)
             {
                 elapsed += Time.deltaTime;
-                int secs = Mathf.FloorToInt(elapsed);
-                timer.text = $"00:{(secs % 60):D2} / {totalDuration}";
+                if (elapsed > totalSeconds) elapsed = totalSeconds;
+                int currentSecs = Mathf.FloorToInt(elapsed);
+                int m = currentSecs / 60;
+                int s = currentSecs % 60;
+                timer.text = $"{m:D2}:{s:D2} / {totalDuration}";
                 for (int i = 0; i < bars.Count; i++)
                 {
                     float wave = Mathf.Sin(elapsed * 8f + i * 0.4f);
@@ -998,6 +1074,12 @@ namespace BaGio12.Prototype
                 }
                 yield return null;
             }
+
+            for (int i = 0; i < bars.Count; i++) bars[i].style.height = 16 + (i % 6) * 10;
+            playButton.Clear();
+            playButton.Add(Icon(IcPlay, 44, Color.white));
+            audioPlayingCoroutine = null;
+            onFinished?.Invoke();
         }
 
         // ---------- Mosa (Browser / ARG) ----------
@@ -1005,11 +1087,9 @@ namespace BaGio12.Prototype
         {
             var s = AppScreen(); s.style.alignItems = Align.Center; s.style.justifyContent = Justify.Center;
             var ic = AppIcon("Icons/icon-mosa", 160); ic.style.opacity = 0.5f; s.Add(ic);
-            var t1 = T("Mosa Network", 40, Ink, boldFont); t1.style.marginTop = 40; s.Add(t1);
-            var t2 = T("Không có kết nối Internet tại khu vực này", 30, Dim); t2.style.marginTop = 10; s.Add(t2);
-            var t3 = T("Tín hiệu 4G bị nhiễu sóng lạ lúc " + now, 26, Faint); t3.style.marginTop = 10; s.Add(t3);
-            var retry = T("Thử dò lại sóng", 32, Accent, boldFont); retry.style.marginTop = 50;
-            retry.RegisterCallback<PointerUpEvent>(_ => retry.text = "Đang quét tần số...");
+            var t1 = T("Không có kết nối", 40, Ink, boldFont); t1.style.marginTop = 40; s.Add(t1);
+            var t2 = T("Kiểm tra Wi-Fi hoặc dữ liệu di động", 30, Dim); t2.style.marginTop = 10; s.Add(t2);
+            var retry = T("Thử lại", 32, new Color(0.62f, 0.55f, 0.85f), boldFont); retry.style.marginTop = 50;
             s.Add(retry);
             Switch(s, ShowHome, "mosa");
         }
@@ -1029,7 +1109,7 @@ namespace BaGio12.Prototype
 
         VisualElement AppScreen() { var s = new VisualElement(); s.style.backgroundColor = Surface; return s; }
 
-        VisualElement Bubble(Message m, Message prev)
+        VisualElement Bubble(Message m, Message prev, Contact c = null)
         {
             if (m.from == "system")
             {
@@ -1052,7 +1132,8 @@ namespace BaGio12.Prototype
             var t = T(m.text, 34, Ink); t.style.whiteSpace = WhiteSpace.Normal; b.Add(t);
             if (!string.IsNullOrEmpty(m.time))
             {
-                var tm = T(m.time + (mine ? "  Đã gửi" : ""), 22, mine ? new Color(1, 1, 1, 0.7f) : Faint);
+                string statusSuffix = mine ? "  Đã gửi" : (c != null && c.autoRead ? "  Đã đọc" : "");
+                var tm = T(m.time + statusSuffix, 22, mine ? new Color(1, 1, 1, 0.7f) : Faint);
                 tm.style.alignSelf = Align.FlexEnd; tm.style.marginTop = 4; b.Add(tm);
             }
             return b;
