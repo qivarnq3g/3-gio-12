@@ -3,12 +3,20 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using ThreeTwelve.Api.Data;
 using ThreeTwelve.Api.Health;
+using ThreeTwelve.Api.RateLimiting;
+using ThreeTwelve.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Database")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Database"))
+        .UseSnakeCaseNamingConvention());
 builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<ITelemetryIngestService, TelemetryIngestService>();
+builder.Services.AddScoped<IPuzzleSubmissionService, PuzzleSubmissionService>();
+builder.Services.AddProblemDetails();
+builder.Services.AddPublicRateLimits(builder.Configuration);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
@@ -35,6 +43,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions
         [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable,
     },
 });
+app.UseRateLimiter();
 app.MapControllers();
 
 app.Run();

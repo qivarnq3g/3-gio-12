@@ -55,11 +55,34 @@ dotnet tool restore
 dotnet ef migrations add <TenMigration> -p src/ThreeTwelve.Api -o Data/Migrations
 ```
 
+## Các API đã có
+
+| API | Task |
+|---|---|
+| `GET /health` | #18 |
+| `POST /api/v1/telemetry/batches`, `DELETE /api/v1/telemetry/installations/{installationId}` | #25 |
+| `POST /api/v1/puzzles/{puzzleId}/submissions` | #26 |
+
+Giới hạn tần suất theo địa chỉ IP: API thống kê 60 yêu cầu mỗi phút (biến `RateLimits__Telemetry__PermitLimit`), API gửi bằng chứng 20 yêu cầu mỗi phút (biến `RateLimits__PuzzleSubmit__PermitLimit`). Địa chỉ IP chỉ nằm trong bộ nhớ, không ghi vào cơ sở dữ liệu.
+
+Câu đố `red-thread-sandal` được migration tạo sẵn ở trạng thái tắt, chưa có mã băm hợp lệ, nên API trả `404` cho tới khi quản trị viên thêm mã băm và bật câu đố. Trang quản trị chưa có (task #27); trong lúc chờ, bật bằng SQL trên máy cá nhân:
+
+```sql
+insert into puzzle_solutions (puzzle_id, sha256, created_at) values ('red-thread-sandal', '<sha256 của tệp bằng chứng>', now());
+update puzzles set is_enabled = true where id = 'red-thread-sandal';
+```
+
+Lượt sai được đếm theo cửa sổ trượt cho từng cặp câu đố và mã cài đặt; hai lần gửi cùng lúc của một mã cài đặt được xếp hàng bằng `pg_advisory_xact_lock`, nên không lần nào vượt quá số lượt.
+
 ## Cấu trúc
 
 | Thư mục | Nội dung |
 |---|---|
-| `src/ThreeTwelve.Api/Controllers/` | Controller của API; chưa có, thêm ở task #25, #26, #27 |
-| `src/ThreeTwelve.Api/Data/` | `AppDbContext` và migration |
+| `src/ThreeTwelve.Api/Controllers/` | Controller: nhận yêu cầu, kiểm phần vỏ, trả mã HTTP |
+| `src/ThreeTwelve.Api/Contracts/` | Dữ liệu vào ra theo `docs/api/openapi.yaml` |
+| `src/ThreeTwelve.Api/Services/` | Quy tắc nghiệp vụ: kiểm từng sự kiện, bỏ trùng, xóa theo mã cài đặt, kiểm bằng chứng và đếm lượt sai |
+| `src/ThreeTwelve.Api/Domain/` | Lớp thực thể |
+| `src/ThreeTwelve.Api/Data/` | `AppDbContext` và migration; tên bảng, cột viết snake_case |
+| `src/ThreeTwelve.Api/RateLimiting/` | Giới hạn tần suất theo địa chỉ IP |
 | `src/ThreeTwelve.Api/Health/` | Định dạng phản hồi của `/health` theo hợp đồng API |
 | `tests/ThreeTwelve.Api.Tests/` | Test tích hợp chạy qua HTTP với PostgreSQL thật |
