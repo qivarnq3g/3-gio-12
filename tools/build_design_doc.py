@@ -50,6 +50,7 @@ LANDSCAPE_END = f"""```{{=openxml}}
 ```"""
 HEADING = re.compile(r"^(#{1,6})\s+(?:\d+(?:\.\d+)*\.?\s+)?(.*?)\s*$")
 FENCE = re.compile(r"^```\s*mermaid\s*$")
+IMAGE = re.compile(r"^!\[[^\]]*\]\((?!https?://)([^)\s]+\.png)\)\s*$")
 TOC_XML = """```{=openxml}
 <w:p><w:r><w:br w:type="page"/></w:r></w:p>
 <w:p><w:pPr><w:pStyle w:val="TOCHeading"/></w:pPr><w:r><w:t>Mục lục</w:t></w:r></w:p>
@@ -111,7 +112,7 @@ def rewrite_references(text, chapter, chapters):
     text = re.sub(r", quyết ở task #\d+", "", text)
     text = re.sub(r"(chương \d+), \1\b", r"\1", text)
     text = re.sub(r"(chương \d+) \(\1\)", r"\1", text)
-    text = re.sub(r"\[([^\]]+)\]\((?!https?://)[^)]+\)", r"\1", text)
+    text = re.sub(r"(?<!!)\[([^\]]+)\]\((?!https?://)[^)]+\)", r"\1", text)
     architecture = chapters["kien-truc-he-thong.md"]
 
     def section(match):
@@ -158,6 +159,12 @@ def mermaid_command():
     return [npx, "-y", "@mermaid-js/mermaid-cli"]
 
 
+def figure_lines(image, chapter, figure, title):
+    size, landscape = figure_size(*png_size(image))
+    line = f"![Hình {chapter}.{figure}. {title}]({image.as_posix()}){{width={size:.1f}cm}}"
+    return [LANDSCAPE_START, "", line, "", LANDSCAPE_END] if landscape else [line]
+
+
 def render_diagrams(text, chapter, work, cache):
     out, block, figure, title = [], None, 0, ""
     for line in text.splitlines():
@@ -183,10 +190,16 @@ def render_diagrams(text, chapter, work, cache):
                     cmd += ["-p", str(browser)]
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
             figure += 1
-            size, landscape = figure_size(*png_size(image))
-            line = f"![Hình {chapter}.{figure}. {title}]({image.as_posix()}){{width={size:.1f}cm}}"
-            out.extend([LANDSCAPE_START, "", line, "", LANDSCAPE_END] if landscape else [line])
+            out.extend(figure_lines(image, chapter, figure, title))
             block = None
+            continue
+        picture = IMAGE.match(line) if block is None else None
+        if picture:
+            image = DESIGN_DIR / picture.group(1)
+            if not image.exists():
+                sys.exit(f"Thiếu ảnh {image}")
+            figure += 1
+            out.extend(figure_lines(image, chapter, figure, title))
             continue
         if block is not None:
             block.append(line)
