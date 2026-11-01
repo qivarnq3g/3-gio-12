@@ -235,6 +235,8 @@ def build_markdown(work, cache):
         pieces.append(text)
     combined = "\n\n".join(pieces) + "\n"
     leftovers = sorted(set(re.findall(r"task #\d+", combined)) - {f"task #{t}" for n, t, _ in PARTS if f"{n} (task #{t})" in missing})
+    prose = re.sub(r"^```.*?^```", "", combined, flags=re.M | re.S)
+    leftovers += sorted(set(re.findall(r"(?<![\w&/#])#\d+\b", prose)) - set(leftovers))
     return combined, missing, leftovers
 
 
