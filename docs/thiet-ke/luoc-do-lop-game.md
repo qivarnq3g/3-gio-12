@@ -4,9 +4,9 @@ Phụ trách: Phúc. Phục vụ #11 và phần lược đồ lớp trong thuy�
 
 ## 1. Phạm vi và phiên bản đối chiếu
 
-Đối chiếu với `main` tại commit [`95b7317`](https://github.com/qivarnq3g/3-gio-12/tree/95b73172d47f7f7cb2bcee8f75c5eb6274cbfbb1), ngày 31/10/2026, sau khi ghép #6, #14 và tài liệu kiến trúc #10. Game hiện dùng **góc nhìn thứ nhất**. Phần máy chủ và web thuộc #12; ranh giới giữa các thành phần xem [kiến trúc hệ thống](kien-truc-he-thong.md).
+Đối chiếu với `main` tại commit [`95b7317`](https://github.com/qivarnq3g/3-gio-12/tree/95b73172d47f7f7cb2bcee8f75c5eb6274cbfbb1), ngày 31/10/2026, sau khi ghép #6, #14 và tài liệu kiến trúc #10. Game hiện dùng góc nhìn thứ nhất. Phần máy chủ và web thuộc #12; ranh giới giữa các thành phần xem [kiến trúc hệ thống](kien-truc-he-thong.md).
 
-Các sơ đồ dưới đây mô tả lớp **đã có trong code**. Chỉ liệt kê thành viên liên quan đến trách nhiệm và quan hệ chính, không chép toàn bộ hàm dựng UI, hàm Unity lifecycle hay cấu hình màn chơi. Các kiểu `MonoBehaviour`, `Camera`, `CharacterController`, `NavMeshAgent`, `InputActionAsset`, `UIDocument` là kiểu của Unity/package, không phải lớp tự viết.
+Các sơ đồ dưới đây mô tả lớp đã có trong code. Chỉ liệt kê thành viên liên quan đến trách nhiệm và quan hệ chính, không chép toàn bộ hàm dựng UI, hàm Unity lifecycle hay cấu hình màn chơi. Các kiểu `MonoBehaviour`, `Camera`, `CharacterController`, `NavMeshAgent`, `InputActionAsset`, `UIDocument` là kiểu của Unity/package, không phải lớp tự viết.
 
 | Ký hiệu | Ý nghĩa |
 |---|---|
@@ -17,7 +17,7 @@ Các sơ đồ dưới đây mô tả lớp **đã có trong code**. Chỉ liệ
 | `+`, `-`, `#` | Public, private, protected |
 | `0..1`, `0..*`, `1` | Số lượng ở đầu quan hệ; có thể thay đổi theo thời điểm chạy |
 
-Trường/property trên sơ đồ giữ nguyên tên code. Sự kiện được ghi bằng kiểu `Action`, delegate kiểm tra điều kiện bằng `Func`; phần giải thích chỉ rõ chiều phát và chiều đăng ký. Getter private không làm property trở thành private. Các quan hệ scene dùng association thay vì composition vì Unity quản lý vòng đời GameObject.
+Trường/property trên sơ đồ giữ nguyên tên code. Sự kiện được ghi bằng kiểu `Action`, delegate kiểm tra điều kiện bằng `Func`; phần giải thích chỉ rõ chiều phát và chiều đăng ký. Setter private không làm property trở thành private. Riêng `CheckpointService.Save` và `Restore` lược bỏ kiểu tham số trên hình để tránh chồng chữ; chữ ký đầy đủ xem source được liên kết tại mục 4. Các quan hệ scene dùng association thay vì composition vì Unity quản lý vòng đời GameObject.
 
 ## 2. Nhân vật, camera và tương tác
 
@@ -88,13 +88,13 @@ classDiagram
     WorldInteractable <|-- TestDoor
     WorldInteractable <|-- TestPickup
     WorldInteractable <|-- NightInteraction
-    FirstPersonPlayer --> "1" CharacterController : RequireComponent
-    FirstPersonPlayer --> "1" Camera : eyes
-    FirstPersonPlayer --> "0..1" WorldInteractable : target raycast
-    FirstPersonPlayer ..> PlayerGeometry : capsule va layer mask
-    TestDoor ..> PlayerGeometry : tranh dong len nhan vat
-    WorldInteractable ..> FirstPersonPlayer : tham so tuong tac
-    NightInteraction --> "0..1" NightOneDirector : tim trong scene khi can
+    FirstPersonPlayer --> "1" CharacterController : yêu cầu component
+    FirstPersonPlayer --> "1" Camera : camera eyes
+    FirstPersonPlayer --> "0..1" WorldInteractable : mục tiêu raycast
+    FirstPersonPlayer ..> PlayerGeometry : capsule và layer mask
+    TestDoor ..> PlayerGeometry : tránh đóng lên nhân vật
+    WorldInteractable ..> FirstPersonPlayer : tham số tương tác
+    NightInteraction --> "0..1" NightOneDirector : tìm trong scene khi cần
 ```
 
 `FirstPersonPlayer` đọc Unity Input System, điều khiển `CharacterController`, xoay camera và raycast tìm `WorldInteractable`. Không có lớp camera riêng: `eyes` là camera con, yaw ở transform nhân vật và pitch ở camera. `PlayerGeometry` tập trung kích thước capsule và layer mask; các chiều cao là hằng số, các mask là property tĩnh.
@@ -158,19 +158,19 @@ classDiagram
     class NavMeshAgent {
         <<Unity>>
     }
-    NightOneDirector --> "1" FirstPersonPlayer : dieu khien va dang ky event
-    NightOneDirector --> "0..*" NightObserver : observers
-    NightObserver --> "1" NightOneDirector : doc trang thai va bao phat hien
-    NightObserver --> "1" NavMeshAgent : di chuyen
-    NightObserver ..> ObserverMode : trang thai AI
-    NightOneHud --> "1" NightOneDirector : doc va goi hanh dong UI
-    NightRoomDoor --> "0..1" NightOneDirector : doc stage
-    NightRoomDoor ..> NightInteraction : RequireComponent
+    NightOneDirector --> "1" FirstPersonPlayer : điều khiển và đăng ký sự kiện
+    NightOneDirector --> "0..*" NightObserver : danh sách observers
+    NightObserver --> "1" NightOneDirector : đọc trạng thái và báo phát hiện
+    NightObserver --> "0..1" NavMeshAgent : di chuyển
+    NightObserver ..> ObserverMode : trạng thái AI
+    NightOneHud --> "1" NightOneDirector : đọc và gọi hành động UI
+    NightRoomDoor --> "0..1" NightOneDirector : đọc stage
+    NightRoomDoor ..> NightInteraction : yêu cầu component
 ```
 
 Bốn lớp `NightOneDirector`, `NightObserver`, `NightOneHud`, `NightRoomDoor` đều kế thừa `MonoBehaviour` (lược bỏ các mũi tên Unity ở sơ đồ này cho dễ đọc). `NightOneDirector` giữ trạng thái cốt truyện, điều kiện hành động, checkpoint và các observer được gán từ scene. Director đăng ký `FirstPersonPlayer.PhoneChanged` và `FellOutOfWorld`, đồng thời gán `CanOpenPhone`; nó gỡ đăng ký khi bị hủy.
 
-`NightObserver` tính tầm nhìn bằng khoảng cách, góc nhìn và raycast, tăng/giảm `Attention`, rồi chuyển `ObserverMode`; `NavMeshAgent` đảm nhiệm đường đi. Khi phát hiện hoặc bắt được người chơi, observer gọi director để xử lý tiếng hô và hậu quả. Director cũng gọi ngược observer để báo tiếng động hoặc reset. Đây là quan hệ hai chiều đang có, chưa tách thành hệ AI độc lập cho #20.
+`NightObserver` tính tầm nhìn bằng khoảng cách, góc nhìn và raycast, tăng/giảm `Attention`, rồi chuyển `ObserverMode`; `NavMeshAgent` đảm nhiệm đường đi khi observer có agent. Quan hệ `0..1` thể hiện tham chiếu có thể null; `Travel` bỏ qua di chuyển khi observer đứng yên hoặc agent null. Khi phát hiện hoặc bắt được người chơi, observer gọi director để xử lý tiếng hô và hậu quả. Director cũng gọi ngược observer để báo tiếng động hoặc reset. Đây là quan hệ hai chiều đang có, chưa tách thành hệ AI độc lập cho #20.
 
 `NightOneHud` vẽ UI qua IMGUI, đọc `story.State` và gọi hành động trên director. `NightRoomDoor` thay đổi `Collider.isTrigger` theo stage, không phải lớp con của `WorldInteractable`; component `NightInteraction` cùng GameObject mới xử lý E.
 
@@ -216,8 +216,8 @@ classDiagram
         -NightOneState snapshot
         -Vector3 position
         -float yaw
-        +Save(string id, NightOneState state, Vector3 point, float facing) void
-        +Restore(out NightOneState state, out Vector3 point, out float facing) bool
+        +Save(id, state, point, facing) void
+        +Restore(out state, out point, out facing) bool
     }
     class NightDialogue {
         <<Serializable>>
@@ -226,18 +226,18 @@ classDiagram
         +string stranger
         +string callReply
     }
-    NightOneDirector *-- "1" NightOneState : State hien hanh
-    NightOneDirector *-- "1" StoryClock : tao lai khi thay State
-    NightOneDirector *-- "1" CheckpointService : Checkpoints
-    NightOneDirector *-- "0..1" NightDialogue : nap JSON trong Awake
-    StoryClock --> "1" NightOneState : cap nhat clockDay va clock
-    CheckpointService *-- "0..1" NightOneState : snapshot ban sao
-    NightOneState ..> NightStage : stage
+    NightOneDirector *-- "1" NightOneState : State hiện hành
+    NightOneDirector *-- "1" StoryClock : tạo lại khi thay State
+    NightOneDirector *-- "1" CheckpointService : dịch vụ Checkpoints
+    NightOneDirector *-- "0..1" NightDialogue : nạp JSON trong Awake
+    StoryClock --> "1" NightOneState : cập nhật clockDay và clock
+    CheckpointService *-- "0..1" NightOneState : snapshot bản sao
+    NightOneState ..> NightStage : giai đoạn
 ```
 
 `NightOneState` là DTO serializable chứa tiến độ Đêm 1; sơ đồ chỉ chọn một số field đại diện. `Copy()` dùng `JsonUtility` serialize/deserialize để tạo bản sao. `StoryClock` giữ đúng instance state hiện hành và từ chối mốc thời gian đi lùi; director tạo lại clock sau khi thay state.
 
-`CheckpointService` giữ **một snapshot trong RAM**, vị trí và hướng quay. `Save` sao chép state đầu vào; `Restore` trả một bản sao khác, không đưa instance snapshot ra ngoài. `NightOneDirector` áp dụng lại state, pose và trạng thái thế giới. Riêng hồi phục an toàn trong prologue giữ hình phạt bị bắt, không gọi restore snapshot để xóa hình phạt.
+`CheckpointService` giữ một snapshot trong RAM, vị trí và hướng quay. `Save` sao chép state đầu vào; `Restore` trả một bản sao khác, không đưa instance snapshot ra ngoài. `NightOneDirector` áp dụng lại state, pose và trạng thái thế giới. Riêng hồi phục an toàn trong prologue giữ hình phạt bị bắt, không gọi restore snapshot để xóa hình phạt.
 
 Đây chưa phải lưu game bền vững: không ghi file, không đọc lại sau khi thoát ứng dụng, chưa lưu cài đặt hay nhiều slot. `schemaVersion` hiện là field của DTO, chưa có cơ chế migrate save từ đĩa. Các phần đó thuộc #21 và cần cập nhật sơ đồ khi triển khai.
 
@@ -295,18 +295,18 @@ classDiagram
     class UIDocument {
         <<Unity>>
     }
-    PhonePrototype *-- "0..1" PrototypeData : nap chat-mau JSON
-    PhonePrototype ..> UIDocument : AddComponent trong Start
-    PrototypeData *-- "0..*" Contact : contacts
-    PrototypeData *-- "0..*" Photo : photos
-    Contact *-- "0..*" Message : messages
-    Contact *-- "0..*" Choice : choices
-    Choice *-- "0..*" Message : replies
+    PhonePrototype *-- "0..1" PrototypeData : nạp JSON chat-mau
+    PhonePrototype ..> UIDocument : tạo component trong Start
+    PrototypeData *-- "0..*" Contact : danh sách liên hệ
+    PrototypeData *-- "0..*" Photo : danh sách ảnh
+    Contact *-- "0..*" Message : danh sách tin nhắn
+    Contact *-- "0..*" Choice : danh sách lựa chọn
+    Choice *-- "0..*" Message : danh sách trả lời
 ```
 
 `PhonePrototype` kế thừa `MonoBehaviour`; các DTO còn lại là lớp `[Serializable]` thông thường. `Boot()` là static private và chỉ tự khởi tạo trong `SampleScene`. Prototype dùng UI Toolkit/`UIDocument`, đọc `Resources/Prototype/chat-mau.json`, giữ lịch sử tin đã hiện trong RAM. Tin nhắn đã hiện được lưu trong `Dictionary<string, List<Message>> shown`; lựa chọn đã bấm nằm trong `HashSet<string> chose`.
 
-Prototype này **chưa nối** với director hoặc HUD của Đêm 1; vì vậy không vẽ quan hệ giữa `PhonePrototype` và `FirstPersonPlayer`/`NightOneDirector`. Việc thay UI giữ chỗ bằng điện thoại hoàn chỉnh thuộc #17, cần chốt lại các lớp và luồng dữ liệu khi ghép.
+Prototype này chưa nối với director hoặc HUD của Đêm 1; vì vậy không vẽ quan hệ giữa `PhonePrototype` và `FirstPersonPlayer`/`NightOneDirector`. Việc thay UI giữ chỗ bằng điện thoại hoàn chỉnh thuộc #17, cần chốt lại các lớp và luồng dữ liệu khi ghép.
 
 ## 6. Sự kiện thống kê và ranh giới gửi mạng
 
@@ -348,17 +348,17 @@ classDiagram
     NightTelemetry <|-- CaughtTelemetry
     NightTelemetry <|-- ChoiceTelemetry
     NightTelemetry <|-- EndingTelemetry
-    NightOneDirector ..> NightTelemetry : TelemetryProduced
-    NightOneDirector ..> NightStartedTelemetry : khoi dau hoac choi lai
-    NightOneDirector ..> NightCompletedTelemetry : hoan thanh dem
-    NightOneDirector ..> CaughtTelemetry : bi bat
-    NightOneDirector ..> ChoiceTelemetry : lua chon canonical
-    NightOneDirector ..> EndingTelemetry : ket thuc
+    NightOneDirector ..> NightTelemetry : sự kiện TelemetryProduced
+    NightOneDirector ..> NightStartedTelemetry : khởi đầu hoặc chơi lại
+    NightOneDirector ..> NightCompletedTelemetry : hoàn thành đêm
+    NightOneDirector ..> CaughtTelemetry : bị bắt
+    NightOneDirector ..> ChoiceTelemetry : lựa chọn chuẩn hóa
+    NightOneDirector ..> EndingTelemetry : kết thúc
 ```
 
 Director phát `TelemetryProduced` với payload có kiểu; `NightTelemetry` cung cấp UUID, session ID, sequence, thời điểm UTC và JSON. `InternalEvent` là kênh debug nội bộ `(string type, string detail)` riêng, không phải sự kiện HTTP theo OpenAPI. Các lớp payload không kế thừa `MonoBehaviour`.
 
-Trong code game đang đối chiếu **chưa có subscriber sản phẩm gửi HTTP**, consent, installation ID, batch, queue lưu đĩa hay retry. Sơ đồ không thêm lớp gửi mạng giả định; phần adapter game thuộc #25. API server đã có nhánh triển khai riêng không đồng nghĩa game đã gửi được thống kê.
+Trong code game đang đối chiếu chưa có subscriber sản phẩm gửi HTTP, consent, installation ID, batch, queue lưu đĩa hay retry. Sơ đồ không thêm lớp gửi mạng giả định; phần adapter game thuộc #25. API server đã có nhánh triển khai riêng không đồng nghĩa game đã gửi được thống kê.
 
 Khi làm adapter, cần chuyển đổi payload nội bộ sang DTO hợp đồng: `CaughtTelemetry.position` chỉ phục vụ cục bộ, không có trong event `player_caught` của OpenAPI; không gửi nguyên `ToJson()` của payload này lên endpoint có schema đóng. `installationId`, `gameVersion`, `platform` nằm ở envelope batch, không phải field của `NightTelemetry`. Việc gửi chỉ diễn ra khi người chơi đồng ý theo tài liệu kiến trúc/API.
 
