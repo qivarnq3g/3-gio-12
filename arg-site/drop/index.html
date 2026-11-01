@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lưu trữ khẩn cấp / Emergency Drop - Nguyễn Thảo Ngân</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body style="background-color: #121217; padding: 40px 0;">
+
+  <div class="drop-container">
+    <div class="drop-card">
+      <header class="drop-header">
+        <span class="drop-badge">Khu vực lưu trữ bảo mật</span>
+        <h1 class="drop-title">Lưu trữ khẩn cấp / Emergency Drop</h1>
+        <p class="drop-desc">Bản sao lưu bằng chứng khẩn cấp của Nguyễn Thảo Ngân (Phòng 7, Hẻm 12)</p>
+      </header>
+
+      <div class="drop-memo">
+        <strong>LỜI NHẮN KHẨN CẤP:</strong><br>
+        Nếu bạn truy cập được trang này từ những ghi chép trong máy của tôi: Tôi nhận thấy có kẻ bám theo và nghi ngờ có người đột nhập phòng 7 lúc 3 giờ sáng. Tôi đã chụp lại bằng chứng rõ ràng nhất về kẻ tình nghi (đôi dép lạ thắt sợi chỉ đỏ trên kệ giày). Toàn bộ dữ liệu đã được bảo mật để kẻ xấu không thể tiêu hủy.
+      </div>
+
+      <!-- Online Web Decryptor -->
+      <section class="decrypt-box">
+        <h3>1. Giải mã trực tiếp trên trình duyệt</h3>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 16px;">
+          Nhập mã mở két bảo mật (được mẹ Hòa lưu giữ hoặc ghi lại trong nhật ký) để giải mã và xem trước bằng chứng:
+        </p>
+
+        <div class="decrypt-input-group">
+          <input type="password" id="keyInput" class="decrypt-input" placeholder="Nhập mã bảo mật (6 chữ số)" maxlength="16" autofocus>
+          <button id="btnDecrypt" class="btn-decrypt">Mở khóa</button>
+        </div>
+        <div id="decryptMsg" class="decrypt-msg"></div>
+
+        <!-- Evidence Reveal Section -->
+        <div id="evidenceReveal" class="evidence-reveal">
+          <h4 style="color: #38bdf8; font-size: 1.1rem; margin-bottom: 8px;">BẰNG CHỨNG HỢP LỆ: ĐÔI DÉP CHỈ ĐỎ (red-thread-sandal)</h4>
+          <p style="color: #cbd5e1; font-size: 0.88rem;">Ảnh chụp bằng camera điện thoại tại kệ giày hành lang lúc 23:41 ngày 22/10/2026:</p>
+          
+          <img id="imgPreview" src="" alt="Bằng chứng đôi dép chỉ đỏ" class="evidence-img-preview">
+          
+          <div id="shaDisplay" class="hash-display"></div>
+
+          <a id="btnDownloadDecrypted" href="#" class="btn-download">Tải ảnh bằng chứng gốc (red-thread-sandal.jpg)</a>
+          <p style="color: #94a3b8; font-size: 0.82rem; margin-top: 10px;">
+            * Lưu ý: Giữ nguyên tệp tải về, không chụp lại màn hình hay nén lại để đảm bảo mã băm SHA-256 không bị thay đổi.
+          </p>
+        </div>
+      </section>
+
+      <!-- Offline Decryptor -->
+      <section class="drop-offline">
+        <h4>2. Tải gói nén mã hóa ngoại tuyến (Offline Archive)</h4>
+        <p>
+          Nếu muốn lưu trữ hoặc giải mã thủ công bằng phần mềm giải nén (WinRAR, 7-Zip, unzip) trên máy tính:
+        </p>
+        <p>
+          <a href="../assets/img/evidence/evidence-package.zip" class="read-more" style="color: #38bdf8; font-size: 0.95rem;">
+            &darr; Tải gói nén: <code>evidence-package.zip</code>
+          </a>
+        </p>
+        <p style="font-size: 0.85rem; color: #64748b;">
+          * Mật khẩu giải nén tệp zip chính là mã bảo mật trong game.
+        </p>
+      </section>
+
+      <!-- Game submission guideline -->
+      <section style="border-top: 1px dashed #334155; padding-top: 20px; margin-top: 24px; font-size: 0.85rem; color: #94a3b8;">
+        <p>
+          <strong>Hướng dẫn nộp bằng chứng trong game:</strong> Sau khi đạt kết thúc <em>"Về nhà"</em>, mở tính năng <em>"Gửi bằng chứng cho công an"</em>, chọn tệp ảnh <code>red-thread-sandal.jpg</code> vừa giải mã được. Game sẽ tự động tính SHA-256 và gửi mã băm lên máy chủ để mở khóa kết thúc thật.
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <script src="../assets/js/evidence_data.js"></script>
+  <script src="../assets/js/drop.js"></script>
+</body>
+</html>
