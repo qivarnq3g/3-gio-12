@@ -1,18 +1,36 @@
-import os
+"""Tạo tài nguyên cho website câu đố (arg-site).
+
+Mặc định chỉ dựng ảnh vỏ ở trang /drop: ảnh JPEG bình thường, nối thêm gói ZIP
+khóa bằng mã két. Tệp bằng chứng gốc và mã băm của nó KHÔNG được ghi vào website
+hay repo: tệp gốc nằm ở tools/out/arg-evidence/ (đã gitignore), mã băm chỉ in ra
+màn hình để quản trị viên nhập trên trang quản trị.
+
+    python tools/build_arg_site_assets.py                 # dựng lại ảnh vỏ, giữ tệp gốc cũ
+    python tools/build_arg_site_assets.py --new-evidence  # tạo tệp gốc mới (mã băm đổi)
+    python tools/build_arg_site_assets.py --images        # vẽ lại cả ảnh minh họa của blog
+"""
+import argparse
 import io
+import os
+import random
 import struct
+import sys
 import zlib
 import hashlib
-import base64
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
 
-OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "arg-site", "assets", "img")
-EVIDENCE_DIR = os.path.join(OUTPUT_DIR, "evidence")
+ROOT_DIR = os.path.join(os.path.dirname(__file__), "..")
+OUTPUT_DIR = os.path.join(ROOT_DIR, "arg-site", "assets", "img")
+DROP_DIR = os.path.join(ROOT_DIR, "arg-site", "drop")
+EVIDENCE_OUT_DIR = os.path.join(os.path.dirname(__file__), "out", "arg-evidence")
 
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(EVIDENCE_DIR, exist_ok=True)
-
-print(f"Generating assets into {OUTPUT_DIR}...")
+EVIDENCE_NAME = "red-thread-sandal.jpg"
+# Tên ảnh vỏ trông như ảnh chụp điện thoại; drop.js tải đúng tên này.
+CARRIER_NAME = "IMG_20261022_234117.jpg"
+VAULT_CODE = b"472619"
+# Giờ ghi trong ZIP: 22/10/2026 23:41:16 (giờ DOS chỉ lưu giây chẵn).
+ZIP_DOS_TIME = (23 << 11) | (41 << 5) | (16 // 2)
+ZIP_DOS_DATE = ((2026 - 1980) << 9) | (10 << 5) | 22
 
 # 1. Avatar: Warm, gentle portrait/sketch representing Ngan
 def make_avatar():
@@ -154,18 +172,40 @@ def make_evidence_photo():
     draw.text((600, 540), timestamp_text, fill=(210, 160, 40))
 
     # Add subtle camera noise/grain
-    noise = Image.effect_noise((800, 600), 12)
+    # Hạt nhiễu ngẫu nhiên thật: mỗi lần --new-evidence ra tệp (và mã băm) khác.
+    # Image.effect_noise cho cùng kết quả mỗi lần chạy nên không dùng được.
+    rng = random.Random(os.urandom(16))
+    noise = Image.frombytes("L", (800, 600), bytes(
+        min(255, max(0, int(rng.gauss(128, 12)))) for _ in range(800 * 600)))
     img = Image.blend(img, noise.convert("RGB"), 0.08)
 
-    path = os.path.join(EVIDENCE_DIR, "red-thread-sandal.jpg")
-    img.save(path, "JPEG", quality=92)
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=92)
+    return buf.getvalue()
+
+def load_or_make_evidence(force_new: bool) -> bytes:
+    # Giữ nguyên tệp gốc giữa các lần dựng để mã băm trên máy chủ không đổi.
+    path = os.path.join(EVIDENCE_OUT_DIR, EVIDENCE_NAME)
+    if os.path.exists(path) and not force_new:
+        print(f"Reusing evidence photo: {path}")
+        with open(path, "rb") as f:
+            return f.read()
+    os.makedirs(EVIDENCE_OUT_DIR, exist_ok=True)
+    content = make_evidence_photo()
+    with open(path, "wb") as f:
+        f.write(content)
     print(f"Created evidence photo: {path}")
-    
-    with open(path, "rb") as f:
-        content = f.read()
-    sha256 = hashlib.sha256(content).hexdigest()
-    print(f"SHA-256 of red-thread-sandal.jpg: {sha256}")
-    return path, content, sha256
+    return content
+
+def make_carrier_cover(evidence: bytes) -> bytes:
+    # Ảnh vỏ: chính tấm ảnh nhưng mờ và tối như chụp hỏng, không dùng thay bằng chứng được.
+    img = Image.open(io.BytesIO(evidence)).convert("RGB")
+    small = img.resize((img.width // 10, img.height // 10), Image.BILINEAR)
+    img = small.resize(img.size, Image.BILINEAR).filter(ImageFilter.GaussianBlur(6))
+    img = ImageEnhance.Brightness(img).enhance(0.45)
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=70)
+    return buf.getvalue()
 
 # ZipCrypto standard implementation
 class ZipCrypto:
@@ -187,10 +227,12 @@ class ZipCrypto:
         self._update(c)
         return c ^ k
 
-def make_encrypted_zip(filename: str, data: bytes, password: bytes) -> bytes:
+def make_encrypted_zip(filename: str, data: bytes, password: bytes, base_offset: int = 0) -> bytes:
+    # base_offset: số byte đứng trước gói ZIP trong tệp (ảnh vỏ). Ghi offset tuyệt đối
+    # để 7-Zip, WinRAR và drop.js đọc được mà không phải dò lại.
     crc = zlib.crc32(data) & 0xffffffff
     check_byte = (crc >> 24) & 0xff
-    header = b'\x00' * 11 + bytes([check_byte])
+    header = os.urandom(11) + bytes([check_byte])
     zc = ZipCrypto(password)
     enc_header = bytes([zc.encrypt_byte(b) for b in header])
     enc_data = bytes([zc.encrypt_byte(b) for b in data])
@@ -201,39 +243,41 @@ def make_encrypted_zip(filename: str, data: bytes, password: bytes) -> bytes:
     usize = len(data)
     
     # Local file header
-    lfh = struct.pack('<IHHHHHIIIHH', 0x04034b50, 20, 1, 0, 0, 0, crc, csize, usize, len(fname_bytes), 0) + fname_bytes + payload
-    
+    lfh = struct.pack('<IHHHHHIIIHH', 0x04034b50, 20, 1, 0, ZIP_DOS_TIME, ZIP_DOS_DATE, crc, csize, usize, len(fname_bytes), 0) + fname_bytes + payload
+
     # Central directory
-    cd = struct.pack('<IHHHHHHIIIHHHHHII', 0x02014b50, 20, 20, 1, 0, 0, 0, crc, csize, usize, len(fname_bytes), 0, 0, 0, 0, 0, 0) + fname_bytes
-    
+    cd = struct.pack('<IHHHHHHIIIHHHHHII', 0x02014b50, 20, 20, 1, 0, ZIP_DOS_TIME, ZIP_DOS_DATE, crc, csize, usize, len(fname_bytes), 0, 0, 0, 0, 0, base_offset) + fname_bytes
+
     # End of central directory
-    eocd = struct.pack('<IHHHHIIH', 0x06054b50, 0, 0, 1, 1, len(cd), len(lfh), 0)
+    eocd = struct.pack('<IHHHHIIH', 0x06054b50, 0, 0, 1, 1, len(cd), base_offset + len(lfh), 0)
     return lfh + cd + eocd
 
-make_avatar()
-make_meo_na()
-make_theu_ca_bong()
-make_hem_12()
-img_path, img_bytes, img_sha256 = make_evidence_photo()
+def main():
+    parser = argparse.ArgumentParser(description="Dựng tài nguyên cho website câu đố")
+    parser.add_argument("--images", action="store_true", help="vẽ lại ảnh minh họa của blog")
+    parser.add_argument("--new-evidence", action="store_true", help="tạo tệp bằng chứng gốc mới")
+    args = parser.parse_args()
+    # Console Windows mặc định cp1252, không in được tiếng Việt.
+    sys.stdout.reconfigure(encoding="utf-8")
 
-# Create encrypted zip package with password '472619'
-zip_bytes = make_encrypted_zip("red-thread-sandal.jpg", img_bytes, b"472619")
-zip_path = os.path.join(EVIDENCE_DIR, "evidence-package.zip")
-with open(zip_path, "wb") as f:
-    f.write(zip_bytes)
-print(f"Created encrypted zip: {zip_path} (Password: 472619)")
+    if args.images:
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        make_avatar()
+        make_meo_na()
+        make_theu_ca_bong()
+        make_hem_12()
 
-# Also create base64 string for direct client-side decryptor in drop.js
-b64_data = base64.b64encode(img_bytes).decode('ascii')
-payload_js_path = os.path.join(os.path.dirname(__file__), "..", "arg-site", "assets", "js", "evidence_data.js")
-os.makedirs(os.path.dirname(payload_js_path), exist_ok=True)
-with open(payload_js_path, "w", encoding="utf-8") as f:
-    f.write(f"// Encrypted data container for browser-based decryptor\n")
-    f.write(f"window.__EVIDENCE_DATA__ = {{\n")
-    f.write(f"  fileName: 'red-thread-sandal.jpg',\n")
-    f.write(f"  sha256: '{img_sha256}',\n")
-    f.write(f"  expectedKey: '472619',\n")
-    f.write(f"  base64: '{b64_data}'\n")
-    f.write(f"}};\n")
-print(f"Created {payload_js_path}")
-print("Assets generation complete!")
+    evidence = load_or_make_evidence(args.new_evidence)
+    cover = make_carrier_cover(evidence)
+    zip_bytes = make_encrypted_zip(EVIDENCE_NAME, evidence, VAULT_CODE, base_offset=len(cover))
+    carrier_path = os.path.join(DROP_DIR, CARRIER_NAME)
+    with open(carrier_path, "wb") as f:
+        f.write(cover + zip_bytes)
+    print(f"Created carrier image: {carrier_path}")
+
+    print()
+    print("SHA-256 của tệp bằng chứng gốc (nhập trên trang quản trị, KHÔNG ghi vào repo):")
+    print(hashlib.sha256(evidence).hexdigest())
+
+if __name__ == "__main__":
+    main()
