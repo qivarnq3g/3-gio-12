@@ -25,13 +25,15 @@ Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** c
 | `Models/Environment/env_homeware_shop.fbx` | Nhóm tự dựng trong Blender 5.2 bằng script theo khối thô cửa hàng đồ gia dụng đêm 2 (6.114 tam giác) | Của nhóm | 01/11/2026 |
 | `Models/Environment/env_rice_shop.fbx` | Nhóm tự dựng trong Blender 5.2 bằng script theo khối thô quán cơm đêm 2 (3.820 tam giác) | Của nhóm | 01/11/2026 |
 | `Models/Environment/env_gas_station.fbx` | Nhóm tự dựng trong Blender 5.2 bằng script theo khối thô cây xăng đêm 3, cửa ki-ốt là object riêng (1.436 tam giác) | Của nhóm | 01/11/2026 |
-| `Models/Environment/env_main_road.fbx` | Nhóm tự dựng trong Blender 5.2 bằng script theo khối thô đoạn đường lớn đêm 2-3: mặt đường, vỉa hè, 152 nhà phố, đèn đường, đèn giao thông có ba bóng tách riêng mỗi hướng (90.688 tam giác) | Của nhóm | 01/11/2026 |
+| `Models/Environment/env_main_road.fbx` | Nhóm tự dựng trong Blender 5.2 bằng script theo khối thô đoạn đường lớn đêm 2-3: mặt đường, vỉa hè, 152 nhà phố nhiều kiểu, cột điện và dây, cây, xe máy, rác, đèn đường, đèn giao thông (156.896 tam giác) | Của nhóm | 01/11/2026 |
 
 # Ảnh vân
 
 | Tệp | Nguồn | Giấy phép | Ngày |
 |---|---|---|---|
 | `Textures/T_SignHomeware.png`, `T_SignRice.png`, `T_SignFuel.png`, `T_MenuRice.png` | Nhóm vẽ bằng script Python (Pillow) với phông Noto Sans trong `Assets/Prototype/Resources/Fonts/`; tên cửa hàng tự đặt, không có thương hiệu thật | Của nhóm; phông theo SIL Open Font License 1.1 | 01/11/2026 |
+| `Textures/T_TileFacade.png`, `T_TileShutter.png`, `T_TileSidewalk.png`, `T_TileAsphalt.png` | Nhóm vẽ bằng script Python (NumPy, Pillow): vân lặp gần trắng, vết ố, gạch vỉa hè, nhựa đường vá | Của nhóm | 01/11/2026 |
+| `Textures/T_SignStreet.png` | Nhóm vẽ bằng script Python (Pillow) với phông Noto Sans: tám biển tên loại cửa hàng chung chung, không có tên riêng hay thương hiệu | Của nhóm; phông theo SIL Open Font License 1.1 | 01/11/2026 |
 
 # Phông chữ
 
