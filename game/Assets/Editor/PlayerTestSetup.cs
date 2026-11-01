@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering.Universal;
 
 public static class PlayerTestSetup
 {
@@ -21,9 +22,24 @@ public static class PlayerTestSetup
         obj.transform.position = pos; obj.transform.localScale = scale;
         obj.GetComponent<Renderer>().sharedMaterial = mat; return obj;
     }
+    public static void ConfigureLayers()
+    {
+        var settings=new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset")[0]);
+        var layers=settings.FindProperty("layers");
+        foreach(string name in new[]{"Player","FirstPersonArms"})
+        {
+            if(LayerMask.NameToLayer(name)>=0)continue;
+            bool assigned=false;
+            for(int i=8;i<layers.arraySize;i++)if(string.IsNullOrEmpty(layers.GetArrayElementAtIndex(i).stringValue))
+            {layers.GetArrayElementAtIndex(i).stringValue=name;assigned=true;break;}
+            if(!assigned)throw new Exception("No free layer for "+name);
+            settings.ApplyModifiedProperties();
+        }
+    }
     [MenuItem("3 Gio 12/Create Player Test Scene")]
     public static void Create()
     {
+        ConfigureLayers();
         Directory.CreateDirectory("Assets/Scenes/PlayerTestMaterials"); AssetDatabase.Refresh();
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         var gray = Mat("Concrete", new Color(.4f,.43f,.46f));
@@ -46,12 +62,12 @@ public static class PlayerTestSetup
         var light = new GameObject("Sun").AddComponent<Light>(); light.type = LightType.Directional;
         light.intensity = 1.5f; light.transform.rotation = Quaternion.Euler(50,-30,0);
         RenderSettings.ambientLight = new Color(.5f,.5f,.5f);
-        var player = new GameObject("Player"); player.layer = 2;
+        var player = new GameObject("Player"); player.layer = PlayerGeometry.PlayerLayer;
         player.transform.position = new Vector3(0,.1f,-3);
-        var cc = player.AddComponent<CharacterController>(); cc.height = 1.8f; cc.radius = .3f;
-        cc.center = Vector3.up * .9f; cc.skinWidth = .02f; cc.stepOffset = .25f;
-        var camObject = new GameObject("Main Camera"); camObject.tag = "MainCamera"; camObject.layer = 2;
-        camObject.transform.SetParent(player.transform, false); camObject.transform.localPosition = Vector3.up * 1.6f;
+        var cc = player.AddComponent<CharacterController>(); cc.height = PlayerGeometry.StandingHeight; cc.radius = PlayerGeometry.Radius;
+        cc.center = Vector3.up * (PlayerGeometry.StandingHeight/2); cc.skinWidth = PlayerGeometry.SkinWidth; cc.stepOffset = PlayerGeometry.StepOffset;
+        var camObject = new GameObject("Main Camera"); camObject.tag = "MainCamera"; camObject.layer = PlayerGeometry.PlayerLayer;
+        camObject.transform.SetParent(player.transform, false); camObject.transform.localPosition = Vector3.up * PlayerGeometry.StandingEye;
         var cam = camObject.AddComponent<Camera>(); cam.nearClipPlane = .03f; cam.fieldOfView = 70;
         camObject.AddComponent<AudioListener>();
         var controller = player.AddComponent<FirstPersonPlayer>(); controller.eyes = cam;
@@ -61,10 +77,16 @@ public static class PlayerTestSetup
         for (int i=0;i<2;i++)
         {
             var arm = Box(i == 0 ? "Left forearm placeholder" : "Right forearm placeholder", Vector3.zero, new Vector3(.085f,.085f,.32f), gray);
-            arm.layer = 2; UnityEngine.Object.DestroyImmediate(arm.GetComponent<Collider>());
+            arm.layer = PlayerGeometry.ArmsLayer; UnityEngine.Object.DestroyImmediate(arm.GetComponent<Collider>());
             arm.transform.SetParent(camObject.transform, false);
             arm.transform.localPosition = new Vector3(i == 0 ? -.22f : .22f,-.22f,.4f);
         }
+        var overlayObject=new GameObject("First Person Arms Camera");overlayObject.layer=PlayerGeometry.ArmsLayer;
+        overlayObject.transform.SetParent(camObject.transform,false);
+        var overlay=overlayObject.AddComponent<Camera>();overlay.nearClipPlane=.01f;overlay.farClipPlane=2;overlay.fieldOfView=cam.fieldOfView;
+        overlay.cullingMask=PlayerGeometry.ArmsMask;cam.cullingMask&=~PlayerGeometry.ArmsMask;
+        var overlayData=overlay.GetUniversalAdditionalCameraData();overlayData.renderType=CameraRenderType.Overlay;
+        cam.GetUniversalAdditionalCameraData().cameraStack.Add(overlay);
         EditorSceneManager.SaveScene(scene, "Assets/Scenes/PlayerTest.unity");
         AssetDatabase.SaveAssets();
         Debug.Log("PLAYER_TEST_SCENE_CREATED");
