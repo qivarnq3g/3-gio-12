@@ -25,6 +25,7 @@ Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** c
 | `Models/Environment/env_homeware_shop.fbx` | Nhóm tự dựng trong Blender 5.2 bằng script theo khối thô cửa hàng đồ gia dụng đêm 2 (6.114 tam giác) | Của nhóm | 01/11/2026 |
 | `Models/Environment/env_rice_shop.fbx` | Nhóm tự dựng trong Blender 5.2 bằng script theo khối thô quán cơm đêm 2 (3.820 tam giác) | Của nhóm | 01/11/2026 |
 | `Models/Environment/env_gas_station.fbx` | Nhóm tự dựng trong Blender 5.2 bằng script theo khối thô cây xăng đêm 3, cửa ki-ốt là object riêng (1.436 tam giác) | Của nhóm | 01/11/2026 |
+| `Models/Environment/env_main_road.fbx` | Nhóm tự dựng trong Blender 5.2 bằng script theo khối thô đoạn đường lớn đêm 2-3: mặt đường, vỉa hè, 152 nhà phố, đèn đường, đèn giao thông có ba bóng tách riêng mỗi hướng (90.688 tam giác) | Của nhóm | 01/11/2026 |
 
 # Ảnh vân
 
