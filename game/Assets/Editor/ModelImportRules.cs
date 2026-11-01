@@ -3,6 +3,22 @@ using UnityEditor;
 public class ModelImportRules : AssetPostprocessor
 {
     public const string ModelsRoot = "Assets/Art/Models/";
+    public const string TexturesRoot = "Assets/Art/Textures/";
+
+    void OnPreprocessTexture()
+    {
+        if (!assetPath.StartsWith(TexturesRoot)) return;
+        var importer = (TextureImporter)assetImporter;
+        importer.textureType = TextureImporterType.Default;
+        importer.sRGBTexture = true;
+        importer.mipmapEnabled = true;
+        importer.filterMode = UnityEngine.FilterMode.Trilinear;
+        importer.anisoLevel = 8;
+        importer.wrapMode = UnityEngine.TextureWrapMode.Clamp;
+        importer.npotScale = TextureImporterNPOTScale.None;
+        importer.maxTextureSize = 1024;
+        importer.textureCompression = TextureImporterCompression.CompressedHQ;
+    }
 
     void OnPreprocessModel()
     {

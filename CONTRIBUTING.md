@@ -81,15 +81,16 @@ Chọn cách làm theo việc chữ có đổi trong lúc chơi hay không, và 
 
 Ảnh vân dán lên model:
 
-- Trong Blender, tách vùng có chữ thành mặt riêng. Nếu vật cong hoặc nhiều mặt, đặt một tấm phẳng mỏng sát bề mặt, cách khoảng 1 mm để hai mặt không nhấp nháy khi chồng nhau. Trải UV của mặt đó phủ khít ảnh và gán vật liệu riêng `M_<TenTiengAnh>`.
+- Trong Blender, ưu tiên tách vùng có chữ thành mặt riêng ngay trên lưới của vật, gán vật liệu riêng; cách này không có hai mặt chồng nhau nên không bao giờ nhấp nháy. Chỉ khi vật cong hoặc nhiều mặt mới đặt một tấm phẳng mỏng nổi lên khỏi bề mặt 3 mm. Cách 1 mm dễ nhấp nháy khi nhìn từ xa vì độ chính xác chiều sâu giảm theo khoảng cách, mà đường lớn dài khoảng 440 m; nếu 3 mm vẫn nhấp nháy ở xa thì tăng lên 5 mm. Trải UV của mặt chữ phủ khít ảnh, trong khoảng 0 đến 1, và gán vật liệu riêng `M_<TenTiengAnh>`.
 - Ảnh PNG, cạnh là lũy thừa của 2: 512 cho phần lớn đồ vật, 1024 khi chữ nhỏ mà người chơi phải đọc. Đặt tên `T_<TenTiengAnh>.png` trong `game/Assets/Art/Textures/`.
 - Vẽ phẳng đúng kiểu hình của game, không dùng ảnh chụp. Chữ tiếng Việt dùng phông có đủ dấu. Không có tên hay logo của thương hiệu thật.
-- Trong Unity, vật liệu vẫn dùng shader `Toon/Toon`: gán ảnh vào `BaseMap` và bật `Use BaseMap as 1st_ShadeMap` để chữ vẫn hiện trong vùng tối.
+- Không cần chỉnh thiết lập nhập ảnh: `ModelImportRules.cs` tự đặt cho mọi ảnh trong `Assets/Art/Textures/` là sRGB bật, nén chất lượng cao (`High Quality`), mipmap bật, lọc `Trilinear`, `Aniso Level` 8, `Wrap Mode: Clamp`, cỡ tối đa 1024. Mipmap giữ bật để chữ không lấp lánh khi nhìn từ xa; chữ nhòe khi nhìn nghiêng do mipmap thì `Aniso Level` 8 bù lại.
+- Trong Unity, vật liệu vẫn dùng shader `Toon/Toon`: gán ảnh vào `BaseMap`, bật `Use BaseMap as 1st_ShadeMap` và `Use 1st_ShadeMap as 2nd_ShadeMap` để chữ không tối đi ở vùng bóng và vùng bóng sâu.
 
 Chữ, số đổi trong lúc chơi:
 
-- Model chỉ có mặt trống. Thêm một object `TextMeshPro` (bản 3D, không phải `TextMeshProUGUI` của giao diện) làm con của model, đặt sát mặt trống. Script của màn chơi gán nội dung, ví dụ số km lấy từ trạng thái của đêm.
-- Phông chữ phải có đủ dấu tiếng Việt.
+- Model chỉ có mặt trống. Thêm một object `TextMeshPro` (bản 3D, chuột phải `3D Object > Text - TextMeshPro`, không phải `TextMeshProUGUI` của giao diện) làm con của model, đặt sát mặt trống. Script của màn chơi gán nội dung, ví dụ số km lấy từ trạng thái của đêm.
+- Phông chữ mặc định của TextMeshPro trong project là `Assets/Art/Fonts/NotoSans-Regular SDF.asset`, tạo từ Noto Sans có sẵn trong repo, có đủ chữ tiếng Việt, chữ số và dấu câu thường gặp. Bảng ký tự cố định (static), nên ký tự ngoài bảng sẽ hiện thành ô vuông; cần ký tự lạ thì báo người giữ quy trình để thêm vào bảng.
 
 Ảnh 2D phóng to: chữ trên model nhìn từ góc nhìn thứ nhất thường nhỏ và nghiêng. Vật chứng cần đọc thì xuất thêm một ảnh 2D có cùng nội dung, để giao diện hiện lên khi người chơi tương tác (#24). Ảnh vân và ảnh 2D, kể cả ảnh tạo bằng AI, đều ghi nguồn vào `NGUON.md`.
 
@@ -118,7 +119,7 @@ Tên file `snake_case` tiếng Anh, bắt đầu bằng loại: `prop_` đồ v�
 
 1. Tạo vật liệu trước: trong `Assets/Art/Materials`, chuột phải > `Create > Material`, đặt đúng tên `M_...` như trong Blender, đổi shader thành `Toon/Toon` (gói Unity Toon Shader). Chỉnh `BaseColor`, `1st_ShadeColor` (tối hơn khoảng một phần ba), `2nd_ShadeColor` (tối hơn một nửa), `Outline_Width` khoảng 1, `Outline_Color` gần đen cùng tông. Nhanh nhất là nhân bản một vật liệu có sẵn rồi đổi màu.
 2. Kéo file FBX vào đúng thư mục. `Assets/Editor/ModelImportRules.cs` tự đặt tỉ lệ 1, không nhập camera và đèn, tắt animation cho đồ vật và bối cảnh, và tự gắn vật liệu trùng tên trong project.
-3. Chạy menu `3 Gio 12 > Check Art Models`. Lệnh báo lỗi khi gốc model có xoay hoặc tỉ lệ khác 1, khi đáy đồ vật hay nhân vật không nằm ở y = 0, khi lưới không có UV, khi vật liệu nằm ngoài `Assets/Art/Materials` hoặc không dùng shader `Toon/Toon`. Sửa trong Blender rồi xuất lại, không chữa bằng Transform trong Unity.
+3. Chạy menu `3 Gio 12 > Check Art Models`. Lệnh báo lỗi khi gốc model có xoay hoặc tỉ lệ khác 1, khi đáy đồ vật hay nhân vật không nằm ở y = 0, khi lưới không có UV, khi vật liệu nằm ngoài `Assets/Art/Materials` hoặc không dùng shader `Toon/Toon`. Với vật có ảnh vân, lệnh còn báo lỗi khi ảnh `T_...` nằm ngoài `Assets/Art/Textures`, ảnh trong thư mục đó sai tên, cạnh không phải lũy thừa của 2 hoặc lớn hơn 1024, UV của mặt có ảnh ra ngoài khoảng 0 đến 1, hay vật liệu có ảnh mà chưa bật hai ô ShadeMap ở trên. Sửa trong Blender rồi xuất lại, không chữa bằng Transform trong Unity.
 4. Nếu Unity đã tự tạo thư mục `Materials` cạnh file FBX (do kéo FBX vào trước khi có vật liệu), xóa thư mục đó rồi chuột phải file FBX > `Reimport`.
 
 Chạy kiểm không cần mở Editor, ví dụ trước khi mở pull request:
@@ -127,7 +128,7 @@ Chạy kiểm không cần mở Editor, ví dụ trước khi mở pull request:
 Unity.exe -batchmode -projectPath game -executeMethod ArtPipelineCheck.Run -logFile -
 ```
 
-Lệnh thoát với mã 0 khi đạt và ghi ảnh xem trước vào `game/Logs/ArtPipelineCheck.png`.
+Lệnh thoát với mã 0 khi đạt và ghi ảnh xem trước vào `game/Logs/ArtPipelineCheck.png`. Nếu máy không có mạng, Unity có thể crash lúc tắt và trả mã 139 dù đã kiểm xong; khi đó đọc dòng `[ArtCheck] PASS` hoặc `FAIL` trong log.
 
 ## Họp
 

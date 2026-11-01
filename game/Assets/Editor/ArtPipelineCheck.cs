@@ -74,9 +74,63 @@ public static class ArtPipelineCheck
                     if (!matPath.StartsWith("Assets/Art/Materials/")) failures.Add(path + ": material " + m.name + " not from Assets/Art/Materials (" + matPath + ")");
                     if (m.shader.name != "Toon/Toon") failures.Add(path + ": material " + m.name + " uses shader " + m.shader.name);
                 }
+            foreach (var r in renderers)
+                CheckTexturedFaces(path, r, failures);
             Debug.Log("[ArtCheck] " + name + " size " + bounds.size.ToString("F3") + " min " + bounds.min.ToString("F3") + " renderers " + renderers.Length);
         }
+        CheckTextures(failures);
         return failures;
+    }
+
+    static Texture BaseMap(Material m) => m != null && m.HasProperty("_BaseMap") ? m.GetTexture("_BaseMap") : null;
+
+    static void CheckTexturedFaces(string path, Renderer r, List<string> failures)
+    {
+        var mesh = r is SkinnedMeshRenderer s ? s.sharedMesh : r.GetComponent<MeshFilter>()?.sharedMesh;
+        if (mesh == null || mesh.uv.Length == 0) return;
+        var uv = mesh.uv;
+        var materials = r.sharedMaterials;
+        for (int sub = 0; sub < mesh.subMeshCount && sub < materials.Length; sub++)
+        {
+            var m = materials[sub];
+            var tex = BaseMap(m);
+            if (tex == null) continue;
+            if (m.GetFloat("_Use_BaseAs1st") < 0.5f || m.GetFloat("_Use_1stAs2nd") < 0.5f)
+                failures.Add(path + ": material " + m.name + " has a BaseMap but Use BaseMap as 1st_ShadeMap or Use 1st_ShadeMap as 2nd_ShadeMap is off, the picture darkens in shadow");
+            var texPath = AssetDatabase.GetAssetPath(tex);
+            if (!texPath.StartsWith(ModelImportRules.TexturesRoot)) failures.Add(path + ": material " + m.name + " uses texture outside Assets/Art/Textures (" + texPath + ")");
+            foreach (var i in mesh.GetTriangles(sub))
+            {
+                var p = uv[i];
+                if (p.x < -0.001f || p.x > 1.001f || p.y < -0.001f || p.y > 1.001f)
+                {
+                    failures.Add(path + ": " + r.name + " faces with " + m.name + " have UV " + p.ToString("F3") + " outside 0..1, the picture repeats or clips");
+                    break;
+                }
+            }
+        }
+    }
+
+    static void CheckTextures(List<string> failures)
+    {
+        foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { "Assets/Art" }))
+        {
+            var texPath = AssetDatabase.GUIDToAssetPath(guid);
+            var file = Path.GetFileName(texPath);
+            var inFolder = texPath.StartsWith(ModelImportRules.TexturesRoot);
+            if (!inFolder)
+            {
+                if (file.StartsWith("T_")) failures.Add(texPath + ": texture T_ must be in Assets/Art/Textures");
+                continue;
+            }
+            if (!file.StartsWith("T_") || Path.GetExtension(file).ToLowerInvariant() != ".png") failures.Add(texPath + ": name must be T_<EnglishName>.png");
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(texPath);
+            importer.GetSourceTextureWidthAndHeight(out int w, out int h);
+            if (!Mathf.IsPowerOfTwo(w) || !Mathf.IsPowerOfTwo(h)) failures.Add(texPath + ": size " + w + "x" + h + " is not a power of 2");
+            if (w > 1024 || h > 1024) failures.Add(texPath + ": size " + w + "x" + h + " is larger than 1024");
+            Debug.Log("[ArtCheck] " + file + " " + w + "x" + h + " " + (tex != null ? tex.format.ToString() : "not loaded"));
+        }
     }
 
     static void RenderPreview()

@@ -22,3 +22,10 @@ Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** c
 | `Models/Props/prop_potted_snake_plant.fbx` | Nhóm tự dựng trong Blender 5.2 (chậu đất nung trồng lưỡi hổ, 582 tam giác) | Của nhóm | 30/10/2026 |
 | `Models/Environment/env_garage.fbx` | Nhóm tự dựng trong Blender 5.2 theo khối thô nhà xe (3.617 tam giác) | Của nhóm | 30/10/2026 |
 | `Models/Environment/env_room7.fbx` | Nhóm tự dựng trong Blender 5.2 theo khối thô phòng 7 tầng 3, cửa là object riêng (1.210 tam giác) | Của nhóm | 30/10/2026 |
+
+# Phông chữ
+
+| Tệp | Nguồn | Giấy phép | Ngày |
+|---|---|---|---|
+| `Fonts/NotoSans-Regular SDF.asset` | Font asset TextMeshPro tạo từ `Assets/Prototype/Resources/Fonts/NotoSans-Regular.ttf` (Noto Sans của Google), bảng ký tự cố định 229 ký tự: chữ tiếng Việt, chữ số, dấu câu thường gặp | SIL Open Font License 1.1, xem `Assets/Prototype/Resources/Fonts/LICENSE-NotoSans.txt` | 01/11/2026 |
+| `Assets/TextMesh Pro/` (ngoài `Assets/Art`) | Gói TMP Essential Resources đi kèm `com.unity.ugui` 2.0.0, gồm shader, cài đặt và phông Liberation Sans | Theo gói Unity; Liberation Sans theo SIL Open Font License, xem `Assets/TextMesh Pro/Fonts/LiberationSans - OFL.txt` | 01/11/2026 |
