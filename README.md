@@ -34,3 +34,8 @@ File gốc nặng (`.blend`, `.psd`, ảnh AI gốc) để trên Drive, không �
 
 - 16/11/2026 09:07: thuyết minh thiết kế (kiến trúc, use case, lược đồ lớp).
 - 03/12/2026 09:07: dự án hoàn chỉnh (đêm 1-3 chơi được, máy chủ, trang quản trị, báo cáo, thuyết trình).
+
+## Tài liệu thiết kế
+
+- [Kiến trúc hệ thống](docs/thiet-ke/kien-truc-he-thong.md)
+- [Lược đồ lớp phần game](docs/thiet-ke/luoc-do-lop-game.md)
