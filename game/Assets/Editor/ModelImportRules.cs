@@ -5,6 +5,8 @@ public class ModelImportRules : AssetPostprocessor
     public const string ModelsRoot = "Assets/Art/Models/";
     public const string TexturesRoot = "Assets/Art/Textures/";
 
+    public static bool IsTiling(string path) => System.IO.Path.GetFileName(path).StartsWith("T_Tile");
+
     void OnPreprocessTexture()
     {
         if (!assetPath.StartsWith(TexturesRoot)) return;
@@ -14,7 +16,7 @@ public class ModelImportRules : AssetPostprocessor
         importer.mipmapEnabled = true;
         importer.filterMode = UnityEngine.FilterMode.Trilinear;
         importer.anisoLevel = 8;
-        importer.wrapMode = UnityEngine.TextureWrapMode.Clamp;
+        importer.wrapMode = IsTiling(assetPath) ? UnityEngine.TextureWrapMode.Repeat : UnityEngine.TextureWrapMode.Clamp;
         importer.npotScale = TextureImporterNPOTScale.None;
         importer.maxTextureSize = 1024;
         importer.textureCompression = TextureImporterCompression.CompressedHQ;
