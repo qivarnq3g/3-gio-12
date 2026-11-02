@@ -100,3 +100,7 @@ Chỉ lựa chọn có mã canonical trong tài liệu mới phát thống kê: 
 Kiểm dữ liệu xuất từ Unity: cài gói phát triển `PyYAML` và `jsonschema`, rồi chạy `python3 tools/validate_night_events.py /private/tmp/3gio12-review-events.jsonl`. Công cụ dùng OpenAPI trong `docs/api/` hoặc bản ở nhánh API-contract nếu chưa merge, không gọi mạng. Có thể truyền `--openapi <đường dẫn>` để chỉ định bản hợp đồng cần đối chiếu.
 
 `NightOneWalkSmoke.Run` kiểm bằng input thật: đi lên cầu thang và nhận tiếng thở do đau sườn, Esc dừng/tiếp tục, điện thoại không dừng thế giới; đồng thời chụp camera tay khi đứng sát tường. Model vẫn là khối giữ chỗ, cần người duyệt cân chỉnh âm lượng và độ khó trong một lượt chơi tay.
+
+## Lưu tiến độ và cài đặt
+
+Menu khởi động, tự lưu trên máy, tiếp tục/chơi mới/xóa tiến độ và cài đặt được mô tả tại [Lưu tiến độ và cài đặt](save-and-settings.md). Các kiểm tra gameplay tự động cũ cần dùng thư mục dữ liệu thử riêng và `THREEGIO12_SKIP_START_MENU=1`.

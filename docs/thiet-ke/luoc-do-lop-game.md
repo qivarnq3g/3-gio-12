@@ -4,6 +4,8 @@ Phụ trách: Phúc. Phục vụ #11 và phần lược đồ lớp trong thuy�
 
 ## 1. Phạm vi và phiên bản đối chiếu
 
+Lược đồ dưới đây giữ mốc đối chiếu ban đầu. Phần lưu đĩa và cài đặt bổ sung ở #21 được mô tả trong [Lưu tiến độ và cài đặt](../game/save-and-settings.md), gồm các lớp mới và cách tích hợp vào director.
+
 Đối chiếu với `main` tại commit [`95b7317`](https://github.com/qivarnq3g/3-gio-12/tree/95b73172d47f7f7cb2bcee8f75c5eb6274cbfbb1), ngày 31/10/2026, sau khi ghép #6, #14 và tài liệu kiến trúc #10. Game hiện dùng góc nhìn thứ nhất. Phần máy chủ và web thuộc #12; ranh giới giữa các thành phần xem [kiến trúc hệ thống](kien-truc-he-thong.md).
 
 Các sơ đồ dưới đây mô tả lớp đã có trong code. Chỉ liệt kê thành viên liên quan đến trách nhiệm và quan hệ chính, không chép toàn bộ hàm dựng UI, hàm Unity lifecycle hay cấu hình màn chơi. Các kiểu `MonoBehaviour`, `Camera`, `CharacterController`, `NavMeshAgent`, `InputActionAsset`, `UIDocument` là kiểu của Unity/package, không phải lớp tự viết.
