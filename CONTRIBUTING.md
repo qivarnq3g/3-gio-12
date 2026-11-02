@@ -65,7 +65,7 @@ Chốt ngày 30/10/2026 (#3). Mẫu đã đi trọn quy trình: `game/Assets/Art
 - Phần chuyển động được (cửa, ngăn kéo, nắp) là một object riêng trong cùng file, gốc tọa độ đặt ở bản lề, dựng ở tư thế đóng.
 - Áp (apply) xoay và tỉ lệ trước khi xuất: `Ctrl+A` > `All Transforms`.
 - Mọi lưới phải có UV, kể cả khi không dùng ảnh vân. Lưới không có UV thì Unity không tính được tiếp tuyến (tangent) và shader `Toon/Toon` tô đen các mặt quay theo trục X. Cách nhanh: chế độ Edit, chọn hết, `U` > `Cube Projection` hoặc `Smart UV Project`.
-- Đồ vật nhỏ dưới 1.000 tam giác, đồ vật lớn và nhân vật phụ dưới 10.000. Phần lớn model không cần ảnh vân (texture): mỗi vùng màu là một vật liệu riêng. Riêng chữ và hình làm theo mục "Vật có chữ hoặc hình" bên dưới.
+- Đồ vật nhỏ dưới 1.000 tam giác, đồ vật lớn và nhân vật phụ dưới 10.000. Ngoại lệ: vật chủ chốt người chơi nhìn cận và chỉ có vài cái trong cảnh (xe máy) được tới khoảng 50.000; xuống dưới 10.000 thì mẫu Super Cub vỡ dáng (thử ngày 02/11/2026). Phần lớn model không cần ảnh vân (texture): mỗi vùng màu là một vật liệu riêng. Riêng chữ và hình làm theo mục "Vật có chữ hoặc hình" bên dưới.
 - Đặt tên vật liệu `M_<TenTiengAnh>` (ví dụ `M_PotTerracotta`). Hai model cùng màu thì dùng chung tên vật liệu.
 - File `.blend` lưu trên Drive của nhóm, cùng tên với file FBX.
 
