@@ -4,7 +4,7 @@ using Testcontainers.PostgreSql;
 
 namespace ThreeTwelve.Api.Tests;
 
-public sealed class PostgresApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
+public class PostgresApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
 
