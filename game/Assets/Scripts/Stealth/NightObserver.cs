@@ -6,7 +6,7 @@ using UnityEngine.AI;
 namespace BaGio12.Stealth
 {
     public enum ObserverMode { Normal, Suspicious, Chasing, Searching, Inactive }
-    public sealed class NightObserver : MonoBehaviour
+    public sealed partial class NightObserver : MonoBehaviour
     {
         public NightOneDirector director;
         public string displayName;

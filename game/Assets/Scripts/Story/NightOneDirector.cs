@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace BaGio12.Story
 {
-    public sealed class NightOneDirector : MonoBehaviour
+    public sealed partial class NightOneDirector : MonoBehaviour
     {
         public FirstPersonPlayer player;
         public GameObject nganPhone, bag, greyGlove;
@@ -84,6 +84,7 @@ namespace BaGio12.Story
             Objective = "Tới nhà xe cuối hẻm. Cúi và đặt chiếc máy dưới chân xe.";
             Say("Đừng để ai thấy.", 6);
             SyncWorld();
+            gameObject.AddComponent<BaGio12.Persistence.NightPersistence>().story = this;
         }
         void OnDestroy()
         {
@@ -138,6 +139,7 @@ namespace BaGio12.Story
         }
         void PhoneChanged(int previous, int next)
         {
+            if (restoringSave) return;
             if (State.stage == NightStage.Room && InRoom)
             {
                 if (next != 0) { player.Teleport(bed.position + new Vector3(0,.23f,-.4f),90); player.SetCrouch(true); }

@@ -40,7 +40,7 @@ namespace BaGio12.Story
                 {
                     GUI.Label(new Rect(280,355,730,70),state.ending=="bystander" ? "Bạn giao chiếc máy cho người khác. Câu chuyện của bạn dừng lại ở đây." : "Buổi sáng 25/11 thuộc đêm 2.",normal);
                     if(GUI.Button(new Rect(280,455,260,50),"Chơi lại từ điểm lưu"))story.RestoreCheckpoint();
-                    if(GUI.Button(new Rect(560,455,250,50),"Chơi lại đêm 1"))UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+                    if(GUI.Button(new Rect(560,455,250,50),"Chơi lại đêm 1"))story.GetComponent<BaGio12.Persistence.NightPersistence>().RequestNewGame();
                 }
             }
             else if(story.player.ActivePhone!=0 && !story.Busy)DrawPhone();
