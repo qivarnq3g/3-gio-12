@@ -12,6 +12,9 @@ namespace BaGio12.Gameplay
         public float sensitivity = 0.09f, reach = 2.4f;
         public bool showTestHud = true;
         public bool ExternalUI { get; set; }
+        public bool HasPauseMenu { get; set; }
+        public bool PauseMenuLocked { get; set; }
+        public float ViewPitch => pitch;
         public float RunMultiplier { get; set; } = 1f;
         public bool IsRunning { get; private set; }
         public bool IsPaused => paused;
@@ -61,7 +64,7 @@ namespace BaGio12.Gameplay
         {
             if (cancel.WasPressedThisFrame())
             {
-                if (paused) ResumeControl();
+                if (paused) { if (!PauseMenuLocked) ResumeControl(); }
                 else if (ActivePhone != 0) SetPhone(0);
                 else if (!ExternalUI) SetPaused(!paused);
             }
@@ -132,11 +135,17 @@ namespace BaGio12.Gameplay
             body.enabled = false; transform.SetPositionAndRotation(point, Quaternion.Euler(0, yaw, 0));
             body.enabled = true; fall = 0; pitch = 0; SetCrouch(false);
         }
+        public void RestoreView(float savedPitch, bool crouched)
+        {
+            SetCrouch(crouched); pitch = Mathf.Clamp(savedPitch, -80, 80);
+            eyes.transform.localRotation = Quaternion.Euler(pitch, 0, 0);
+        }
         public void Collect() { ItemsCollected++; Notify("Đã nhặt vật chứng"); }
         public void Notify(string message) { notice = message; noticeUntil = Time.time + 3; }
         void OnGUI()
         {
             if (text == null) { text = new GUIStyle(GUI.skin.label) { fontSize = 18, wordWrap = true }; title = new GUIStyle(text) { fontSize = 28, alignment = TextAnchor.MiddleCenter }; }
+            if (paused && HasPauseMenu) return;
             if (paused)
             {
                 if(GUI.Button(new Rect(Screen.width/2-120,Screen.height/2,240,55),"Tiếp tục (Esc)"))ResumeControl();
