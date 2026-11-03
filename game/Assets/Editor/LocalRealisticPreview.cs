@@ -25,10 +25,10 @@ public static class LocalRealisticPreview
     static readonly (float y0, float y1)[] LeftHouses = { (0, 5), (5, 9), (9, 13), (13, 17), (17, 21), (21, 25), (25, 30), (30, 34), (34, 40), (40, 48) };
     static readonly (float y0, float y1)[] RightHouses = { (0, 4), (4, 8), (8, 12), (12, 16), (16, 21), (21, 25), (25, 29), (29, 33), (33, 38), (38, 48) };
 
-    sealed class Surface { public string tex; public float size, smooth = 1, tintMix = .55f, metal; }
+    sealed class Surface { public string tex; public float size, smooth = 1, tintMix = .55f, metal, wet; }
     static readonly Dictionary<string, Surface> Surfaces = new Dictionary<string, Surface> {
-        ["M_ConcreteFloor"] = new Surface { tex = "concrete_floor_worn_001", size = 2.5f, tintMix = 0 },
-        ["M_ConcreteWet"] = new Surface { tex = "concrete_floor_worn_001", size = 2.5f, smooth = 2.2f, tintMix = 0 },
+        ["M_ConcreteFloor"] = new Surface { tex = "concrete_floor_worn_001", size = 2.5f, tintMix = 0, wet = .5f },
+        ["M_ConcreteWet"] = new Surface { tex = "concrete_floor_worn_001", size = 2.5f, tintMix = 0, wet = .85f },
         ["M_WallPaintYellow"] = new Surface { tex = "painted_plaster_wall", size = 2.5f },
         ["M_WallStainYellow"] = new Surface { tex = "peeling_painted_wall", size = 2.5f },
         ["M_WallPaintOffWhite"] = new Surface { tex = "painted_plaster_wall", size = 2.5f },
@@ -55,7 +55,7 @@ public static class LocalRealisticPreview
         ["M_ShutterBlue"] = new Surface { tex = "painted_metal_shutter", size = 2f, tintMix = .7f },
         ["M_SteelDark"] = new Surface { tex = "rusty_painted_metal", size = 1f, tintMix = .5f },
         ["M_SteelPaintedBlue"] = new Surface { tex = "rusty_painted_metal", size = 1f, tintMix = .7f },
-        ["M_Asphalt"] = new Surface { tex = "asphalt_02", size = 4f, tintMix = 0, smooth = 1.6f },
+        ["M_Asphalt"] = new Surface { tex = "asphalt_02", size = 4f, tintMix = 0, wet = .6f },
         ["M_SidewalkTile"] = new Surface { tex = "square_pavers", size = 2f, tintMix = .3f },
         ["M_FloorTileCream"] = new Surface { tex = "floor_tiles_06", size = 1.2f, tintMix = .3f },
         ["M_FloorTileCreamDark"] = new Surface { tex = "floor_tiles_06", size = 1.2f, tintMix = .5f },
@@ -92,6 +92,28 @@ public static class LocalRealisticPreview
     {
         var ext = kind == "mask" ? "png" : "jpg";
         return Tex($"{TexRoot}/{id}/{id}_{kind}.{ext}", kind == "normal", kind == "mask");
+    }
+    static Texture2D WetMask(string id, float wet)
+    {
+        var path = $"{TexRoot}/{id}/{id}_wet{Mathf.RoundToInt(wet * 100)}.png";
+        var src = new Texture2D(2, 2, TextureFormat.RGBA32, false, true);
+        src.LoadImage(File.ReadAllBytes($"{TexRoot}/{id}/{id}_mask.png"));
+        int w = src.width, h = src.height; var px = src.GetPixels32();
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                float u = (float)x / w * Mathf.PI * 2, v = (float)y / h * Mathf.PI * 2;
+                float n = .5f + .22f * Mathf.Sin(u + 2 * v + 1.3f) + .17f * Mathf.Sin(3 * u - v + .4f) + .11f * Mathf.Sin(5 * u + 4 * v + 2.1f);
+                float t = Mathf.Clamp01(wet * Mathf.SmoothStep(0, 1, Mathf.Clamp01((n - .5f + wet) * 1.6f)));
+                var p = px[y * w + x];
+                p.a = (byte)Mathf.Lerp(p.a, 235, t);
+                px[y * w + x] = p;
+            }
+        src.SetPixels32(px);
+        File.WriteAllBytes(path, src.EncodeToPNG());
+        Object.DestroyImmediate(src);
+        AssetDatabase.ImportAsset(path);
+        return Tex(path, linear: true, max: 1024);
     }
 
     static readonly Dictionary<string, Material> Cache = new Dictionary<string, Material>();
@@ -135,9 +157,9 @@ public static class LocalRealisticPreview
         if (Surfaces.TryGetValue(n, out var s))
         {
             m.SetTexture("_BaseMap", SurfaceTex(s.tex, "albedo")); m.SetTexture("_BumpMap", SurfaceTex(s.tex, "normal")); m.EnableKeyword("_NORMALMAP");
-            m.SetTexture("_MetallicGlossMap", SurfaceTex(s.tex, "mask")); m.EnableKeyword("_METALLICSPECGLOSSMAP");
-            m.SetFloat("_Smoothness", Mathf.Clamp01(.85f * s.smooth)); m.SetFloat("_BumpScale", 1.2f);
-            m.SetColor("_BaseColor", Color.Lerp(Color.white, c, s.tintMix));
+            m.SetTexture("_MetallicGlossMap", s.wet > 0 ? WetMask(s.tex, s.wet) : SurfaceTex(s.tex, "mask")); m.EnableKeyword("_METALLICSPECGLOSSMAP");
+            m.SetFloat("_Smoothness", s.wet > 0 ? 1f : Mathf.Clamp01(.85f * s.smooth)); m.SetFloat("_BumpScale", s.wet > 0 ? .7f : 1.2f);
+            m.SetColor("_BaseColor", Color.Lerp(Color.white, c, s.tintMix) * (1 - .45f * s.wet));
             m.SetTextureScale("_BaseMap", new Vector2(1 / s.size, 1 / s.size));
         }
         else
@@ -157,7 +179,7 @@ public static class LocalRealisticPreview
             if (e.maxColorComponent < .05f) e = c;
             var et = ToonTexture(toon);
             if (et != null) { m.SetTexture("_EmissionMap", et); m.SetColor("_EmissionColor", Color.white * 1.3f); }
-            else m.SetColor("_EmissionColor", e * (n.Contains("Window") ? 1.5f : 4f));
+            else m.SetColor("_EmissionColor", e * (n.Contains("Window") ? 1.5f : n.Contains("Altar") ? 1.2f : 4f));
             m.EnableKeyword("_EMISSION");
             m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.BakedEmissive;
         }
@@ -390,26 +412,56 @@ public static class LocalRealisticPreview
         foreach (var t in alley.GetComponentsInChildren<Transform>().Where(t => t.name.StartsWith("LampBulb")).ToList())
         {
             var at = t.GetComponent<Renderer>().bounds.center;
-            bool cool = k++ % 3 == 1;
-            var c = cool ? new Color(.82f, .92f, 1f) : new Color(1f, .7f, .42f);
-            Point("Alley bulb " + k, at + Vector3.down * .06f, c, 9, cool ? 3.5f : 5f);
-            Halo(at, new Color(c.r, c.g, c.b, .55f), .7f);
+            bool cool = k % 3 == 1, weak = k % 5 == 3; k++;
+            var c = cool ? new Color(.82f, .92f, 1f) : weak ? new Color(1f, .6f, .3f) : new Color(1f, .7f, .42f);
+            Point("Alley bulb " + k, at + Vector3.down * .06f, c, weak ? 6 : 9, weak ? 1.4f : cool ? 3.5f : 5f);
+            Halo(at, new Color(c.r, c.g, c.b, weak ? .3f : .55f), weak ? .45f : .7f);
         }
-        foreach (var r in alley.GetComponentsInChildren<MeshRenderer>())
+        foreach (var center in Clusters(alley, "M_TubeLightGlow", 3f))
+        {
+            Point("Tube light", center + Vector3.down * .25f, new Color(.85f, .95f, 1f), 7, 3f);
+            Halo(center, new Color(.85f, .95f, 1f, .35f), .9f);
+        }
+        foreach (var center in Clusters(alley, "M_AltarRedGlow", .5f))
+        {
+            Point("Altar light", center, new Color(1f, .16f, .08f), 1.4f, .3f, false);
+            Halo(center, new Color(1f, .2f, .1f, .25f), .18f);
+        }
+    }
+
+    static IEnumerable<Vector3> Clusters(GameObject root, string material, float cell)
+    {
+        foreach (var r in root.GetComponentsInChildren<MeshRenderer>())
         {
             var mats = r.sharedMaterials;
             for (int i = 0; i < mats.Length; i++)
             {
-                if (mats[i] == null || mats[i].name != "M_TubeLightGlow") continue;
+                if (mats[i] == null || mats[i].name != material) continue;
                 var mesh = r.GetComponent<MeshFilter>().sharedMesh; var verts = mesh.vertices;
-                foreach (var g in mesh.GetTriangles(i).Select(v => r.transform.TransformPoint(verts[v])).GroupBy(p => Mathf.Round(p.z / 3f)))
-                {
-                    var center = new Vector3(g.Average(p => p.x), g.Average(p => p.y), g.Average(p => p.z));
-                    Point("Tube light", center + Vector3.down * .25f, new Color(.85f, .95f, 1f), 7, 3f);
-                    Halo(center, new Color(.85f, .95f, 1f, .35f), .9f);
-                }
+                foreach (var g in mesh.GetTriangles(i).Select(v => r.transform.TransformPoint(verts[v])).GroupBy(p => (Mathf.Round(p.x / cell), Mathf.Round(p.y / cell), Mathf.Round(p.z / cell))))
+                    yield return new Vector3(g.Average(p => p.x), g.Average(p => p.y), g.Average(p => p.z));
             }
         }
+    }
+
+    static Material SkyGlow()
+    {
+        var path = $"{MatRoot}/SkyGlow.png";
+        var tex = new Texture2D(4, 256, TextureFormat.RGBA32, false);
+        var zenith = new Color(.035f, .045f, .075f); var horizon = new Color(.3f, .19f, .12f);
+        for (int y = 0; y < 256; y++)
+        {
+            var c = Color.Lerp(horizon, zenith, Mathf.Pow(Mathf.Clamp01((y / 255f - .5f) * 2f), .5f));
+            for (int x = 0; x < 4; x++) tex.SetPixel(x, y, c);
+        }
+        Directory.CreateDirectory(MatRoot);
+        File.WriteAllBytes(path, tex.EncodeToPNG());
+        AssetDatabase.ImportAsset(path);
+        var imp = (TextureImporter)AssetImporter.GetAtPath(path); imp.wrapMode = TextureWrapMode.Clamp; imp.mipmapEnabled = false; imp.SaveAndReimport();
+        var mat = new Material(Shader.Find("Skybox/Panoramic")) { name = "SkyGlow" };
+        mat.SetTexture("_MainTex", AssetDatabase.LoadAssetAtPath<Texture2D>(path));
+        Save(mat);
+        return mat;
     }
 
     static void MarkStatic(IEnumerable<GameObject> roots)
@@ -508,9 +560,9 @@ public static class LocalRealisticPreview
         DressAlley();
         TintShutters(alley);
 
-        RenderSettings.skybox = null;
+        RenderSettings.skybox = SkyGlow();
         RenderSettings.ambientMode = AmbientMode.Flat; RenderSettings.ambientLight = new Color(.018f, .022f, .032f);
-        RenderSettings.fog = true; RenderSettings.fogMode = FogMode.Exponential; RenderSettings.fogDensity = .045f; RenderSettings.fogColor = new Color(.035f, .04f, .05f);
+        RenderSettings.fog = true; RenderSettings.fogMode = FogMode.Exponential; RenderSettings.fogDensity = .06f; RenderSettings.fogColor = new Color(.05f, .045f, .045f);
 
         var profile = ScriptableObject.CreateInstance<VolumeProfile>();
         var tone = profile.Add<Tonemapping>(true); tone.mode.Override(TonemappingMode.ACES);
@@ -544,7 +596,7 @@ public static class LocalRealisticPreview
         var camObject = new GameObject("Main Camera"); camObject.tag = "MainCamera"; camObject.layer = PlayerGeometry.PlayerLayer;
         camObject.transform.SetParent(player.transform, false); camObject.transform.localPosition = Vector3.up * PlayerGeometry.StandingEye;
         var cam = camObject.AddComponent<Camera>(); cam.nearClipPlane = .03f; cam.fieldOfView = 70;
-        cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = RenderSettings.fogColor;
+        cam.clearFlags = CameraClearFlags.Skybox; cam.backgroundColor = RenderSettings.fogColor;
         var data = cam.GetUniversalAdditionalCameraData(); data.renderPostProcessing = true; data.antialiasing = AntialiasingMode.TemporalAntiAliasing;
         camObject.AddComponent<AudioListener>();
         var controller = player.AddComponent<FirstPersonPlayer>(); controller.eyes = cam; controller.showTestHud = false;
@@ -564,7 +616,7 @@ public static class LocalRealisticPreview
         EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
     }
 
-    static void Shots(Camera cam)
+    static void Shots(Camera cam, string prefix = "Real", string dir = "Logs")
     {
         var views = new (string name, Vector3 pos, Vector3 rot)[] {
             ("alley", new Vector3(0, 1.6f, -1), new Vector3(5, 180, 0)),
@@ -576,15 +628,31 @@ public static class LocalRealisticPreview
             ("garage", new Vector3(0, 1.6f, -48.5f), new Vector3(10, 180, 0)),
             ("room7", new Vector3(-2.3f, 11.8f, -42.3f), new Vector3(15, 200, 0)) };
         var rt = new RenderTexture(1280, 720, 24, RenderTextureFormat.ARGB32); var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
-        Directory.CreateDirectory("Logs");
+        Directory.CreateDirectory(dir);
         foreach (var v in views)
         {
             cam.transform.SetPositionAndRotation(v.pos, Quaternion.Euler(v.rot));
             cam.targetTexture = rt; for (int i = 0; i < 8; i++) cam.Render(); RenderTexture.active = rt;
             tex.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0); tex.Apply();
-            File.WriteAllBytes($"Logs/Real_{v.name}.png", tex.EncodeToPNG());
+            File.WriteAllBytes($"{dir}/{prefix}_{v.name}.png", tex.EncodeToPNG());
         }
         cam.targetTexture = null; RenderTexture.active = null;
         cam.transform.localPosition = Vector3.up * PlayerGeometry.StandingEye; cam.transform.localRotation = Quaternion.identity;
+    }
+
+    public static void Capture()
+    {
+        var args = System.Environment.GetCommandLineArgs();
+        int i = System.Array.IndexOf(args, "-shots");
+        var dir = i >= 0 && i + 1 < args.Length ? args[i + 1] : "Logs";
+        EditorSceneManager.OpenScene(ScenePath);
+        var cam = Object.FindObjectsByType<Camera>(FindObjectsSortMode.None).First(c => c.CompareTag("MainCamera"));
+        Shots(cam, "Real", dir);
+        var clay = new Material(Shader.Find("Universal Render Pipeline/Lit")); clay.SetColor("_BaseColor", new Color(.55f, .55f, .55f)); clay.SetFloat("_Smoothness", .2f);
+        foreach (var d in Object.FindObjectsByType<DecalProjector>(FindObjectsSortMode.None)) d.enabled = false;
+        foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None)) r.sharedMaterials = r.sharedMaterials.Select(_ => clay).ToArray();
+        Shots(cam, "Clay", dir);
+        Debug.Log("REAL_PREVIEW_CAPTURE " + dir);
+        EditorApplication.Exit(0);
     }
 }
