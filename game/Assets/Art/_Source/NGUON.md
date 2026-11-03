@@ -28,4 +28,11 @@ Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** c
 | Tệp | Nguồn | Giấy phép | Ngày |
 |---|---|---|---|
 | `Fonts/NotoSans-Regular SDF.asset` | Font asset TextMeshPro tạo từ `Assets/Prototype/Resources/Fonts/NotoSans-Regular.ttf` (Noto Sans của Google), bảng ký tự cố định 229 ký tự: chữ tiếng Việt, chữ số, dấu câu thường gặp | SIL Open Font License 1.1, xem `Assets/Prototype/Resources/Fonts/LICENSE-NotoSans.txt` | 01/11/2026 |
+| `Resources/Fonts/BeVietnamPro-Regular.ttf`, `BeVietnamPro-Medium.ttf` | Phông Be Vietnam Pro (github.com/google/fonts, thư mục `ofl/bevietnampro`), giữ nguyên tệp; menu tạm dừng tạo font asset TextMeshPro động từ hai tệp này lúc chạy | SIL Open Font License 1.1, xem `Resources/Fonts/BeVietnamPro-OFL.txt` | 03/11/2026 |
 | `Assets/TextMesh Pro/` (ngoài `Assets/Art`) | Gói TMP Essential Resources đi kèm `com.unity.ugui` 2.0.0, gồm shader, cài đặt và phông Liberation Sans | Theo gói Unity; Liberation Sans theo SIL Open Font License, xem `Assets/TextMesh Pro/Fonts/LiberationSans - OFL.txt` | 01/11/2026 |
+
+# Âm thanh
+
+| Tệp | Nguồn | Giấy phép | Ngày |
+|---|---|---|---|
+| `Resources/Audio/Footsteps/footstep_concrete_000.ogg` đến `_004.ogg` | Gói Impact Sounds của Kenney (kenney.nl/assets/impact-sounds), giữ nguyên tệp | CC0 1.0, không cần ghi tên | 03/11/2026 |
