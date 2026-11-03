@@ -42,6 +42,7 @@ art-source/
 .DS_Store
 Thumbs.db
 desktop.ini
+.claude/
 
 # Tệp bằng chứng gốc của câu đố, không đưa lên repo
 tools/out/

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lưu trữ khẩn cấp / Emergency Drop - Nguyễn Thảo Ngân</title>
+  <title>Lưu trữ tệp đính kèm / Secure Drop - Nguyễn Thảo Ngân</title>
   <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 <body style="background-color: #121217; padding: 40px 0;">
@@ -11,58 +11,45 @@
   <div class="drop-container">
     <div class="drop-card">
       <header class="drop-header">
-        <span class="drop-badge">Khu vực lưu trữ bảo mật</span>
-        <h1 class="drop-title">Lưu trữ khẩn cấp / Emergency Drop</h1>
-        <p class="drop-desc">Bản sao lưu bằng chứng khẩn cấp của Nguyễn Thảo Ngân (Phòng 7, Hẻm 12)</p>
+        <span class="drop-badge">Khu vực lưu trữ đính kèm</span>
+        <h1 class="drop-title">Lưu trữ tệp bí mật / Secure Attachment Drop</h1>
+        <p class="drop-desc">Bản sao lưu dữ liệu an toàn của Nguyễn Thảo Ngân</p>
       </header>
 
       <div class="drop-memo">
-        <strong>LỜI NHẮN KHẨN CẤP:</strong><br>
-        Nếu bạn truy cập được trang này từ những ghi chép trong máy của tôi: Tôi nhận thấy có kẻ bám theo và nghi ngờ có người đột nhập phòng 7 lúc 3 giờ sáng. Tôi đã chụp lại bằng chứng rõ ràng nhất về kẻ tình nghi (đôi dép lạ thắt sợi chỉ đỏ trên kệ giày). Toàn bộ dữ liệu đã được bảo mật để kẻ xấu không thể tiêu hủy.
+        <strong>THÔNG BÁO BẢO MẬT:</strong><br>
+        Nếu bạn truy cập được trang này từ phổ âm thanh (spectrogram) trong tệp ghi âm của tôi: Toàn bộ dữ liệu bằng chứng quan trọng đã được đóng gói và giấu an toàn vào phần cuối của tệp ảnh dưới đây theo kỹ thuật steganography.
       </div>
 
-      <!-- Online Web Decryptor -->
-      <section class="decrypt-box">
-        <h3>1. Giải mã trực tiếp trên trình duyệt</h3>
-        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 16px;">
-          Mã là dãy số mình đã bắt mẹ thuộc lòng. Mọi thứ giải ngay trên máy bạn, không gửi đi đâu cả.
-        </p>
+      <!-- Evidence Attachment Box -->
+      <section class="decrypt-box" style="text-align: center;">
+        <h3 style="margin-bottom: 16px;">Tệp ảnh chứa dữ liệu đính kèm</h3>
+        
+        <img src="../assets/img/hoang-hon-song-sai-gon.jpg" alt="Hoàng hôn sông Sài Gòn" class="evidence-img-preview" style="max-height: 380px;">
 
-        <div class="decrypt-input-group">
-          <input type="password" id="keyInput" class="decrypt-input" placeholder="Nhập mã bảo mật (6 chữ số)" maxlength="16" autofocus>
-          <button id="btnDecrypt" class="btn-decrypt">Mở khóa</button>
-        </div>
-        <div id="decryptMsg" class="decrypt-msg"></div>
-
-        <!-- Evidence Reveal Section -->
-        <div id="evidenceReveal" class="evidence-reveal">
-          <h4 style="color: #38bdf8; font-size: 1.1rem; margin-bottom: 8px;">Đôi dép chỉ đỏ</h4>
-          <p style="color: #cbd5e1; font-size: 0.88rem;">Chụp ở kệ giày trước cửa nhà chú Thành, 23:41 ngày 22/10/2026:</p>
-
-          <img id="imgPreview" src="" alt="Đôi dép có sợi chỉ đỏ trên kệ giày" class="evidence-img-preview">
-
-          <a id="btnDownloadDecrypted" href="#" class="btn-download">Tải ảnh gốc</a>
-          <p style="color: #94a3b8; font-size: 0.82rem; margin-top: 10px;">
-            * Nếu đưa cho công an, đưa đúng tệp gốc này. Đừng chụp màn hình hay gửi qua app chat, ảnh sẽ bị nén lại.
-          </p>
-        </div>
-      </section>
-
-      <!-- Offline Decryptor -->
-      <section class="drop-offline">
-        <h4>2. Tải bản sao lưu về máy</h4>
-        <p>
-          Phòng khi trang này bị xóa. Nhìn thì chỉ là một tấm ảnh hỏng, nhưng mở bằng WinRAR hoặc 7-Zip sẽ thấy tệp bên trong, mật khẩu như trên.
-        </p>
-        <p>
-          <a href="IMG_20261022_234117.jpg" download class="read-more" style="color: #38bdf8; font-size: 0.95rem;">
-            &darr; <code>IMG_20261022_234117.jpg</code>
+        <div style="margin: 20px 0;">
+          <a href="../assets/img/hoang-hon-song-sai-gon.jpg" download="hoang-hon-song-sai-gon.jpg" class="btn-download">
+            &darr; Tải tệp ảnh: hoang-hon-song-sai-gon.jpg
           </a>
-        </p>
+        </div>
+
+        <div style="background: #181822; border: 1px solid #334155; border-radius: 6px; padding: 16px; margin-top: 20px; text-align: left; font-size: 0.9rem; color: #cbd5e1;">
+          <h4 style="color: #38bdf8; margin-bottom: 8px;">Hướng dẫn trích xuất:</h4>
+          <ol style="margin-left: 20px; line-height: 1.8;">
+            <li>Tải tệp ảnh <code>hoang-hon-song-sai-gon.jpg</code> về máy tính.</li>
+            <li>Mở tệp ảnh bằng các phần mềm quản lý lưu trữ (như <strong>7-Zip</strong>, <strong>WinRAR</strong>, hoặc lệnh <code>unzip</code>). Phần mềm sẽ tự động nhận diện gói nén ẩn ở cuối tệp ảnh.</li>
+            <li>Nhập chìa khóa giải mã (16 ký tự trong tệp <code>khoa.txt</code> tìm thấy ở phần trong của két bí mật).</li>
+            <li>Trích xuất tệp ảnh bằng chứng gốc <code>red-thread-sandal.jpg</code>.</li>
+            <li>Giữ nguyên tệp bằng chứng gốc để nộp cho công an trong game (hệ thống sẽ tính mã băm SHA-256 để xác thực).</li>
+          </ol>
+        </div>
       </section>
+
+      <footer style="border-top: 1px dashed #334155; padding-top: 16px; margin-top: 24px; text-align: center; font-size: 0.8rem; color: #64748b;">
+        Secure Attachment Storage &copy; 2026. Chỉ dành cho người có thẩm quyền nắm giữ chìa khóa bảo mật.
+      </footer>
     </div>
   </div>
 
-  <script src="../assets/js/drop.js"></script>
 </body>
 </html>
