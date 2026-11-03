@@ -54,6 +54,7 @@ public static class NightStreetBuilder
                 l.spotAngle = 120;
                 l.innerSpotAngle = 60;
                 l.shadows = LightShadows.Soft;
+                SetShadowTier(l, UniversalAdditionalLightData.AdditionalLightsShadowResolutionTierMedium);
             }
             else
             {
@@ -70,6 +71,13 @@ public static class NightStreetBuilder
         PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
         UnityEngine.Object.DestroyImmediate(root);
         Debug.Log("[NightStreet] prefab " + PrefabPath + " lights " + count);
+    }
+
+    public static void SetShadowTier(Light light, int tier)
+    {
+        var data = new SerializedObject(light.GetUniversalAdditionalLightData());
+        data.FindProperty("m_AdditionalLightsShadowResolutionTier").intValue = tier;
+        data.ApplyModifiedPropertiesWithoutUndo();
     }
 
     static VolumeProfile Profile()
