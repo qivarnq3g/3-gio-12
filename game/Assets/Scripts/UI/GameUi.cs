@@ -45,6 +45,37 @@ namespace BaGio12.Gameplay
             return text;
         }
 
+        public static RawImage Raw(Transform parent, string name, Texture texture, Color color)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var image = go.AddComponent<RawImage>();
+            image.texture = texture; image.color = color; image.raycastTarget = false;
+            return image;
+        }
+
+        public static Texture2D Gradient(Color from, Color to, bool vertical = false, int size = 256)
+        {
+            var texture = new Texture2D(vertical ? 1 : size, vertical ? size : 1, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            for (int i = 0; i < size; i++)
+            {
+                var color = Color.Lerp(from, to, Mathf.SmoothStep(0, 1, i / (size - 1f)));
+                if (vertical) texture.SetPixel(0, i, color); else texture.SetPixel(i, 0, color);
+            }
+            texture.Apply();
+            return texture;
+        }
+
+        public static Texture2D Noise(int size = 256)
+        {
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Point };
+            var pixels = new Color32[size * size];
+            var random = new System.Random(312);
+            for (int i = 0; i < pixels.Length; i++) { byte v = (byte)random.Next(256); pixels[i] = new Color32(v, v, v, 255); }
+            texture.SetPixels32(pixels); texture.Apply();
+            return texture;
+        }
+
         public static RectTransform Place(RectTransform rect, Vector2 anchor, Vector2 pivot, Vector2 position, Vector2 size)
         {
             rect.anchorMin = rect.anchorMax = anchor; rect.pivot = pivot;
@@ -70,7 +101,9 @@ namespace BaGio12.Gameplay
             return cap;
         }
 
-        public static RectTransform ControlRow(Transform parent, string action, float height, params string[] keys)
+        public static RectTransform ControlRow(Transform parent, string action, float height, params string[] keys) => ControlRow(parent, action, height, height * 4.6f, keys);
+
+        public static RectTransform ControlRow(Transform parent, string action, float height, float keyColumn, params string[] keys)
         {
             var row = Box(parent, "Row " + action, Color.clear);
             var layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
@@ -78,7 +111,7 @@ namespace BaGio12.Gameplay
             layout.childControlWidth = layout.childControlHeight = false; layout.childForceExpandWidth = layout.childForceExpandHeight = false;
             float keysWidth = -layout.spacing;
             foreach (var key in keys) keysWidth += KeyCap(row, key, height).sizeDelta.x + layout.spacing;
-            var gap = Box(row, "Gap", Color.clear); gap.sizeDelta = new Vector2(Mathf.Max(4, height * 4.6f - keysWidth), height);
+            var gap = Box(row, "Gap", Color.clear); gap.sizeDelta = new Vector2(Mathf.Max(6, keyColumn - keysWidth), height);
             var text = Text(row, "Action", action, height * .56f, Ink);
             ((RectTransform)text.transform).sizeDelta = new Vector2(text.GetPreferredValues(action).x + 4, height);
             float width = -layout.spacing;

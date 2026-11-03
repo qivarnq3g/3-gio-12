@@ -13,6 +13,8 @@ namespace BaGio12.Gameplay
         public bool showTestHud = true;
         public bool ExternalUI { get; set; }
         public bool HasPauseMenu { get; set; }
+        public bool PauseMenuLocked { get; set; }
+        public bool InvertY { get; set; }
         public float ViewPitch => pitch;
         public float RunMultiplier { get; set; } = 1f;
         public bool IsRunning { get; private set; }
@@ -67,7 +69,7 @@ namespace BaGio12.Gameplay
         {
             if (cancel.WasPressedThisFrame())
             {
-                if (paused) ResumeControl();
+                if (paused) { if (!PauseMenuLocked) ResumeControl(); }
                 else if (ActivePhone != 0) SetPhone(0);
                 else if (!ExternalUI) SetPaused(!paused);
             }
@@ -83,7 +85,7 @@ namespace BaGio12.Gameplay
                 Vector2 delta = look.ReadValue<Vector2>();
                 float scale = look.activeControl?.device is Gamepad ? 160 * Time.deltaTime : sensitivity;
                 transform.Rotate(0, delta.x * scale, 0);
-                pitch = Mathf.Clamp(pitch - delta.y * scale, -80, 80);
+                pitch = Mathf.Clamp(pitch - delta.y * scale * (InvertY ? -1 : 1), -80, 80);
                 eyes.transform.localRotation = Quaternion.Euler(pitch, 0, 0);
                 if (crouch.WasPressedThisFrame()) SetCrouch(!IsCrouched);
                 if (Physics.Raycast(eyes.transform.position, eyes.transform.forward, out var hit, reach, PlayerGeometry.WorldMask, QueryTriggerInteraction.Ignore))

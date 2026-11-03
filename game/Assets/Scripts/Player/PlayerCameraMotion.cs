@@ -9,9 +9,15 @@ namespace BaGio12.Gameplay
         public float walkBob = .045f, runBob = .075f, crouchBob = .025f;
         public float sway = .55f, strafeRoll = 2.2f, stepRoll = .45f;
         public float runFovBoost = 7f, eyeSpeed = 9f;
+        public float intensity = 1f;
 
         public event System.Action<float> Step;
         public float Speed { get; private set; }
+        public float BaseFov
+        {
+            get => baseFov > 0 ? baseFov : player.eyes.fieldOfView;
+            set { baseFov = fov = value; player.eyes.fieldOfView = value; }
+        }
 
         FirstPersonPlayer player;
         CharacterController body;
@@ -27,7 +33,7 @@ namespace BaGio12.Gameplay
 
         void Start()
         {
-            baseFov = fov = player.eyes.fieldOfView;
+            if (baseFov <= 0) baseFov = fov = player.eyes.fieldOfView;
         }
 
         void LateUpdate()
@@ -58,19 +64,19 @@ namespace BaGio12.Gameplay
             }
             else phase = Mathf.Lerp(phase, Mathf.Round(phase / Mathf.PI) * Mathf.PI, dt * 3);
 
-            float vertical = -Mathf.Abs(Mathf.Sin(phase)) * amplitude * weight;
-            float lateral = Mathf.Cos(phase) * amplitude * sway * weight;
-            float targetRoll = -local.x / Mathf.Max(player.runSpeed, .1f) * strafeRoll + Mathf.Cos(phase) * stepRoll * weight;
+            float vertical = -Mathf.Abs(Mathf.Sin(phase)) * amplitude * weight * intensity;
+            float lateral = Mathf.Cos(phase) * amplitude * sway * weight * intensity;
+            float targetRoll = (-local.x / Mathf.Max(player.runSpeed, .1f) * strafeRoll + Mathf.Cos(phase) * stepRoll * weight) * intensity;
             roll = Mathf.Lerp(roll, targetRoll, dt * 8);
 
             float targetEye = player.IsCrouched ? PlayerGeometry.CrouchedEye : PlayerGeometry.StandingEye;
             eye = Mathf.Lerp(eye, targetEye, dt * eyeSpeed);
 
-            fov = Mathf.Lerp(fov, baseFov + (player.IsRunning ? runFovBoost : 0), dt * 5);
+            fov = Mathf.Lerp(fov, baseFov + (player.IsRunning ? runFovBoost * Mathf.Max(intensity, .3f) : 0), dt * 5);
             player.eyes.fieldOfView = fov;
 
             var cam = player.eyes.transform;
-            cam.localPosition = new Vector3(lateral, eye + vertical + dip, 0);
+            cam.localPosition = new Vector3(lateral, eye + vertical + dip * intensity, 0);
             cam.localRotation = Quaternion.Euler(player.ViewPitch + vertical * 12, 0, roll);
         }
     }
