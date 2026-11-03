@@ -12,6 +12,8 @@ namespace BaGio12.Gameplay
         public float sensitivity = 0.09f, reach = 2.4f;
         public bool showTestHud = true;
         public bool ExternalUI { get; set; }
+        public bool HasPauseMenu { get; set; }
+        public float ViewPitch => pitch;
         public float RunMultiplier { get; set; } = 1f;
         public bool IsRunning { get; private set; }
         public bool IsPaused => paused;
@@ -39,6 +41,10 @@ namespace BaGio12.Gameplay
         void Awake()
         {
             body = GetComponent<CharacterController>();
+            if (!GetComponent<PlayerCameraMotion>()) gameObject.AddComponent<PlayerCameraMotion>();
+            if (!GetComponent<PlayerFootsteps>()) gameObject.AddComponent<PlayerFootsteps>();
+            if (!GetComponent<ControlsHint>()) gameObject.AddComponent<ControlsHint>();
+            if (!GetComponent<PauseMenu>()) gameObject.AddComponent<PauseMenu>();
             inputs = Instantiate(inputTemplate);
             var map = inputs.FindActionMap("Player", true);
             move = map.FindAction("Move", true); look = map.FindAction("Look", true);
@@ -137,15 +143,10 @@ namespace BaGio12.Gameplay
         void OnGUI()
         {
             if (text == null) { text = new GUIStyle(GUI.skin.label) { fontSize = 18, wordWrap = true }; title = new GUIStyle(text) { fontSize = 28, alignment = TextAnchor.MiddleCenter }; }
-            if (paused)
-            {
-                if(GUI.Button(new Rect(Screen.width/2-120,Screen.height/2,240,55),"Tiếp tục (Esc)"))ResumeControl();
-                return;
-            }
+            if (paused) return;
             if (!showTestHud)
             {
                 if (!paused && ActivePhone == 0 && !ExternalUI && target != null) GUI.Label(new Rect(Screen.width/2 - 220, Screen.height*.76f, 440, 65), "E — " + target.Prompt, title);
-                if (paused && ActivePhone == 0 && !ExternalUI && GUI.Button(new Rect(Screen.width/2-100, Screen.height/2, 200, 50), "Tiếp tục (Esc)")) ResumeControl();
                 return;
             }
             GUI.Box(new Rect(12, 12, 580, 95), "");
@@ -156,10 +157,6 @@ namespace BaGio12.Gameplay
                 GUI.Label(new Rect(30, Screen.height / 2 - 95, Screen.width - 60, 70), ActivePhone == 1 ? "MÁY NGÂN" : "MÁY SINH VIÊN", title);
                 GUI.Label(new Rect(30, Screen.height / 2 - 10, Screen.width - 60, 90), "Giao diện giữ chỗ để nối với #17.\nNhân vật đứng yên; thế giới vẫn tiếp tục chạy.", title);
                 if (GUI.Button(new Rect(Screen.width / 2 - 90, Screen.height / 2 + 100, 180, 45), "Cất điện thoại (Esc)")) SetPhone(0);
-            }
-            else if (paused)
-            {
-                if (GUI.Button(new Rect(Screen.width / 2 - 100, Screen.height / 2, 200, 50), "Tiếp tục (Esc)")) { ResumeControl(); }
             }
             else
             {
