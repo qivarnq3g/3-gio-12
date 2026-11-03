@@ -188,9 +188,10 @@ test("AccountsPage: lists accounts and disallows locking oneself", async () => {
   expect(await screen.findByText("Điều hành viên")).toBeInTheDocument();
   expect(screen.getByText("(Bạn)")).toBeInTheDocument();
 
-  // Find the row for current user and ensure its lock button is disabled
-  const selfRow = screen.getByText("admin@example.test").closest("tr")!;
-  const selfLockButton = within(selfRow).getByRole("button", { name: "Khóa" });
+  // Find the row for current user in the table and ensure its lock button is disabled
+  const table = screen.getByRole("table");
+  const selfRow = within(table).getByText("admin@example.test").closest("tr")!;
+  const selfLockButton = within(selfRow).getByRole("button", { name: /Khóa/i });
   expect(selfLockButton).toBeDisabled();
 });
 

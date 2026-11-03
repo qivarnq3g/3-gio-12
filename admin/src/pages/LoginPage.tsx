@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthProvider";
+import { AlertCircleIcon, EyeIcon, EyeOffIcon, LockIcon, MailIcon, ShieldCheckIcon } from "../components/Icons";
 
 export function LoginPage() {
   const { account, login } = useAuth();
@@ -43,7 +44,9 @@ export function LoginPage() {
           {/* Error Banner */}
           {error && (
             <div role="alert" className="alert-error login-error-box">
-              <span className="error-icon" aria-hidden="true">⚠️</span>
+              <span className="error-icon" aria-hidden="true">
+                <AlertCircleIcon />
+              </span>
               <span className="error-text">{error}</span>
             </div>
           )}
@@ -55,7 +58,9 @@ export function LoginPage() {
                 Email
               </label>
               <div className="input-with-icon">
-                <span className="input-icon" aria-hidden="true">✉️</span>
+                <span className="input-icon" aria-hidden="true">
+                  <MailIcon />
+                </span>
                 <input
                   id="login-email"
                   type="email"
@@ -74,7 +79,9 @@ export function LoginPage() {
                 Mật khẩu
               </label>
               <div className="input-with-icon">
-                <span className="input-icon" aria-hidden="true">🔒</span>
+                <span className="input-icon" aria-hidden="true">
+                  <LockIcon />
+                </span>
                 <input
                   id="login-password"
                   type={showPassword ? "text" : "password"}
@@ -91,8 +98,9 @@ export function LoginPage() {
                   className="password-toggle-btn"
                   onClick={() => setShowPassword((prev) => !prev)}
                   title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                 >
-                  {showPassword ? "Ẩn" : "Hiện"}
+                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
               </div>
             </div>
@@ -112,7 +120,9 @@ export function LoginPage() {
 
           {/* Security footnote */}
           <div className="login-footer">
-            <span className="security-icon" aria-hidden="true">🛡️</span>
+            <span className="security-icon" aria-hidden="true">
+              <ShieldCheckIcon />
+            </span>
             <span>Phiên bảo mật 8 giờ · Cookie SameSite Strict</span>
           </div>
         </form>

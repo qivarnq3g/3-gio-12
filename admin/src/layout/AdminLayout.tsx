@@ -14,17 +14,34 @@ export function AdminLayout() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <p className="brand">3 GIỜ 12</p>
+        <div className="brand-header">
+          <div className="brand-badge">3:12</div>
+          <div className="brand-info">
+            <span className="brand-title">3 GIỜ 12</span>
+            <span className="brand-sub">Quản trị hệ thống</span>
+          </div>
+        </div>
+
         <nav>
           {links.map((link) => (
-            <NavLink key={link.to} to={link.to} end={link.end}>
-              {link.label}
+            <NavLink key={link.to} to={link.to} end={link.end} className={({ isActive }) => (isActive ? "active" : "")}>
+              <span className="nav-indicator" aria-hidden="true"></span>
+              <span className="nav-text">{link.label}</span>
             </NavLink>
           ))}
         </nav>
+
         <div className="who">
-          <span>{account?.displayName}</span>
-          <button type="button" onClick={() => void logout()}>
+          <div className="user-profile-box">
+            <div className="user-avatar" aria-hidden="true">
+              {account?.displayName?.charAt(0).toUpperCase() || "A"}
+            </div>
+            <div className="user-meta">
+              <span className="user-name">{account?.displayName}</span>
+              <span className="user-email">{account?.email}</span>
+            </div>
+          </div>
+          <button type="button" className="logout-btn" onClick={() => void logout()}>
             Đăng xuất
           </button>
         </div>

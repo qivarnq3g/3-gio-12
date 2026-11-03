@@ -2,6 +2,15 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, type AdminAccount } from "../api/client";
 import { getErrorMessage } from "../api/error";
 import { useAuth } from "../auth/AuthProvider";
+import {
+  AlertCircleIcon,
+  CheckCircleIcon,
+  EditIcon,
+  KeyIcon,
+  LockIcon,
+  TrashIcon,
+  UserPlusIcon,
+} from "../components/Icons";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "Chưa đăng nhập";
@@ -226,36 +235,63 @@ export function AccountsPage() {
     }
   }
 
+  const activeCount = accounts.filter((a) => a.isActive).length;
+  const inactiveCount = accounts.length - activeCount;
+
   return (
     <section className="accounts-page">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <h1>Tài khoản quản trị</h1>
+      {/* Top Header & Metrics */}
+      <div className="page-header-row">
+        <div>
+          <h1>Tài khoản quản trị</h1>
+          <div className="stats-pills">
+            <span className="stats-pill">
+              Tổng số: <strong>{accounts.length}</strong>
+            </span>
+            <span className="stats-pill pill-active">
+              Hoạt động: <strong>{activeCount}</strong>
+            </span>
+            {inactiveCount > 0 && (
+              <span className="stats-pill pill-inactive">
+                Đã khóa: <strong>{inactiveCount}</strong>
+              </span>
+            )}
+          </div>
+        </div>
+
         <button
           type="button"
+          className="add-account-btn"
           onClick={() => {
             setShowAddForm((prev) => !prev);
             setError(null);
           }}
         >
-          {showAddForm ? "Đóng form" : "+ Thêm tài khoản"}
+          <UserPlusIcon />
+          <span>{showAddForm ? "Đóng form" : "+ Thêm tài khoản"}</span>
         </button>
       </div>
 
       {error && (
         <div role="alert" className="alert-error">
-          {error}
+          <AlertCircleIcon />
+          <span>{error}</span>
         </div>
       )}
       {success && (
         <div role="status" className="alert-success">
-          {success}
+          <CheckCircleIcon />
+          <span>{success}</span>
         </div>
       )}
 
       {/* Form tạo tài khoản mới */}
       {showAddForm && (
-        <form onSubmit={handleCreateAccount} className="form-card" style={{ marginBottom: "1.5rem" }}>
-          <h2>Thêm tài khoản quản trị viên mới</h2>
+        <form onSubmit={handleCreateAccount} className="form-card account-create-card">
+          <div className="card-title-row">
+            <h2>Thêm tài khoản quản trị viên mới</h2>
+            <span className="card-subtitle">Điền thông tin tài khoản và mật khẩu khởi tạo (tối thiểu 12 ký tự)</span>
+          </div>
           <div className="form-grid">
             <label>
               Email
@@ -285,10 +321,11 @@ export function AccountsPage() {
                 minLength={12}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••••••"
               />
             </label>
           </div>
-          <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "1.25rem" }}>
             <button type="submit" disabled={addBusy}>
               {addBusy ? "Đang tạo..." : "Tạo tài khoản"}
             </button>
@@ -301,7 +338,10 @@ export function AccountsPage() {
 
       {/* Bảng danh sách tài khoản */}
       {loading ? (
-        <p className="status">Đang tải danh sách tài khoản...</p>
+        <div className="loading-state">
+          <span className="btn-spinner" aria-hidden="true"></span>
+          <p className="status">Đang tải danh sách tài khoản...</p>
+        </div>
       ) : accounts.length === 0 ? (
         <p className="status">Chưa có tài khoản nào.</p>
       ) : (
@@ -314,74 +354,89 @@ export function AccountsPage() {
                 <th>Trạng thái</th>
                 <th>Đăng nhập gần nhất</th>
                 <th>Ngày tạo</th>
-                <th>Thao tác</th>
+                <th style={{ textAlign: "right" }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {accounts.map((acc) => {
                 const isMe = acc.id === currentAdmin?.id;
                 return (
-                  <tr key={acc.id}>
+                  <tr key={acc.id} className={isMe ? "row-self" : ""}>
                     <td>
-                      <strong>{acc.displayName}</strong>
-                      {isMe && <span className="tag-self"> (Bạn)</span>}
+                      <div className="user-cell">
+                        <div className="avatar-sm" aria-hidden="true">
+                          {acc.displayName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <strong>{acc.displayName}</strong>
+                          {isMe && <span className="tag-self"> (Bạn)</span>}
+                        </div>
+                      </div>
                     </td>
-                    <td>{acc.email}</td>
+                    <td className="font-mono text-muted">{acc.email}</td>
                     <td>
                       <span className={`badge ${acc.isActive ? "badge-active" : "badge-inactive"}`}>
+                        <span className="badge-dot" aria-hidden="true"></span>
                         {acc.isActive ? "Hoạt động" : "Đã khóa"}
                       </span>
                     </td>
-                    <td>{formatDate(acc.lastLoginAt ?? null)}</td>
-                    <td>{formatDate(acc.createdAt)}</td>
+                    <td className="text-muted">{formatDate(acc.lastLoginAt ?? null)}</td>
+                    <td className="text-muted">{formatDate(acc.createdAt)}</td>
                     <td>
-                      <div className="actions-cell">
+                      <div className="actions-cell" style={{ justifyContent: "flex-end" }}>
                         <button
                           type="button"
-                          className="sm secondary"
+                          className="sm secondary action-icon-btn"
                           onClick={() => {
                             setEditingAccount(acc);
                             setEditDisplayName(acc.displayName);
                             setError(null);
                           }}
+                          title="Sửa tên hiển thị"
                         >
-                          Sửa tên
+                          <EditIcon />
+                          <span>Sửa tên</span>
                         </button>
 
                         <button
                           type="button"
-                          className="sm secondary"
+                          className={`sm secondary action-icon-btn ${acc.isActive ? "btn-lock" : "btn-unlock"}`}
                           disabled={isMe}
-                          title={isMe ? "Không tự khóa tài khoản của chính mình" : undefined}
+                          title={isMe ? "Không tự khóa tài khoản của chính mình" : acc.isActive ? "Khóa tài khoản" : "Mở khóa tài khoản"}
                           onClick={() => void handleToggleActive(acc)}
                         >
-                          {acc.isActive ? "Khóa" : "Mở khóa"}
+                          <LockIcon />
+                          <span>{acc.isActive ? "Khóa" : "Mở khóa"}</span>
                         </button>
 
                         {!isMe && (
                           <button
                             type="button"
-                            className="sm secondary"
+                            className="sm secondary action-icon-btn"
                             onClick={() => {
                               setResetAccount(acc);
                               setResetNewPassword("");
                               setError(null);
                             }}
+                            title="Đặt lại mật khẩu cho tài khoản này"
                           >
-                            Đặt lại MK
+                            <KeyIcon />
+                            <span>Đặt lại MK</span>
                           </button>
                         )}
 
                         {!isMe && (
                           <button
                             type="button"
-                            className="sm danger"
+                            className="sm danger action-icon-btn"
                             onClick={() => {
                               setDeletingAccount(acc);
                               setError(null);
                             }}
+                            title="Xóa tài khoản khỏi hệ thống"
                           >
-                            Xóa
+                            <TrashIcon />
+                            <span>Xóa</span>
                           </button>
                         )}
                       </div>
@@ -400,7 +455,7 @@ export function AccountsPage() {
           <div className="modal-content">
             <h3>Sửa tên hiển thị</h3>
             <p className="status" style={{ margin: "0.25rem 0 1rem" }}>
-              Tài khoản: {editingAccount.email}
+              Tài khoản: <code>{editingAccount.email}</code>
             </p>
             <form onSubmit={handleUpdateDisplayName}>
               <label>
@@ -443,6 +498,7 @@ export function AccountsPage() {
                   minLength={12}
                   value={resetNewPassword}
                   onChange={(e) => setResetNewPassword(e.target.value)}
+                  placeholder="••••••••••••"
                   autoFocus
                 />
               </label>
@@ -463,10 +519,10 @@ export function AccountsPage() {
       {deletingAccount && (
         <div className="modal-backdrop">
           <div className="modal-content">
-            <h3>Xác nhận xóa tài khoản</h3>
-            <p style={{ margin: "0.5rem 0 1rem" }}>
+            <h3 style={{ color: "var(--error)" }}>Xác nhận xóa tài khoản</h3>
+            <p style={{ margin: "0.5rem 0 1rem", lineHeight: 1.5 }}>
               Bạn có chắc chắn muốn xóa tài khoản <strong>{deletingAccount.displayName}</strong> (
-              {deletingAccount.email}) không? Hành động này không thể hoàn tác.
+              <code>{deletingAccount.email}</code>) không? Hành động này không thể hoàn tác.
             </p>
             <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
               <button type="button" className="secondary" onClick={() => setDeletingAccount(null)}>
