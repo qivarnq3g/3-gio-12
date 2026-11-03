@@ -6,7 +6,7 @@ namespace BaGio12.Gameplay
     public sealed class PlayerFootsteps : MonoBehaviour
     {
         public string clipFolder = "Audio/Footsteps";
-        public float volume = .55f;
+        public float volume = 1f;
 
         AudioClip[] clips;
         AudioSource source;

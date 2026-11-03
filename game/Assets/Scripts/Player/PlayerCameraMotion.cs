@@ -59,7 +59,7 @@ namespace BaGio12.Gameplay
             {
                 float before = phase;
                 phase += Mathf.PI * 2 * Speed / stride * dt;
-                if (Mathf.Floor(before / Mathf.PI - .5f) != Mathf.Floor(phase / Mathf.PI - .5f)) Step?.Invoke(player.IsCrouched ? .4f : player.IsRunning ? 1f : .7f);
+                if (Mathf.Floor(before / Mathf.PI - .5f) != Mathf.Floor(phase / Mathf.PI - .5f)) Step?.Invoke(player.IsCrouched ? .4f : player.IsRunning ? 1f : .8f);
                 if (phase > Mathf.PI * 200) phase -= Mathf.PI * 200;
             }
             else phase = Mathf.Lerp(phase, Mathf.Round(phase / Mathf.PI) * Mathf.PI, dt * 3);

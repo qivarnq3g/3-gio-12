@@ -310,7 +310,7 @@ namespace BaGio12.Gameplay
             if (lightsOn == on) return;
             lightsOn = on;
             clicks.pitch = on ? 1 : .82f;
-            clicks.PlayOneShot(MenuSounds.Relay, on ? .5f : .35f);
+            clicks.PlayOneShot(MenuSounds.Relay, on ? 1f : .7f);
             if (on) { flickerAt = Time.unscaledTime; if (!hum.isPlaying) hum.Play(); }
         }
 
@@ -328,7 +328,7 @@ namespace BaGio12.Gameplay
             Tick();
         }
 
-        void Tick() => clicks.PlayOneShot(MenuSounds.Tick, .25f);
+        void Tick() => clicks.PlayOneShot(MenuSounds.Tick, .6f);
 
         void Activate(int index)
         {
@@ -493,7 +493,7 @@ namespace BaGio12.Gameplay
             bool peek = inPage && selected == Settings && rows[row].peek;
             light.alpha = lightLevel * (lightsOn ? Flicker() : 1);
             ceiling.alpha = Mathf.MoveTowards(ceiling.alpha, peek ? .12f : 1, dt * 4);
-            hum.volume = Mathf.MoveTowards(hum.volume, lightsOn && shown ? .035f : 0, dt * .5f);
+            hum.volume = Mathf.MoveTowards(hum.volume, lightsOn && shown ? .08f : 0, dt * .5f);
             if (!lightsOn && hum.volume <= 0 && hum.isPlaying) hum.Stop();
 
             for (int i = 0; i < entries.Length; i++)
