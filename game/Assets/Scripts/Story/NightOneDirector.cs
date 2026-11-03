@@ -53,6 +53,8 @@ namespace BaGio12.Story
         public bool NotebookOpen { get; private set; }
         public bool HasNgan => State.hasNganPhone;
         float subtitleUntil, roomSeconds, unseenSeconds, immuneUntil;
+        float hidingSeconds;
+        Vector3 hideAnchor;
         int shoutCount;
         bool leftStart;
         float nightStartedAt;
@@ -103,10 +105,17 @@ namespace BaGio12.Story
                 if (player.transform.position.z > 5) leftStart = true;
                 bool seen = observers.Any(x => x.CanSeePlayer());
                 unseenSeconds = seen ? 0 : unseenSeconds + Time.deltaTime;
-                if (Hidden && unseenSeconds >= 8) foreach (var o in observers) o.LoseTrail();
+                // Remaining unseen while moving is not eight seconds of staying in cover.
+                if (!Hidden || seen || Vector3.Distance(hideAnchor, player.transform.position) > .05f)
+                { hidingSeconds = 0; hideAnchor = player.transform.position; }
+                else hidingSeconds += Time.deltaTime;
+                if (hidingSeconds >= 8) foreach (var o in observers) o.LoseTrail();
                 if (player.IsRunning || (State.prologue_beaten >= 2 && Hidden))
-                    foreach (var o in observers)
-                        if (Vector3.Distance(o.transform.position, player.transform.position) < (player.IsRunning ? 5 : 3)) o.Hear(player.transform.position, false);
+                {
+                    float hearingRange = player.IsRunning ? 5 : 3;
+                    observers.Where(o => o.CanHear && Vector3.Distance(o.transform.position, player.transform.position) <= hearingRange)
+                        .OrderBy(o => Vector3.Distance(o.transform.position, player.transform.position)).FirstOrDefault()?.Hear(player.transform.position, false);
+                }
                 if (leftStart && player.transform.position.z < 1.2f)
                 {
                     if (State.phonePlaced) StartCoroutine(CompletePrologue());
@@ -410,7 +419,7 @@ namespace BaGio12.Story
                 if(parkingAlertLight!=null)parkingAlertLight.enabled=true;
                 player.RunMultiplier = State.prologue_beaten >= 2 ? 2f/3 : 1;
             }
-            BlackTitle = ""; Busy = false; player.SetOverlay(false); immuneUntil = Time.time + 5;
+            BlackTitle = ""; Busy = false; player.SetOverlay(false); immuneUntil = Time.time + 5; hidingSeconds = 0; hideAnchor = player.transform.position;
         }
         public void ResetPrologue()
         {
@@ -418,7 +427,7 @@ namespace BaGio12.Story
             player.Teleport(alleyStart.position); player.RunMultiplier = 1;
             foreach (var o in observers) o.ResetObserver(false);
             foreach (var l in alertLights) l.enabled = false;
-            leftStart = false; shoutCount = 0; unseenSeconds = 0;PrologueDeparted=false;PrologueElapsed=0;
+            leftStart = false; shoutCount = 0; unseenSeconds = 0; hidingSeconds = 0; hideAnchor = player.transform.position; PrologueDeparted=false;PrologueElapsed=0;
             if(parkingAlertLight!=null)parkingAlertLight.enabled=false;
             Objective = "Tới nhà xe cuối hẻm. Cúi và đặt chiếc máy dưới chân xe.";
         }
@@ -433,7 +442,7 @@ namespace BaGio12.Story
                 foreach(var light in alertLights)light.enabled=false;
                 foreach(var light in alertLights.Take(State.prologue_beaten>0?State.prologue_beaten+1:0))light.enabled=true;
                 if(parkingAlertLight!=null)parkingAlertLight.enabled=State.prologue_beaten>0;
-                leftStart=false;immuneUntil=Time.time+3;return;
+                leftStart=false;hidingSeconds=0;hideAnchor=player.transform.position;immuneUntil=Time.time+3;return;
             }
             bool replayFromEnd=State.stage==NightStage.Ended;
             CloseModal(); player.SetPhone(0); sound.Stop();
@@ -441,7 +450,7 @@ namespace BaGio12.Story
             State = state; Clock = new StoryClock(State); player.Teleport(point,yaw);
             if(replayFromEnd) {isReplay=completedInSession;nightStartedAt=Time.time;TelemetryProduced?.Invoke(new NightStartedTelemetry(isReplay));}
             player.RunMultiplier = State.stage == NightStage.Prologue && State.prologue_beaten >= 2 ? 2f/3 : 1;
-            BlackTitle = ""; roomSeconds = 0;
+            BlackTitle = ""; roomSeconds = 0; hidingSeconds = 0; hideAnchor = player.transform.position;
             foreach (var o in observers) o.ResetObserver(State.phonePlaced);
             foreach (var l in alertLights) l.enabled = false;
             Objective = State.stage >= NightStage.Room ? "Khám phá phòng 7 rồi tới nệm." : "Khám phá hẻm, đọc tin và lên phòng 7.";
