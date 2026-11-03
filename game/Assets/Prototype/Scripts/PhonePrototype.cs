@@ -1,17 +1,25 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
+using BaGio12.Gameplay;
+using BaGio12.Story;
 
 namespace BaGio12.Prototype
 {
-    // Clickable prototype of the in-game phone: lock screen, home screen, Tic (chat),
-    // Nimbo (photos), Mosa (offline). Builds its whole UI from code at start-up so it
-    // needs no scene edits. Content comes from chat-mau.json (placeholder text).
-    // Fonts are Windows system fonts for now; the real build needs an OFL font with
-    // Vietnamese coverage shipped in the project.
+    // Interactive in-game phone system: lock screen, home screen, Tic (chat),
+    // Nimbo (photos), Ghi am (voice memos), Mosa (ARG/offline).
+    // Synchronized with FirstPersonPlayer and NightOneDirector during gameplay.
     public class PhonePrototype : MonoBehaviour
     {
+        public static PhonePrototype Instance { get; private set; }
+
+        public static event Action<bool> OnPhoneVisibilityChanged;
+        public static event Action<string, string> OnChoiceSelected; // contactId, choiceId ("call" for a call)
+        public static event Action<string> OnMessageReceived;
+
         static readonly Color Ink = new Color(0.95f, 0.95f, 0.97f);
         static readonly Color Dim = new Color(1f, 1f, 1f, 0.55f);
         static readonly Color Faint = new Color(1f, 1f, 1f, 0.32f);
@@ -21,34 +29,72 @@ namespace BaGio12.Prototype
         static readonly Color Accent = new Color(0.24f, 0.56f, 0.49f);
         static readonly Color AccentSoft = new Color(0.24f, 0.56f, 0.49f, 0.18f);
         static readonly Color Theirs = new Color(0.16f, 0.16f, 0.18f);
+        static readonly Color WarningRed = new Color(0.86f, 0.24f, 0.22f);
 
-        // vector icons drawn with Painter2D (see DrawIcon)
+        // Vector icons drawn with Painter2D (see DrawIcon)
         const string IcBack = "back", IcSearch = "search", IcCamera = "camera", IcLock = "lock",
                      IcSend = "send", IcLight = "light", IcAdd = "add", IcCall = "call",
-                     IcMore = "more", IcMic = "mic";
+                     IcMore = "more", IcMic = "mic", IcPlay = "play", IcPause = "pause",
+                     IcClose = "close", IcPhone = "phone";
 
         PrototypeData data;
         Font uiFont, lightFont, boldFont;
-        VisualElement phone, screenHost;
-        Label clock;
+        VisualElement rootContainer, phoneContainer, phone, screenHost;
+        VisualElement statusBarElement, homeIndicatorElement, powerBarElement;
+        Label powerLabel;
+        VisualElement toastElement;
+        Coroutine toastCoroutine;
+        bool isPoweredOff;
+        readonly List<string> pendingBatches = new List<string>();
+
+        public bool IsPoweredOff => isPoweredOff;
+        public bool HasDelivered(string batch) => delivered.Contains(batch);
+        VisualElement hudPill;
+        Label hudBadge, hudTime, clock;
         readonly Stack<System.Action> back = new Stack<System.Action>();
         readonly Dictionary<string, List<Message>> shown = new Dictionary<string, List<Message>>();
-        readonly HashSet<string> chose = new HashSet<string>();
+        readonly Dictionary<string, List<Message>> transcript = new Dictionary<string, List<Message>>();
+
+        // In-memory story state (does not pollute PlayerPrefs; synced with NightOneState and checkpoints).
+        readonly List<string> log = new List<string>();
+        readonly HashSet<string> delivered = new HashSet<string>();
+        readonly HashSet<string> sent = new HashSet<string>();      // "contactId/choiceId", "contactId/call"
+        readonly HashSet<string> answered = new HashSet<string>();  // same keys, once a batch has answered them
+        readonly HashSet<string> blocked = new HashSet<string>();
+        readonly Dictionary<string, string> flags = new Dictionary<string, string>();
+        string now = "21:00";
+        Contact openChat;
         Coroutine typing;
+        Coroutine audioPlayingCoroutine;
+
+        public bool IsOpen { get; private set; } = false;
+        private string currentScenario = "Prototype/dem-1";
+        FirstPersonPlayer boundPlayer;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
         {
-            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "SampleScene") return;
             if (FindAnyObjectByType<PhonePrototype>() != null) return;
-            new GameObject("PhonePrototype").AddComponent<PhonePrototype>();
+            var go = new GameObject("PhonePrototype");
+            go.AddComponent<PhonePrototype>();
+            DontDestroyOnLoad(go);
+        }
+
+        void Awake()
+        {
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            Instance = this;
         }
 
         void Start()
         {
-            data = JsonUtility.FromJson<PrototypeData>(Resources.Load<TextAsset>("Prototype/chat-mau").text);
-            // Noto Sans (OFL) shipped in Resources/Fonts. OS fonts created at runtime with
-            // Font.CreateDynamicFontFromOSFont rendered wrong glyphs in UI Toolkit.
+            LoadScenarioData(currentScenario);
+            LoadInitialBatches();
+
             uiFont = Resources.Load<Font>("Fonts/NotoSans-Regular") ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             boldFont = Resources.Load<Font>("Fonts/NotoSans-Bold") ?? uiFont;
             lightFont = uiFont;
@@ -61,33 +107,720 @@ namespace BaGio12.Prototype
             var doc = gameObject.AddComponent<UIDocument>();
             doc.panelSettings = settings;
 
-            var root = doc.rootVisualElement;
-            root.style.flexGrow = 1;
-            root.style.alignItems = Align.Center;
-            root.style.justifyContent = Justify.Center;
-            root.style.unityFontDefinition = FontDefinition.FromFont(uiFont);
-            root.style.color = Ink;
-            Cover(root, "Scenes/phong-tro-blur", new Color(0.45f, 0.45f, 0.45f));
-            root.style.backgroundColor = Color.black;
+            rootContainer = doc.rootVisualElement;
+            rootContainer.style.flexGrow = 1;
+            rootContainer.style.unityFontDefinition = FontDefinition.FromFont(uiFont);
+            rootContainer.style.color = Ink;
 
-            // input diagnostics: does UI Toolkit see the pointer at all?
-            root.RegisterCallback<PointerDownEvent>(e => Debug.Log($"[Proto] UI pointer down at {e.position}"), TrickleDown.TrickleDown);
+            BuildHUD(rootContainer);
+            BuildPhone(rootContainer);
 
-            // device: bezel + screen, always 9:19.5 like a modern phone
+            // Default display: Phone closed
+            SetPhoneOpen(false);
+            ShowLock();
+
+            HookPlayer();
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+
+            var director = FindAnyObjectByType<NightOneDirector>();
+            if (director != null)
+            {
+                SyncWithState(director.State);
+            }
+        }
+
+        void OnDestroy()
+        {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+            if (boundPlayer != null) boundPlayer.PhoneChanged -= OnPlayerPhoneChanged;
+        }
+
+        void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            HookPlayer();
+            var director = FindAnyObjectByType<NightOneDirector>();
+            if (director != null)
+            {
+                SyncWithState(director.State);
+            }
+        }
+
+        void HookPlayer()
+        {
+            if (boundPlayer != null) boundPlayer.PhoneChanged -= OnPlayerPhoneChanged;
+            boundPlayer = FindAnyObjectByType<FirstPersonPlayer>();
+            if (boundPlayer != null)
+            {
+                boundPlayer.PhoneChanged += OnPlayerPhoneChanged;
+                if (hudPill != null) hudPill.style.display = DisplayStyle.None;
+            }
+        }
+
+        void OnPlayerPhoneChanged(int previous, int next)
+        {
+            if (next == 1)
+            {
+                SetPhoneOpen(true);
+                ShowHome();
+            }
+            else
+            {
+                SetPhoneOpen(false);
+            }
+        }
+
+        public void LoadScenario(string scenarioResourcePath)
+        {
+            currentScenario = scenarioResourcePath;
+            LoadScenarioData(currentScenario);
+            LoadInitialBatches();
+            SetClock(now);
+            if (IsOpen) ShowHome();
+            UpdateHudBadge();
+        }
+
+        void LoadScenarioData(string path)
+        {
+            var asset = Resources.Load<TextAsset>(path);
+            if (asset == null)
+            {
+                asset = Resources.Load<TextAsset>("Prototype/chat-mau");
+            }
+
+            if (asset != null)
+            {
+                data = JsonUtility.FromJson<PrototypeData>(asset.text);
+            }
+            else
+            {
+                data = new PrototypeData { lockTime = "21:00", lockDate = "Thứ Ba, 24 tháng 11" };
+            }
+            if (!string.IsNullOrEmpty(data.lockTime)) now = data.lockTime;
+            ResolveDialogueLines();
+        }
+
+        // Story lines live only in Story/night-one-dialogue.json (shared with NightOneDirector);
+        // the scenario file just says which line arrives in which batch.
+        void ResolveDialogueLines()
+        {
+            if (data?.contacts == null) return;
+            var asset = Resources.Load<TextAsset>("Story/night-one-dialogue");
+            var dialogue = asset != null ? JsonUtility.FromJson<NightDialogue>(asset.text) : null;
+            foreach (var c in data.contacts)
+                foreach (var m in c.messages)
+                    if (!string.IsNullOrEmpty(m.line)) m.text = DialogueLine(dialogue, m.line) ?? m.text ?? m.line;
+        }
+
+        static string DialogueLine(NightDialogue d, string key)
+        {
+            if (d == null) return null;
+            if (key.StartsWith("batchA."))
+                return int.TryParse(key.Substring(7), out int i) && d.batchA != null && i >= 0 && i < d.batchA.Length ? d.batchA[i] : null;
+            switch (key)
+            {
+                case "batchB": return d.batchB;
+                case "cameraYes": return d.cameraYes;
+                case "cameraNo": return d.cameraNo;
+                case "why": return d.why;
+                case "warning": return d.warning;
+                case "stranger": return d.stranger;
+                case "batchD": return d.batchD;
+                case "callReply": return d.callReply;
+                default: return null;
+            }
+        }
+
+        // Text the player sees for a choice, so NightOneDirector logs the same words.
+        public string ChoiceText(string contactId, string choiceId)
+        {
+            var c = data?.contacts?.Find(x => x.id == contactId);
+            if (c == null) return null;
+            if (choiceId == "call") return c.callNote;
+            var ch = c.choices?.Find(x => ChoiceId(x) == choiceId);
+            return ch?.text;
+        }
+
+        void LoadInitialBatches()
+        {
+            log.Clear(); delivered.Clear(); sent.Clear(); answered.Clear(); blocked.Clear(); flags.Clear();
+            shown.Clear(); transcript.Clear();
+            if (data?.contacts == null) return;
+
+            ApplyBatch(""); // messages with no batch
+            if (data.startBatches != null)
+            {
+                foreach (var b in data.startBatches) DeliverBatch(b);
+            }
+        }
+
+        // ---------- Story state synchronization (batches, sent lines, flags) ----------
+
+        public void DeliverBatch(string batch)
+        {
+            if (string.IsNullOrEmpty(batch) || delivered.Contains(batch)) return;
+            if (isPoweredOff)
+            {
+                if (!pendingBatches.Contains(batch)) pendingBatches.Add(batch);
+                return;
+            }
+            Record("batch:" + batch);
+            Refresh();
+        }
+
+        public void SetFlag(string name, string value = "true")
+        {
+            Record($"flag:{name}={value}");
+            Refresh();
+        }
+
+        public string GetFlag(string name) => flags.TryGetValue(name, out var v) ? v : null;
+
+        public bool HasSent(string contactId, string choiceId) => sent.Contains(contactId + "/" + choiceId);
+
+        public List<string> SentLines(string contactId)
+        {
+            var lines = new List<string>();
+            foreach (var m in Transcript(contactId)) if (m.from == "me") lines.Add(m.text);
+            return lines;
+        }
+
+        public string Now => now;
+
+        public void SetClock(string time)
+        {
+            now = time;
+            if (clock != null) clock.text = time;
+            if (hudTime != null) hudTime.text = time + "  [1]";
+        }
+
+        static string ChoiceId(Choice ch) => string.IsNullOrEmpty(ch.id) ? ch.text : ch.id;
+
+        void Record(string entry)
+        {
+            log.Add(entry);
+            Apply(entry);
+        }
+
+        public void RecordSentExternal(string choiceId, string text, string time)
+        {
+            string key = "me_ngan/" + choiceId;
+            if (sent.Contains(key)) return;
+            Record($"sent:{key}@{time}");
+            Refresh();
+        }
+
+        public void RecordChoiceExternal(string contactId, string choiceId)
+        {
+            if (contactId == "so_la")
+            {
+                if (choiceId == "blocked")
+                {
+                    ApplyFlag("number_choice=blocked");
+                    blocked.Add("so_la");
+                    Transcript("so_la").Add(new Message { from = "system", text = "Bạn đã chặn số này", time = now });
+                }
+                else if (choiceId == "replied")
+                {
+                    ApplyFlag("number_choice=replied");
+                }
+                else if (choiceId == "ignored")
+                {
+                    ApplyFlag("number_choice=ignored");
+                }
+                Refresh();
+            }
+        }
+
+        public void SyncWithState(NightOneState state)
+        {
+            if (state == null) return;
+            log.Clear(); delivered.Clear(); sent.Clear(); answered.Clear(); blocked.Clear(); flags.Clear();
+            shown.Clear(); transcript.Clear();
+            if (data?.contacts == null) return;
+
+            ApplyBatch("");
+            SetClock(state.clock);
+
+            if (state.saw_shop_camera) SetFlag("saw_shop_camera");
+
+            isPoweredOff = state.phone_powered_off;
+            UpdatePowerUi();
+
+            bool batchAPending = state.phone_powered_off && IsBatchPending(state, "20:56");
+            bool batchBPending = state.phone_powered_off && IsBatchPending(state, "21:26");
+            bool batchCPending = state.phone_powered_off && IsBatchPending(state, "21:35");
+            bool batchDPending = state.phone_powered_off && IsBatchPending(state, "03:40");
+
+            if (state.phoneEverPicked)
+            {
+                if (batchAPending)
+                {
+                    if (!pendingBatches.Contains("A")) pendingBatches.Add("A");
+                }
+                else
+                {
+                    ApplyBatch("A");
+                }
+            }
+
+            // Times of past sends are not kept in NightOneState, so they show the restored clock.
+            var afterJump = state.afterJumpQuestions ?? new List<string>();
+            if (state.sent != null)
+                foreach (var s in state.sent)
+                    if (!afterJump.Contains(s)) RestoreSent(s, state.clock);
+
+            if (state.timeJumped)
+            {
+                if (batchBPending)
+                {
+                    if (!pendingBatches.Contains("B")) pendingBatches.Add("B");
+                }
+                else
+                {
+                    ApplyBatch("B");
+                }
+            }
+
+            foreach (var s in afterJump) RestoreSent(s, state.clock);
+
+            if (state.numberArrived)
+            {
+                if (batchCPending)
+                {
+                    if (!pendingBatches.Contains("C")) pendingBatches.Add("C");
+                }
+                else
+                {
+                    ApplyBatch("C");
+                }
+            }
+
+            if (state.number_choice == "blocked")
+            {
+                ApplyFlag("number_choice=blocked");
+                blocked.Add("so_la");
+                Transcript("so_la").Add(new Message { from = "system", text = "Bạn đã chặn số này", time = state.clock });
+            }
+            else if (state.number_choice == "replied")
+            {
+                ApplySent("so_la/replied", state.clock);
+            }
+
+            if (state.batchD)
+            {
+                if (batchDPending)
+                {
+                    if (!pendingBatches.Contains("D")) pendingBatches.Add("D");
+                }
+                else
+                {
+                    ApplyBatch("D");
+                }
+            }
+
+            if (isPoweredOff)
+            {
+                ShowPoweredOff();
+            }
+            else
+            {
+                if (pendingBatches.Count > 0)
+                {
+                    var toFlush = new List<string>(pendingBatches);
+                    pendingBatches.Clear();
+                    foreach (var b in toFlush) DeliverBatch(b);
+                }
+                Refresh();
+            }
+        }
+
+        static bool IsBatchPending(NightOneState state, string timestamp)
+        {
+            if (state?.pendingMessages == null || state.pendingMessages.Count == 0) return false;
+            return state.pendingMessages.Any(m => m != null && m.Contains(timestamp));
+        }
+
+        public void TogglePower()
+        {
+            var director = FindAnyObjectByType<NightOneDirector>();
+            if (director != null)
+            {
+                director.TogglePower();
+            }
+            else
+            {
+                SetPoweredOff(!isPoweredOff);
+            }
+        }
+
+        public void SetPoweredOff(bool off)
+        {
+            isPoweredOff = off;
+            UpdatePowerUi();
+            if (isPoweredOff)
+            {
+                ShowPoweredOff();
+            }
+            else
+            {
+                var toDeliver = new List<string>(pendingBatches);
+                pendingBatches.Clear();
+                foreach (var b in toDeliver) DeliverBatch(b);
+                ShowHome();
+            }
+        }
+
+        void UpdatePowerUi()
+        {
+            if (powerLabel != null) powerLabel.text = isPoweredOff ? " Bật nguồn" : " Tắt nguồn";
+            if (statusBarElement != null) statusBarElement.style.display = isPoweredOff ? DisplayStyle.None : DisplayStyle.Flex;
+            if (homeIndicatorElement != null) homeIndicatorElement.style.display = isPoweredOff ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
+        public void RefusePasscode()
+        {
+            const string refusal = "Máy người ta, đặt mã lỡ người ta không mở được.";
+            var director = FindAnyObjectByType<NightOneDirector>();
+            if (director != null) director.Say(refusal);
+            ShowToast(refusal);
+        }
+
+        public void ShowToast(string message)
+        {
+            if (phone == null) return;
+            if (toastElement == null)
+            {
+                toastElement = Row();
+                toastElement.style.position = Position.Absolute;
+                toastElement.style.bottom = 80;
+                toastElement.style.left = 40;
+                toastElement.style.right = 40;
+                toastElement.style.paddingLeft = 24;
+                toastElement.style.paddingRight = 24;
+                toastElement.style.paddingTop = 16;
+                toastElement.style.paddingBottom = 16;
+                toastElement.style.backgroundColor = new Color(0.12f, 0.12f, 0.15f, 0.95f);
+                Radius(toastElement, 24);
+                toastElement.style.justifyContent = Justify.Center;
+                toastElement.style.alignItems = Align.Center;
+                toastElement.pickingMode = PickingMode.Ignore;
+                phone.Add(toastElement);
+            }
+            toastElement.Clear();
+            var txt = T(message, 26, Ink, boldFont);
+            txt.style.whiteSpace = WhiteSpace.Normal;
+            txt.style.unityTextAlign = TextAnchor.MiddleCenter;
+            toastElement.Add(txt);
+            toastElement.style.display = DisplayStyle.Flex;
+
+            if (toastCoroutine != null) StopCoroutine(toastCoroutine);
+            toastCoroutine = StartCoroutine(HideToastAfterDelay(3.5f));
+        }
+
+        IEnumerator HideToastAfterDelay(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            if (toastElement != null) toastElement.style.display = DisplayStyle.None;
+            toastCoroutine = null;
+        }
+
+        void RestoreSent(string id, string time)
+        {
+            if (id == "call") ApplyCall("me_ngan", time);
+            else ApplySent("me_ngan/" + id, time);
+        }
+
+        void Apply(string entry)
+        {
+            int colon = entry.IndexOf(':');
+            if (colon < 0) return;
+            string kind = entry.Substring(0, colon), arg = entry.Substring(colon + 1), time = "";
+            int at = arg.LastIndexOf('@');
+            if (at >= 0) { time = arg.Substring(at + 1); arg = arg.Substring(0, at); }
+            switch (kind)
+            {
+                case "batch": ApplyBatch(arg); break;
+                case "sent": ApplySent(arg, time); break;
+                case "call": ApplyCall(arg, time); break;
+                case "flag": ApplyFlag(arg); break;
+            }
+        }
+
+        void ApplyBatch(string batch)
+        {
+            if (!delivered.Add(batch)) return;
+            var nowAnswered = new List<string>();
+            foreach (var c in data.contacts)
+            {
+                if (blocked.Contains(c.id)) continue;
+                foreach (var m in c.messages)
+                {
+                    if (!InBatch(m, batch)) continue;
+                    if (!string.IsNullOrEmpty(m.answers))
+                    {
+                        string key = c.id + "/" + m.answers;
+                        if (!sent.Contains(key) || answered.Contains(key)) continue;
+                        nowAnswered.Add(key);
+                    }
+                    Transcript(c.id).Add(m);
+                }
+                if (c.autoRead) MarkRead(c);
+            }
+            answered.UnionWith(nowAnswered);
+        }
+
+        static bool InBatch(Message m, string batch) => (m.batch ?? "") == batch;
+
+        void ApplySent(string key, string time)
+        {
+            int slash = key.IndexOf('/');
+            if (slash < 0) return;
+            string contactId = key.Substring(0, slash);
+            string choiceId = key.Substring(slash + 1);
+            var c = data.contacts.Find(x => x.id == contactId);
+            var ch = c?.choices?.Find(x => ChoiceId(x) == choiceId);
+
+            sent.Add(key);
+            if (ch != null && !string.IsNullOrEmpty(ch.sets)) ApplyFlag(ch.sets);
+            if (ch != null && ch.block)
+            {
+                blocked.Add(c.id);
+                Transcript(c.id).Add(new Message { from = "system", text = "Bạn đã chặn số này", time = time });
+                return;
+            }
+            string text = ch != null ? ch.text : choiceId;
+            Transcript(contactId).Add(new Message { from = "me", text = text, time = time });
+            if (ch != null && ch.replies != null) Transcript(contactId).AddRange(ch.replies);
+        }
+
+        void ApplyCall(string contactId, string time)
+        {
+            var c = data.contacts.Find(x => x.id == contactId);
+            if (c == null || string.IsNullOrEmpty(c.callNote)) return;
+            sent.Add(c.id + "/call");
+            if (!string.IsNullOrEmpty(c.callSets)) ApplyFlag(c.callSets);
+            Transcript(c.id).Add(new Message { from = "system", text = c.callNote, time = time });
+        }
+
+        void ApplyFlag(string arg)
+        {
+            int eq = arg.IndexOf('=');
+            if (eq < 0) flags[arg] = "true";
+            else flags[arg.Substring(0, eq)] = arg.Substring(eq + 1);
+        }
+
+        bool Offered(Contact c, Choice ch)
+        {
+            if (blocked.Contains(c.id) || sent.Contains(c.id + "/" + ChoiceId(ch))) return false;
+            if (!string.IsNullOrEmpty(ch.requires) && GetFlag(ch.requires) == null) return false;
+            string group = ch.group ?? "";
+            foreach (var other in c.choices)
+                if ((other.group ?? "") == group && sent.Contains(c.id + "/" + ChoiceId(other))) return false;
+            return true;
+        }
+
+        void MarkRead(Contact c)
+        {
+            var sh = Shown(c);
+            sh.Clear();
+            sh.AddRange(Transcript(c.id));
+        }
+
+        void Refresh()
+        {
+            UpdateHudBadge();
+            if (screenHost == null || screenHost.childCount == 0) return;
+            switch (screenHost[0].name)
+            {
+                case "tic": ShowTicList(); break;
+                case "chat": if (openChat != null) ShowChat(openChat); break;
+                case "lock": ShowLock(); break;
+                case "powered_off": if (!isPoweredOff) ShowHome(); break;
+            }
+        }
+
+        // ---------- Open / Close / HUD ----------
+        public void TogglePhone() => SetPhoneOpen(!IsOpen);
+        public void OpenPhone() => SetPhoneOpen(true);
+        public void ClosePhone() => SetPhoneOpen(false);
+
+        public void SetPhoneOpen(bool open)
+        {
+            IsOpen = open;
+            if (phoneContainer != null)
+            {
+                phoneContainer.style.display = open ? DisplayStyle.Flex : DisplayStyle.None;
+            }
+            if (hudPill != null)
+            {
+                hudPill.style.display = (open || boundPlayer != null) ? DisplayStyle.None : DisplayStyle.Flex;
+                UpdateHudBadge();
+            }
+
+            OnPhoneVisibilityChanged?.Invoke(open);
+        }
+
+        void CloseViaPlayerOrDirect()
+        {
+            if (boundPlayer != null && boundPlayer.ActivePhone != 0)
+            {
+                boundPlayer.SetPhone(0);
+            }
+            else
+            {
+                SetPhoneOpen(false);
+            }
+        }
+
+        void BuildHUD(VisualElement root)
+        {
+            hudPill = Row();
+            hudPill.name = "hud-phone-pill";
+            hudPill.style.position = Position.Absolute;
+            hudPill.style.right = 36;
+            hudPill.style.bottom = 36;
+            hudPill.style.height = 70;
+            hudPill.style.paddingLeft = 24;
+            hudPill.style.paddingRight = 28;
+            hudPill.style.backgroundColor = new Color(0.08f, 0.08f, 0.1f, 0.88f);
+            Radius(hudPill, 35);
+            hudPill.style.borderTopWidth = hudPill.style.borderBottomWidth = hudPill.style.borderLeftWidth = hudPill.style.borderRightWidth = 2;
+            hudPill.style.borderTopColor = hudPill.style.borderBottomColor = hudPill.style.borderLeftColor = hudPill.style.borderRightColor = new Color(0.24f, 0.56f, 0.49f, 0.6f);
+
+            var phoneIc = Icon(IcPhone, 32, Accent);
+            phoneIc.style.marginRight = 14;
+            hudPill.Add(phoneIc);
+
+            hudTime = T(now + "  [1]", 26, Ink, boldFont);
+            hudPill.Add(hudTime);
+
+            hudBadge = new Label("1");
+            hudBadge.style.fontSize = 20;
+            hudBadge.style.color = Color.white;
+            hudBadge.style.backgroundColor = WarningRed;
+            hudBadge.style.marginLeft = 16;
+            hudBadge.style.paddingLeft = 12;
+            hudBadge.style.paddingRight = 12;
+            hudBadge.style.paddingTop = 4;
+            hudBadge.style.paddingBottom = 4;
+            Radius(hudBadge, 14);
+            hudBadge.style.unityFontDefinition = FontDefinition.FromFont(boldFont);
+            hudPill.Add(hudBadge);
+
+            hudPill.RegisterCallback<PointerUpEvent>(_ => OpenPhone());
+            root.Add(hudPill);
+        }
+
+        int GetTotalUnreadCount()
+        {
+            int total = 0;
+            if (data?.contacts != null)
+            {
+                foreach (var c in data.contacts)
+                {
+                    total += Mathf.Max(0, Transcript(c.id).Count - Shown(c).Count);
+                }
+            }
+            return total;
+        }
+
+        void UpdateHudBadge()
+        {
+            if (hudBadge == null) return;
+            int unread = GetTotalUnreadCount();
+            if (unread > 0)
+            {
+                hudBadge.style.display = DisplayStyle.Flex;
+                hudBadge.text = unread.ToString();
+            }
+            else
+            {
+                hudBadge.style.display = DisplayStyle.None;
+            }
+        }
+
+        void BuildPhone(VisualElement root)
+        {
+            phoneContainer = new VisualElement();
+            phoneContainer.name = "phone-container";
+            phoneContainer.style.flexGrow = 1;
+            phoneContainer.style.width = Length.Percent(100);
+            phoneContainer.style.height = Length.Percent(100);
+            phoneContainer.style.alignItems = Align.Center;
+            phoneContainer.style.justifyContent = Justify.Center;
+            phoneContainer.style.backgroundColor = new Color(0, 0, 0, 0.65f);
+
+            // Bezel
             var bezel = new VisualElement();
             bezel.style.backgroundColor = new Color(0.02f, 0.02f, 0.025f);
-            Radius(bezel, 92); Pad(bezel, 16);
+            Radius(bezel, 92);
+            Pad(bezel, 16);
             bezel.style.borderTopWidth = bezel.style.borderBottomWidth = bezel.style.borderLeftWidth = bezel.style.borderRightWidth = 3;
             bezel.style.borderTopColor = bezel.style.borderBottomColor = bezel.style.borderLeftColor = bezel.style.borderRightColor = new Color(1, 1, 1, 0.08f);
-            root.Add(bezel);
+
+            // Close button top-right above bezel
+            var topBar = Row();
+            topBar.style.position = Position.Absolute;
+            topBar.style.top = 24;
+            topBar.style.right = 36;
+            topBar.style.paddingLeft = 20;
+            topBar.style.paddingRight = 20;
+            topBar.style.paddingTop = 10;
+            topBar.style.paddingBottom = 10;
+            topBar.style.backgroundColor = new Color(0.12f, 0.12f, 0.15f, 0.85f);
+            Radius(topBar, 20);
+            var closeIcon = Icon(IcClose, 26, Dim);
+            topBar.Add(closeIcon);
+            var closeTxt = T(" Đóng (Esc)", 24, Dim, boldFont);
+            closeTxt.style.marginLeft = 8;
+            topBar.Add(closeTxt);
+            topBar.RegisterCallback<PointerUpEvent>(_ => CloseViaPlayerOrDirect());
+            phoneContainer.Add(topBar);
+
+            // Power toggle button top-left above bezel
+            powerBarElement = Row();
+            powerBarElement.style.position = Position.Absolute;
+            powerBarElement.style.top = 24;
+            powerBarElement.style.left = 36;
+            powerBarElement.style.paddingLeft = 20;
+            powerBarElement.style.paddingRight = 20;
+            powerBarElement.style.paddingTop = 10;
+            powerBarElement.style.paddingBottom = 10;
+            powerBarElement.style.backgroundColor = new Color(0.12f, 0.12f, 0.15f, 0.85f);
+            Radius(powerBarElement, 20);
+            var pwrIcon = Icon(IcLight, 24, Dim);
+            powerBarElement.Add(pwrIcon);
+            powerLabel = T(isPoweredOff ? " Bật nguồn" : " Tắt nguồn", 24, Dim, boldFont);
+            powerLabel.style.marginLeft = 8;
+            powerBarElement.Add(powerLabel);
+            powerBarElement.RegisterCallback<PointerUpEvent>(_ => TogglePower());
+            phoneContainer.Add(powerBarElement);
+
+            phoneContainer.Add(bezel);
+
+            // Hardware power key on the right edge of bezel
+            var powerKey = new VisualElement();
+            powerKey.name = "hardware-power-key";
+            powerKey.style.position = Position.Absolute;
+            powerKey.style.right = -12;
+            powerKey.style.top = 180;
+            powerKey.style.width = 10;
+            powerKey.style.height = 70;
+            powerKey.style.backgroundColor = new Color(0.25f, 0.25f, 0.28f);
+            Radius(powerKey, 4);
+            powerKey.RegisterCallback<PointerUpEvent>(_ => TogglePower());
+            bezel.Add(powerKey);
+
             phone = new VisualElement();
             phone.style.backgroundColor = Surface;
             phone.style.overflow = Overflow.Hidden;
             Radius(phone, 78);
             bezel.Add(phone);
-            root.RegisterCallback<GeometryChangedEvent>(_ =>
+
+            phoneContainer.RegisterCallback<GeometryChangedEvent>(_ =>
             {
-                float h = root.resolvedStyle.height * 0.94f, w = root.resolvedStyle.width * 0.94f;
+                float h = phoneContainer.resolvedStyle.height * 0.94f;
+                float w = phoneContainer.resolvedStyle.width * 0.94f;
                 float ph = Mathf.Min(h, w * 19.5f / 9f) - 38;
                 phone.style.height = ph;
                 phone.style.width = ph * 9f / 19.5f;
@@ -97,19 +830,15 @@ namespace BaGio12.Prototype
             screenHost.style.position = Position.Absolute;
             screenHost.style.left = screenHost.style.right = screenHost.style.top = screenHost.style.bottom = 0;
             phone.Add(screenHost);
-            phone.Add(StatusBar());
-            phone.Add(HomeIndicator());
+            statusBarElement = StatusBar();
+            phone.Add(statusBarElement);
+            homeIndicatorElement = HomeIndicator();
+            phone.Add(homeIndicatorElement);
 
-            ShowLock();
+            root.Add(phoneContainer);
         }
 
-        void Update()
-        {
-            var m = UnityEngine.InputSystem.Mouse.current;
-            if (m != null && m.leftButton.wasPressedThisFrame) Debug.Log($"[Proto] Input System mouse press at {m.position.ReadValue()}");
-        }
-
-        // ---------- chrome ----------
+        // ---------- Chrome ----------
         VisualElement StatusBar()
         {
             var bar = Row();
@@ -117,7 +846,7 @@ namespace BaGio12.Prototype
             bar.style.height = 92; bar.style.paddingLeft = 64; bar.style.paddingRight = 56; bar.style.paddingTop = 18;
             bar.style.justifyContent = Justify.SpaceBetween;
             bar.pickingMode = PickingMode.Ignore;
-            clock = T(data.lockTime, 34, Ink, boldFont); bar.Add(clock);
+            clock = T(now, 34, Ink, boldFont); bar.Add(clock);
             var right = Row(); right.pickingMode = PickingMode.Ignore;
             right.Add(T("4G", 26, Ink, boldFont));
             var sig = Row(); sig.style.alignItems = Align.FlexEnd; sig.style.marginLeft = 10; sig.style.height = 24;
@@ -159,6 +888,7 @@ namespace BaGio12.Prototype
         void Switch(VisualElement screen, System.Action backTo, string name = null)
         {
             if (typing != null) { StopCoroutine(typing); typing = null; }
+            if (audioPlayingCoroutine != null) { StopCoroutine(audioPlayingCoroutine); audioPlayingCoroutine = null; }
             screenHost.Clear();
             screen.name = name ?? "";
             screen.style.flexGrow = 1;
@@ -169,25 +899,35 @@ namespace BaGio12.Prototype
 
         void GoBack() { if (back.Count > 0) back.Pop()(); }
 
-        // ---------- screens ----------
+        // ---------- Screens ----------
         void ShowLock()
         {
             var s = new VisualElement(); s.style.alignItems = Align.Center;
             Cover(s, "Scenes/phong-tro-blur", Color.white);
-            var lockIc = Icon(IcLock, 34, Dim); lockIc.style.marginTop = 150; s.Add(lockIc);
+            var lockIc = Icon(IcLock, 34, Dim); lockIc.style.marginTop = 150;
+            lockIc.RegisterCallback<PointerUpEvent>(e =>
+            {
+                e.StopPropagation();
+                RefusePasscode();
+            });
+            s.Add(lockIc);
             var date = T(data.lockDate, 36, Ink); date.style.marginTop = 26; s.Add(date);
-            var big = T(data.lockTime, 250, Ink, lightFont); big.style.marginTop = -10; big.style.letterSpacing = -6; s.Add(big);
+            var big = T(now, 250, Ink, lightFont); big.style.marginTop = -10; big.style.letterSpacing = -6; s.Add(big);
 
-            var c = data.contacts[0];
-            var note = Glass(); note.style.marginTop = 120; note.style.width = Length.Percent(90);
-            var head = Row();
-            head.Add(AppIcon("Icons/icon-tic", 52));
-            var app = T("Tíc", 28, Dim, boldFont); app.style.marginLeft = 16; head.Add(app);
-            var when = T("bây giờ", 26, Faint); when.style.marginLeft = 12; when.style.flexGrow = 1; head.Add(when);
-            note.Add(head);
-            var who = T(c.name, 34, Ink, boldFont); who.style.marginTop = 16; note.Add(who);
-            note.Add(T(c.preview, 34, Ink));
-            s.Add(note);
+            if (data.contacts != null && data.contacts.Count > 0)
+            {
+                var c = data.contacts[0];
+                var note = Glass(); note.style.marginTop = 120; note.style.width = Length.Percent(90);
+                var head = Row();
+                head.Add(AppIcon("Icons/icon-tic", 52));
+                var app = T("Tíc", 28, Dim, boldFont); app.style.marginLeft = 16; head.Add(app);
+                var when = T(string.IsNullOrEmpty(data.lockNotifyAgo) ? "4 phút trước" : data.lockNotifyAgo, 26, Faint); when.style.marginLeft = 12; when.style.flexGrow = 1; head.Add(when);
+                note.Add(head);
+                var who = T(c.name, 34, Ink, boldFont); who.style.marginTop = 16; note.Add(who);
+                var tr = Transcript(c.id);
+                note.Add(T(tr.Count > 0 ? tr[tr.Count - 1].text : c.preview, 34, Ink));
+                s.Add(note);
+            }
 
             var bottom = Row(); bottom.style.position = Position.Absolute; bottom.style.bottom = 110; bottom.style.left = 90; bottom.style.right = 90;
             bottom.style.justifyContent = Justify.SpaceBetween;
@@ -195,8 +935,6 @@ namespace BaGio12.Prototype
             s.Add(bottom);
             var hint = T("Chạm để mở khóa", 28, Dim); hint.style.position = Position.Absolute; hint.style.bottom = 150; s.Add(hint);
 
-            float downY = 0;
-            s.RegisterCallback<PointerDownEvent>(e => downY = e.position.y);
             s.RegisterCallback<PointerUpEvent>(_ => ShowHome());
             Switch(s, null, "lock");
         }
@@ -205,20 +943,24 @@ namespace BaGio12.Prototype
         {
             var s = new VisualElement();
             Cover(s, "Scenes/phong-tro", new Color(0.72f, 0.72f, 0.72f));
-            // dim the top so the clock widget reads
             var shade = new VisualElement(); shade.style.position = Position.Absolute; shade.style.left = shade.style.right = shade.style.top = 0; shade.style.height = 700;
             shade.style.backgroundColor = new Color(0, 0, 0, 0.35f); shade.pickingMode = PickingMode.Ignore; s.Add(shade);
 
             var widget = new VisualElement(); widget.style.marginTop = 170; widget.style.marginLeft = 72; widget.pickingMode = PickingMode.Ignore;
-            var wt = T(data.lockTime, 150, Ink, lightFont); wt.style.letterSpacing = -4; Shadow(wt); widget.Add(wt);
+            var wt = T(now, 150, Ink, lightFont); wt.style.letterSpacing = -4; Shadow(wt); widget.Add(wt);
             var wd = T(data.lockDate, 34, Ink); Shadow(wd); widget.Add(wd);
             s.Add(widget);
 
-            var grid = Row(); grid.style.marginTop = 120; grid.style.paddingLeft = 52; grid.style.alignItems = Align.FlexStart;
+            var grid = Row(); grid.style.marginTop = 110; grid.style.paddingLeft = 32; grid.style.paddingRight = 32; grid.style.justifyContent = Justify.SpaceAround;
             grid.Add(App("Icons/icon-tic", "Tíc", ShowTicList));
             grid.Add(App("Icons/icon-nimbo", "Nimbo", ShowNimbo));
+            grid.Add(AppVector(IcMic, "Ghi âm", new Color(0.85f, 0.35f, 0.25f), ShowVoiceMemos));
             grid.Add(App("Icons/icon-mosa", "Mosa", ShowMosa));
             s.Add(grid);
+
+            var grid2 = Row(); grid2.style.marginTop = 40; grid2.style.paddingLeft = 32; grid2.style.paddingRight = 32; grid2.style.justifyContent = Justify.FlexStart;
+            grid2.Add(AppVector(IcLock, "Cài đặt", new Color(0.35f, 0.42f, 0.5f), ShowSettings));
+            s.Add(grid2);
 
             var dots = Row(); dots.style.position = Position.Absolute; dots.style.bottom = 120; dots.style.left = 0; dots.style.right = 0; dots.style.justifyContent = Justify.Center;
             for (int i = 0; i < 3; i++) { var d = new VisualElement(); d.style.width = d.style.height = 12; Radius(d, 6); d.style.marginLeft = d.style.marginRight = 7; d.style.backgroundColor = i == 0 ? Ink : Faint; dots.Add(d); }
@@ -226,6 +968,85 @@ namespace BaGio12.Prototype
             Switch(s, null, "home");
         }
 
+        void ShowSettings()
+        {
+            var s = AppScreen();
+            var head = Row(); head.style.paddingLeft = 56; head.style.paddingRight = 48; head.style.marginTop = 130; head.style.alignItems = Align.Center;
+            var b = Icon(IcBack, 44, Ink); Pad(b, 22); b.RegisterCallback<PointerUpEvent>(_ => GoBack()); head.Add(b);
+            var title = T("Cài đặt", 52, Ink, boldFont); title.style.marginLeft = 24; head.Add(title);
+            s.Add(head);
+
+            var list = new ScrollView(ScrollViewMode.Vertical); list.style.marginTop = 36; list.style.flexGrow = 1;
+
+            var lockRow = SettingRow(IcLock, "Mật khẩu & Khóa", "Đặt mã khóa máy", () => RefusePasscode());
+            list.Add(lockRow);
+
+            var powerRow = SettingRow(IcLight, "Nguồn điện", isPoweredOff ? "Bật nguồn máy" : "Tắt nguồn máy", () => TogglePower());
+            list.Add(powerRow);
+
+            s.Add(list);
+            Switch(s, ShowHome, "settings");
+        }
+
+        VisualElement SettingRow(string icon, string title, string sub, System.Action onClick)
+        {
+            var row = Row();
+            row.style.marginLeft = row.style.marginRight = 36;
+            row.style.marginBottom = 16;
+            row.style.paddingLeft = row.style.paddingRight = 28;
+            row.style.paddingTop = row.style.paddingBottom = 22;
+            row.style.backgroundColor = Raised;
+            Radius(row, 24);
+            row.style.alignItems = Align.Center;
+
+            row.Add(Icon(icon, 36, Accent));
+            var col = new VisualElement();
+            col.style.marginLeft = 24;
+            col.style.flexGrow = 1;
+            col.Add(T(title, 32, Ink, boldFont));
+            col.Add(T(sub, 24, Faint));
+            row.Add(col);
+
+            if (onClick != null) row.RegisterCallback<PointerUpEvent>(_ => onClick());
+            return row;
+        }
+
+        void ShowPoweredOff()
+        {
+            var s = new VisualElement();
+            s.style.flexGrow = 1;
+            s.style.backgroundColor = new Color(0.015f, 0.015f, 0.02f);
+            s.style.alignItems = Align.Center;
+            s.style.justifyContent = Justify.Center;
+
+            var offIcon = Icon(IcLight, 44, Faint);
+            s.Add(offIcon);
+
+            var offTxt = T("Máy đã tắt nguồn", 34, Dim, boldFont);
+            offTxt.style.marginTop = 20;
+            s.Add(offTxt);
+
+            var subTxt = T("Chạm nút bên dưới hoặc nút nguồn để bật lại", 24, Faint);
+            subTxt.style.marginTop = 12;
+            s.Add(subTxt);
+
+            var btn = Row();
+            btn.style.marginTop = 36;
+            btn.style.paddingLeft = 32;
+            btn.style.paddingRight = 32;
+            btn.style.paddingTop = 16;
+            btn.style.paddingBottom = 16;
+            btn.style.backgroundColor = new Color(0.18f, 0.18f, 0.22f);
+            Radius(btn, 24);
+            var btnTxt = T("Bật nguồn", 28, Ink, boldFont);
+            btn.Add(btnTxt);
+            btn.RegisterCallback<PointerUpEvent>(_ => TogglePower());
+            s.Add(btn);
+
+            Switch(s, null, "powered_off");
+        }
+
+        // ---------- Tic (Chat) ----------
         void ShowTicList()
         {
             var s = AppScreen();
@@ -235,12 +1056,14 @@ namespace BaGio12.Prototype
             s.Add(head);
             var search = Row(); search.style.marginLeft = search.style.marginRight = 48; search.style.marginTop = 28; search.style.height = 92;
             search.style.backgroundColor = Raised; Radius(search, 46); search.style.paddingLeft = 34;
-            search.Add(Icon(IcSearch, 32, Faint)); var ph = T("Tìm kiếm", 32, Faint); ph.style.marginLeft = 20; search.Add(ph);
+            search.Add(Icon(IcSearch, 32, Faint)); var ph = T("Tìm kiếm cuộc trò chuyện", 32, Faint); ph.style.marginLeft = 20; search.Add(ph);
             s.Add(search);
 
-            var list = new VisualElement(); list.style.marginTop = 24;
+            var list = new ScrollView(ScrollViewMode.Vertical); list.style.marginTop = 24; list.style.flexGrow = 1;
             foreach (var c in data.contacts)
             {
+                var tr = Transcript(c.id);
+                if (tr.Count == 0) continue;
                 var row = Row(); row.style.paddingLeft = 48; row.style.paddingRight = 48; row.style.height = 168;
                 row.Add(Avatar(c.name, 108));
                 var col = new VisualElement(); col.style.marginLeft = 30; col.style.flexGrow = 1; col.style.flexShrink = 1;
@@ -248,17 +1071,17 @@ namespace BaGio12.Prototype
                 var top = Row(); top.style.justifyContent = Justify.SpaceBetween;
                 top.Add(T(c.name, 38, Ink, boldFont));
                 var sh = Shown(c);
-                var lastTime = sh.Count > 0 ? sh[sh.Count - 1].time : (c.messages.Count > 0 ? c.messages[c.messages.Count - 1].time : "");
-                top.Add(T(lastTime, 26, Faint));
+                var lastMsg = tr[tr.Count - 1];
+                top.Add(T(lastMsg.time, 26, Faint));
                 col.Add(top);
                 var bottom = Row(); bottom.style.justifyContent = Justify.SpaceBetween; bottom.style.marginTop = 6;
-                var last = sh.Count > 0 ? (sh[sh.Count - 1].from == "me" ? "Bạn: " : "") + sh[sh.Count - 1].text : c.preview;
-                var lt = T(last, 31, sh.Count == 0 ? Ink : Dim); lt.style.flexShrink = 1; lt.style.overflow = Overflow.Hidden; lt.style.textOverflow = TextOverflow.Ellipsis; lt.style.whiteSpace = WhiteSpace.NoWrap;
+                var last = (lastMsg.from == "me" ? "Bạn: " : "") + lastMsg.text;
+                var lt = T(last, 31, sh.Count < tr.Count ? Ink : Dim); lt.style.flexShrink = 1; lt.style.overflow = Overflow.Hidden; lt.style.textOverflow = TextOverflow.Ellipsis; lt.style.whiteSpace = WhiteSpace.NoWrap;
                 bottom.Add(lt);
-                int unread = Mathf.Max(0, c.messages.Count - sh.Count);
+                int unread = Mathf.Max(0, Transcript(c.id).Count - sh.Count);
                 if (unread > 0)
                 {
-                    var badge = new VisualElement(); badge.style.minWidth = 44; badge.style.height = 44; Radius(badge, 22); badge.style.backgroundColor = new Color(0.86f, 0.24f, 0.22f);
+                    var badge = new VisualElement(); badge.style.minWidth = 44; badge.style.height = 44; Radius(badge, 22); badge.style.backgroundColor = WarningRed;
                     badge.style.alignItems = Align.Center; badge.style.justifyContent = Justify.Center;
                     badge.Add(T(unread.ToString(), 26, Color.white, boldFont)); bottom.Add(badge);
                 }
@@ -274,92 +1097,120 @@ namespace BaGio12.Prototype
 
         void ShowChat(Contact c)
         {
+            openChat = c;
             var s = AppScreen();
-            // header: back, avatar, name, presence, actions
             var head = Row(); head.style.marginTop = 92; head.style.height = 140; head.style.paddingLeft = 20; head.style.paddingRight = 44;
             head.style.borderBottomWidth = 1; head.style.borderBottomColor = Hair; head.style.flexShrink = 0;
             var b = Icon(IcBack, 44, Ink); Pad(b, 22); b.RegisterCallback<PointerUpEvent>(_ => GoBack()); head.Add(b);
             head.Add(Avatar(c.name, 84));
             var nm = new VisualElement(); nm.style.marginLeft = 24; nm.style.flexGrow = 1;
             nm.Add(T(c.name, 38, Ink, boldFont));
-            var presence = T("Truy cập 2 phút trước", 26, Dim); nm.Add(presence);
+            var presence = T(Status(c), 26, Dim); nm.Add(presence);
             head.Add(nm);
-            head.Add(Icon(IcCall, 40, Ink)); var more = Icon(IcMore, 40, Ink); more.style.marginLeft = 40; head.Add(more);
+            var call = Icon(IcCall, 40, Ink); head.Add(call);
+            if (!string.IsNullOrEmpty(c.callNote) && !blocked.Contains(c.id))
+                call.RegisterCallback<PointerUpEvent>(_ =>
+                {
+                    Record($"call:{c.id}@{now}");
+                    OnChoiceSelected?.Invoke(c.id, "call");
+                    ShowChat(c);
+                });
+            var more = Icon(IcMore, 40, Ink); more.style.marginLeft = 30; head.Add(more);
             s.Add(head);
 
             var scroll = new ScrollView(ScrollViewMode.Vertical); scroll.style.flexGrow = 1;
             scroll.verticalScrollerVisibility = ScrollerVisibility.Hidden;
             var cc = scroll.contentContainer; cc.style.paddingLeft = 36; cc.style.paddingRight = 36; cc.style.paddingTop = 30; cc.style.paddingBottom = 20;
-            var day = T("Hôm nay", 26, Faint); day.style.alignSelf = Align.Center; day.style.marginBottom = 26; cc.Add(day);
+            var day = T(string.IsNullOrEmpty(data.chatDay) ? "Hôm nay" : data.chatDay, 26, Faint); day.style.alignSelf = Align.Center; day.style.marginBottom = 26; cc.Add(day);
             s.Add(scroll);
 
-            var choiceBox = new VisualElement(); choiceBox.style.paddingLeft = 36; choiceBox.style.paddingRight = 36; choiceBox.style.flexShrink = 0;
+            var choiceBox = new ScrollView(ScrollViewMode.Vertical); choiceBox.style.paddingLeft = 36; choiceBox.style.paddingRight = 36;
+            choiceBox.style.flexShrink = 0; choiceBox.style.maxHeight = Length.Percent(40);
+            choiceBox.style.display = DisplayStyle.None;
             s.Add(choiceBox);
 
             var input = Row(); input.style.flexShrink = 0; input.style.marginLeft = 28; input.style.marginRight = 28; input.style.marginTop = 14; input.style.marginBottom = 76;
             input.Add(Icon(IcAdd, 44, Dim));
             var field = Row(); field.style.flexGrow = 1; field.style.height = 92; field.style.marginLeft = 22; field.style.marginRight = 22; field.style.backgroundColor = Raised; Radius(field, 46); field.style.paddingLeft = 36;
-            var placeholder = T("Tin nhắn", 32, Faint); field.Add(placeholder); input.Add(field);
+            var placeholder = T(blocked.Contains(c.id) ? "Bạn đã chặn số này" : "Nhập tin nhắn...", 32, Faint); field.Add(placeholder); input.Add(field);
+            field.RegisterCallback<PointerUpEvent>(_ =>
+            {
+                if (choiceBox.childCount == 0) return;
+                bool show = choiceBox.resolvedStyle.display == DisplayStyle.None;
+                choiceBox.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+            });
             input.Add(Icon(IcMic, 44, Dim));
             s.Add(input);
             Switch(s, ShowTicList, "chat");
 
             Message prev = null;
-            foreach (var m in Shown(c)) { cc.Add(Bubble(m, prev)); prev = m; }
-            var queue = new List<Message>();
-            foreach (var m in c.messages) if (!Shown(c).Contains(m)) queue.Add(m);
-            typing = StartCoroutine(Play(c, queue, scroll, presence, () => OfferChoices(c, scroll, presence, choiceBox)));
+            foreach (var m in Shown(c)) { cc.Add(Bubble(m, prev, c)); prev = m; }
+            typing = StartCoroutine(Play(c, scroll, presence, () => OfferChoices(c, scroll, presence, choiceBox, placeholder)));
         }
 
-        IEnumerator Play(Contact c, List<Message> queue, ScrollView scroll, Label presence, System.Action done)
+        string Status(Contact c) => string.IsNullOrEmpty(c.status) ? "Đang hoạt động" : c.status;
+
+        IEnumerator Play(Contact c, ScrollView scroll, Label presence, System.Action done)
         {
             var cc = scroll.contentContainer;
-            foreach (var m in queue)
+            var sh = Shown(c);
+            var tr = Transcript(c.id);
+            while (sh.Count < tr.Count)
             {
-                VisualElement dots = null;
-                if (m.from != "me")
+                var m = tr[sh.Count];
+                bool animate = m.from == "them" && !data.noTyping;
+                if (animate)
                 {
                     presence.text = "đang soạn tin..."; presence.style.color = Accent;
-                    dots = TypingBubble(); cc.Add(dots); ScrollEnd(scroll, dots);
+                    var dots = TypingBubble(); cc.Add(dots); ScrollEnd(scroll, dots);
                     yield return new WaitForSeconds(m.delay);
                     dots.RemoveFromHierarchy();
+                    presence.text = Status(c); presence.style.color = Dim;
                 }
-                presence.text = "Đang hoạt động"; presence.style.color = Dim;
-                var sh = Shown(c);
                 var prev = sh.Count > 0 ? sh[sh.Count - 1] : null;
                 sh.Add(m);
-                if (!string.IsNullOrEmpty(m.time)) clock.text = m.time.TrimStart('0');
-                var b = Bubble(m, prev); cc.Add(b); ScrollEnd(scroll, b);
-                yield return new WaitForSeconds(0.35f);
+                if (m.from == "them") OnMessageReceived?.Invoke(m.text);
+                var b = Bubble(m, prev, c); cc.Add(b); ScrollEnd(scroll, b);
+                if (animate || m.from == "me") yield return new WaitForSeconds(0.35f);
             }
             typing = null;
+            UpdateHudBadge();
             done?.Invoke();
         }
 
-        void OfferChoices(Contact c, ScrollView scroll, Label presence, VisualElement box)
+        void OfferChoices(Contact c, ScrollView scroll, Label presence, ScrollView box, Label placeholder)
         {
-            if (chose.Contains(c.id) || c.choices.Count == 0) return;
-            var label = T("Trả lời", 26, Faint); label.style.marginBottom = 12; label.style.marginLeft = 8; box.Add(label);
-            foreach (var ch in c.choices)
+            box.Clear();
+            var open = c.choices == null ? new List<Choice>() : c.choices.FindAll(ch => Offered(c, ch));
+            if (!blocked.Contains(c.id)) placeholder.text = open.Count > 0 ? "Chạm để chọn câu trả lời..." : "Nhập tin nhắn...";
+            placeholder.style.color = open.Count > 0 ? Dim : Faint;
+            if (open.Count == 0) { box.style.display = DisplayStyle.None; return; }
+            var label = T("Chọn câu trả lời:", 26, Faint); label.style.marginBottom = 12; label.style.marginLeft = 8; box.Add(label);
+            foreach (var ch in open)
             {
                 var choice = ch;
                 var btn = Row(); btn.style.marginBottom = 14; btn.style.paddingTop = 24; btn.style.paddingBottom = 24; btn.style.paddingLeft = 34; btn.style.paddingRight = 34;
-                Radius(btn, 40); btn.style.backgroundColor = AccentSoft;
+                Radius(btn, 40); btn.style.backgroundColor = choice.block ? new Color(0.86f, 0.24f, 0.22f, 0.16f) : AccentSoft;
+                var edge = choice.block ? new Color(0.86f, 0.24f, 0.22f, 0.7f) : new Color(0.24f, 0.56f, 0.49f, 0.7f);
                 btn.style.borderTopWidth = btn.style.borderBottomWidth = btn.style.borderLeftWidth = btn.style.borderRightWidth = 2;
-                btn.style.borderTopColor = btn.style.borderBottomColor = btn.style.borderLeftColor = btn.style.borderRightColor = new Color(0.24f, 0.56f, 0.49f, 0.7f);
-                var bt = T(choice.text, 32, Ink); bt.style.flexGrow = 1; bt.style.whiteSpace = WhiteSpace.Normal; btn.Add(bt);
-                btn.Add(Icon(IcSend, 32, new Color(0.45f, 0.8f, 0.7f)));
+                btn.style.borderTopColor = btn.style.borderBottomColor = btn.style.borderLeftColor = btn.style.borderRightColor = edge;
+                var bt = T(choice.text, 30, Ink); bt.style.flexGrow = 1; bt.style.flexShrink = 1; bt.style.whiteSpace = WhiteSpace.Normal; btn.Add(bt);
+                if (!choice.block) btn.Add(Icon(IcSend, 32, new Color(0.45f, 0.8f, 0.7f)));
                 btn.RegisterCallback<PointerUpEvent>(_ =>
                 {
-                    chose.Add(c.id); box.Clear();
-                    var q = new List<Message> { new Message { from = "me", text = choice.text, time = clock.text.PadLeft(5, '0') } };
-                    q.AddRange(choice.replies);
-                    typing = StartCoroutine(Play(c, q, scroll, presence, null));
+                    Record($"sent:{c.id}/{ChoiceId(choice)}@{now}");
+                    OnChoiceSelected?.Invoke(c.id, ChoiceId(choice));
+                    box.Clear();
+                    box.style.display = DisplayStyle.None;
+                    placeholder.text = "Nhập tin nhắn..."; placeholder.style.color = Faint;
+                    if (blocked.Contains(c.id)) { ShowChat(c); return; }
+                    typing = StartCoroutine(Play(c, scroll, presence, () => OfferChoices(c, scroll, presence, box, placeholder)));
                 });
                 box.Add(btn);
             }
         }
 
+        // ---------- Nimbo (Photos) ----------
         void ShowNimbo()
         {
             var s = AppScreen();
@@ -368,16 +1219,21 @@ namespace BaGio12.Prototype
             var sync = Row(); sync.style.marginLeft = 56; sync.style.marginTop = 8;
             var dot = new VisualElement(); dot.style.width = dot.style.height = 14; Radius(dot, 7); dot.style.backgroundColor = new Color(0.95f, 0.65f, 0.25f); sync.Add(dot);
             var st = T("Đã sao lưu lên Nimbo", 28, Dim); st.style.marginLeft = 14; sync.Add(st); s.Add(sync);
-            var day = T("Hôm nay", 34, Ink, boldFont); day.style.marginLeft = 56; day.style.marginTop = 50; day.style.marginBottom = 18; s.Add(day);
-            var grid = Row(); grid.style.flexWrap = Wrap.Wrap; grid.style.alignItems = Align.FlexStart; grid.style.paddingLeft = 6;
-            foreach (var p in data.photos)
+            var day = T(string.IsNullOrEmpty(data.albumDay) ? "Hôm nay" : data.albumDay, 34, Ink, boldFont); day.style.marginLeft = 56; day.style.marginTop = 50; day.style.marginBottom = 18; s.Add(day);
+
+            var grid = Row(); grid.style.flexWrap = Wrap.Wrap; grid.style.alignItems = Align.FlexStart; grid.style.paddingLeft = 20; grid.style.paddingRight = 20;
+            if (data.photos != null)
             {
-                var cell = new VisualElement(); cell.style.width = 336; cell.style.height = 336; cell.style.marginLeft = cell.style.marginRight = cell.style.marginTop = cell.style.marginBottom = 3;
-                Cover(cell, p.resource, Color.white);
-                var tag = T(p.caption, 24, Ink, boldFont); tag.style.position = Position.Absolute; tag.style.right = 14; tag.style.bottom = 10; Shadow(tag); cell.Add(tag);
-                var photo = p;
-                cell.RegisterCallback<PointerUpEvent>(_ => ShowPhoto(photo));
-                grid.Add(cell);
+                foreach (var p in data.photos)
+                {
+                    var cell = new VisualElement(); cell.style.width = 320; cell.style.height = 320; cell.style.marginLeft = cell.style.marginRight = cell.style.marginTop = cell.style.marginBottom = 6;
+                    Radius(cell, 16); cell.style.overflow = Overflow.Hidden;
+                    Cover(cell, p.resource, Color.white);
+                    var tag = T(p.caption, 24, Ink, boldFont); tag.style.position = Position.Absolute; tag.style.right = 14; tag.style.bottom = 10; Shadow(tag); cell.Add(tag);
+                    var photo = p;
+                    cell.RegisterCallback<PointerUpEvent>(_ => ShowPhoto(photo));
+                    grid.Add(cell);
+                }
             }
             s.Add(grid);
             Switch(s, ShowHome, "nimbo");
@@ -393,32 +1249,201 @@ namespace BaGio12.Prototype
             var top = Row(); top.style.position = Position.Absolute; top.style.top = 92; top.style.left = 20; top.style.right = 44; top.style.height = 100;
             var b = Icon(IcBack, 44, Ink); Pad(b, 22); b.RegisterCallback<PointerUpEvent>(_ => GoBack()); top.Add(b);
             var meta = new VisualElement(); meta.style.marginLeft = 10;
-            meta.Add(T("Hôm nay", 34, Ink, boldFont)); meta.Add(T(p.caption, 26, Dim)); top.Add(meta);
+            meta.Add(T(p.caption, 34, Ink, boldFont)); if (!string.IsNullOrEmpty(p.time)) meta.Add(T("Chụp lúc " + p.time, 26, Dim)); top.Add(meta);
             s.Add(top);
             Switch(s, ShowNimbo, "photo");
         }
 
+        // ---------- Voice Memos (Ghi am) ----------
+        void ShowVoiceMemos()
+        {
+            var s = AppScreen();
+            var head = Row(); head.style.paddingLeft = 56; head.style.paddingRight = 48; head.style.marginTop = 130; head.style.justifyContent = Justify.SpaceBetween;
+            head.Add(T("Ghi âm", 68, Ink, boldFont));
+            var cnt = T($"{data?.voiceMemos?.Count ?? 0} bản ghi", 30, Faint);
+            head.Add(cnt);
+            s.Add(head);
+
+            var list = new ScrollView(ScrollViewMode.Vertical); list.style.marginTop = 36; list.style.flexGrow = 1;
+            if (data?.voiceMemos != null && data.voiceMemos.Count > 0)
+            {
+                foreach (var memo in data.voiceMemos)
+                {
+                    var card = new VisualElement();
+                    card.style.marginLeft = card.style.marginRight = 40;
+                    card.style.marginBottom = 20;
+                    card.style.paddingTop = card.style.paddingBottom = 26;
+                    card.style.paddingLeft = card.style.paddingRight = 32;
+                    card.style.backgroundColor = Raised;
+                    Radius(card, 28);
+
+                    var top = Row(); top.style.justifyContent = Justify.SpaceBetween;
+                    top.Add(T(memo.title, 34, Ink, boldFont));
+                    top.Add(T(memo.duration, 28, Accent, boldFont));
+                    card.Add(top);
+
+                    var btm = Row(); btm.style.marginTop = 12; btm.style.justifyContent = Justify.SpaceBetween;
+                    btm.Add(T(memo.date + " • " + memo.time, 26, Dim));
+                    var playBtn = Row();
+                    playBtn.Add(Icon(IcPlay, 26, Accent));
+                    var plTxt = T(" Nghe", 26, Accent); plTxt.style.marginLeft = 6;
+                    playBtn.Add(plTxt);
+                    btm.Add(playBtn);
+                    card.Add(btm);
+
+                    var m = memo;
+                    card.RegisterCallback<PointerUpEvent>(_ => ShowVoiceMemoDetail(m));
+                    list.Add(card);
+                }
+            }
+            else
+            {
+                var empty = T("Chưa có đoạn ghi âm nào", 32, Faint);
+                empty.style.alignSelf = Align.Center; empty.style.marginTop = 100;
+                list.Add(empty);
+            }
+            s.Add(list);
+            Switch(s, ShowHome, "voicememos");
+        }
+
+        void ShowVoiceMemoDetail(VoiceMemo memo)
+        {
+            var s = AppScreen();
+            var head = Row(); head.style.marginTop = 92; head.style.height = 140; head.style.paddingLeft = 20; head.style.paddingRight = 44;
+            head.style.borderBottomWidth = 1; head.style.borderBottomColor = Hair; head.style.flexShrink = 0;
+            var b = Icon(IcBack, 44, Ink); Pad(b, 22); b.RegisterCallback<PointerUpEvent>(_ => GoBack()); head.Add(b);
+            var titleBox = new VisualElement(); titleBox.style.marginLeft = 20; titleBox.style.flexGrow = 1;
+            titleBox.Add(T(memo.title, 36, Ink, boldFont));
+            titleBox.Add(T(memo.date + " lúc " + memo.time, 26, Dim));
+            head.Add(titleBox);
+            s.Add(head);
+
+            var playerBox = Glass();
+            playerBox.style.marginTop = 36; playerBox.style.marginLeft = playerBox.style.marginRight = 40;
+            playerBox.style.alignItems = Align.Center;
+
+            var waveRow = Row(); waveRow.style.height = 90; waveRow.style.alignItems = Align.Center; waveRow.style.justifyContent = Justify.Center;
+            var bars = new List<VisualElement>();
+            for (int i = 0; i < 28; i++)
+            {
+                var bar = new VisualElement();
+                bar.style.width = 10; bar.style.height = 16 + (i % 6) * 10;
+                bar.style.marginLeft = bar.style.marginRight = 4;
+                Radius(bar, 5); bar.style.backgroundColor = Accent;
+                waveRow.Add(bar);
+                bars.Add(bar);
+            }
+            playerBox.Add(waveRow);
+
+            var timer = T("00:00 / " + memo.duration, 28, Dim);
+            timer.style.marginTop = 16;
+            playerBox.Add(timer);
+
+            var playButton = Circle(IcPlay);
+            playButton.style.marginTop = 24;
+            playButton.style.backgroundColor = Accent;
+            bool isPlaying = false;
+            playButton.RegisterCallback<PointerUpEvent>(_ =>
+            {
+                isPlaying = !isPlaying;
+                playButton.Clear();
+                playButton.Add(Icon(isPlaying ? IcPause : IcPlay, 44, Color.white));
+                if (isPlaying)
+                {
+                    if (audioPlayingCoroutine != null) StopCoroutine(audioPlayingCoroutine);
+                    audioPlayingCoroutine = StartCoroutine(AnimateWaveform(bars, timer, memo.duration, playButton, () => isPlaying = false));
+                }
+                else
+                {
+                    if (audioPlayingCoroutine != null) { StopCoroutine(audioPlayingCoroutine); audioPlayingCoroutine = null; }
+                }
+            });
+            playerBox.Add(playButton);
+            s.Add(playerBox);
+
+            var transBox = new VisualElement();
+            transBox.style.marginTop = 36; transBox.style.marginLeft = transBox.style.marginRight = 40;
+            transBox.Add(T("Nội dung ghi âm:", 30, Faint, boldFont));
+            var transCard = Glass(); transCard.style.marginTop = 14; transCard.style.backgroundColor = Raised;
+            var transText = T(memo.transcript, 30, Ink);
+            transText.style.whiteSpace = WhiteSpace.Normal;
+            transCard.Add(transText);
+            transBox.Add(transCard);
+            s.Add(transBox);
+
+            Switch(s, ShowVoiceMemos, "memo_detail");
+        }
+
+        IEnumerator AnimateWaveform(List<VisualElement> bars, Label timer, string totalDuration, VisualElement playButton, System.Action onFinished)
+        {
+            float totalSeconds = 0f;
+            var parts = (totalDuration ?? "").Split(':');
+            if (parts.Length == 2 && float.TryParse(parts[0], out float mins) && float.TryParse(parts[1], out float secs))
+            {
+                totalSeconds = mins * 60f + secs;
+            }
+            if (totalSeconds <= 0f) totalSeconds = 30f;
+
+            float elapsed = 0f;
+            while (elapsed < totalSeconds)
+            {
+                elapsed += Time.deltaTime;
+                if (elapsed > totalSeconds) elapsed = totalSeconds;
+                int currentSecs = Mathf.FloorToInt(elapsed);
+                int m = currentSecs / 60;
+                int s = currentSecs % 60;
+                timer.text = $"{m:D2}:{s:D2} / {totalDuration}";
+                for (int i = 0; i < bars.Count; i++)
+                {
+                    float wave = Mathf.Sin(elapsed * 8f + i * 0.4f);
+                    bars[i].style.height = 14 + Mathf.Abs(wave) * 60;
+                }
+                yield return null;
+            }
+
+            for (int i = 0; i < bars.Count; i++) bars[i].style.height = 16 + (i % 6) * 10;
+            playButton.Clear();
+            playButton.Add(Icon(IcPlay, 44, Color.white));
+            audioPlayingCoroutine = null;
+            onFinished?.Invoke();
+        }
+
+        // ---------- Mosa (Browser / ARG) ----------
         void ShowMosa()
         {
             var s = AppScreen(); s.style.alignItems = Align.Center; s.style.justifyContent = Justify.Center;
             var ic = AppIcon("Icons/icon-mosa", 160); ic.style.opacity = 0.5f; s.Add(ic);
             var t1 = T("Không có kết nối", 40, Ink, boldFont); t1.style.marginTop = 40; s.Add(t1);
             var t2 = T("Kiểm tra Wi-Fi hoặc dữ liệu di động", 30, Dim); t2.style.marginTop = 10; s.Add(t2);
-            var retry = T("Thử lại", 32, new Color(0.62f, 0.55f, 0.85f), boldFont); retry.style.marginTop = 50; s.Add(retry);
+            var retry = T("Thử lại", 32, new Color(0.62f, 0.55f, 0.85f), boldFont); retry.style.marginTop = 50;
+            s.Add(retry);
             Switch(s, ShowHome, "mosa");
         }
 
-        // ---------- building blocks ----------
+        // ---------- Building blocks ----------
         List<Message> Shown(Contact c)
         {
             if (!shown.TryGetValue(c.id, out var l)) shown[c.id] = l = new List<Message>();
             return l;
         }
 
+        List<Message> Transcript(string contactId)
+        {
+            if (!transcript.TryGetValue(contactId, out var l)) transcript[contactId] = l = new List<Message>();
+            return l;
+        }
+
         VisualElement AppScreen() { var s = new VisualElement(); s.style.backgroundColor = Surface; return s; }
 
-        VisualElement Bubble(Message m, Message prev)
+        VisualElement Bubble(Message m, Message prev, Contact c = null)
         {
+            if (m.from == "system")
+            {
+                var note = T(string.IsNullOrEmpty(m.time) ? m.text : m.time + "  ·  " + m.text, 26, Faint);
+                note.style.alignSelf = Align.Center; note.style.marginTop = 22; note.style.whiteSpace = WhiteSpace.Normal;
+                note.style.unityTextAlign = TextAnchor.MiddleCenter;
+                return note;
+            }
             bool mine = m.from == "me";
             bool grouped = prev != null && prev.from == m.from;
             var b = new VisualElement();
@@ -430,10 +1455,11 @@ namespace BaGio12.Prototype
             else { b.style.borderBottomLeftRadius = 12; if (grouped) b.style.borderTopLeftRadius = 12; }
             b.style.paddingTop = 20; b.style.paddingBottom = 16; b.style.paddingLeft = 32; b.style.paddingRight = 28;
             b.style.marginTop = grouped ? 6 : 22;
-            var t = T(m.text, 35, Ink); t.style.whiteSpace = WhiteSpace.Normal; b.Add(t);
+            var t = T(m.text, 34, Ink); t.style.whiteSpace = WhiteSpace.Normal; b.Add(t);
             if (!string.IsNullOrEmpty(m.time))
             {
-                var tm = T(m.time + (mine ? "  Đã xem" : ""), 22, mine ? new Color(1, 1, 1, 0.7f) : Faint);
+                string statusSuffix = mine ? "  Đã gửi" : (c != null && c.autoRead ? "  Đã đọc" : "");
+                var tm = T(m.time + statusSuffix, 22, mine ? new Color(1, 1, 1, 0.7f) : Faint);
                 tm.style.alignSelf = Align.FlexEnd; tm.style.marginTop = 4; b.Add(tm);
             }
             return b;
@@ -456,16 +1482,32 @@ namespace BaGio12.Prototype
 
         VisualElement App(string icon, string name, System.Action open)
         {
-            var a = new VisualElement(); a.style.alignItems = Align.Center; a.style.width = 230;
-            a.Add(AppIcon(icon, 168));
-            var l = T(name, 30, Ink); l.style.marginTop = 16; Shadow(l); a.Add(l);
+            var a = new VisualElement(); a.style.alignItems = Align.Center; a.style.width = 210;
+            a.Add(AppIcon(icon, 150));
+            var l = T(name, 28, Ink); l.style.marginTop = 14; Shadow(l); a.Add(l);
+            a.RegisterCallback<PointerUpEvent>(_ => open());
+            return a;
+        }
+
+        VisualElement AppVector(string vectorIcon, string name, Color bg, System.Action open)
+        {
+            var a = new VisualElement(); a.style.alignItems = Align.Center; a.style.width = 210;
+            var iconBox = new VisualElement();
+            iconBox.style.width = iconBox.style.height = 150;
+            Radius(iconBox, 38);
+            iconBox.style.backgroundColor = bg;
+            iconBox.style.alignItems = Align.Center; iconBox.style.justifyContent = Justify.Center;
+            iconBox.Add(Icon(vectorIcon, 70, Color.white));
+            a.Add(iconBox);
+
+            var l = T(name, 28, Ink); l.style.marginTop = 14; Shadow(l); a.Add(l);
             a.RegisterCallback<PointerUpEvent>(_ => open());
             return a;
         }
 
         VisualElement AppIcon(string res, float size)
         {
-            var e = new VisualElement(); e.style.width = size; e.style.height = size;
+            var e = new VisualElement(); e.style.width = size; e.style.height = size; Radius(e, size * 0.25f);
             var sp = Resources.Load<Sprite>(res);
             if (sp != null) e.style.backgroundImage = new StyleBackground(sp); else e.style.backgroundColor = Accent;
             return e;
@@ -535,6 +1577,17 @@ namespace BaGio12.Prototype
                     Shape(false, P(0.38f, 0.1f), P(0.62f, 0.1f), P(0.62f, 0.56f), P(0.38f, 0.56f));
                     p.BeginPath(); p.Arc(P(0.5f, 0.5f), 0.24f * s, Angle.Degrees(0), Angle.Degrees(180)); p.Stroke();
                     Line(P(0.5f, 0.74f), P(0.5f, 0.9f)); break;
+                case "play":
+                    Shape(true, P(0.3f, 0.2f), P(0.8f, 0.5f), P(0.3f, 0.8f)); break;
+                case "pause":
+                    Shape(true, P(0.28f, 0.22f), P(0.42f, 0.22f), P(0.42f, 0.78f), P(0.28f, 0.78f));
+                    Shape(true, P(0.58f, 0.22f), P(0.72f, 0.22f), P(0.72f, 0.78f), P(0.58f, 0.78f)); break;
+                case "close":
+                    Line(P(0.22f, 0.22f), P(0.78f, 0.78f)); Line(P(0.78f, 0.22f), P(0.22f, 0.78f)); break;
+                case "phone":
+                    Shape(false, P(0.26f, 0.14f), P(0.74f, 0.14f), P(0.74f, 0.86f), P(0.26f, 0.86f));
+                    Circle(P(0.5f, 0.76f), 0.05f, true);
+                    Line(P(0.42f, 0.22f), P(0.58f, 0.22f)); break;
             }
         }
 
