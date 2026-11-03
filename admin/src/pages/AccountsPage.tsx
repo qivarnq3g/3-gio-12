@@ -1,0 +1,484 @@
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { api, type AdminAccount } from "../api/client";
+import { getErrorMessage } from "../api/error";
+import { useAuth } from "../auth/AuthProvider";
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "Chưa đăng nhập";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+export function AccountsPage() {
+  const { account: currentAdmin } = useAuth();
+  const [accounts, setAccounts] = useState<AdminAccount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Form thêm tài khoản
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newDisplayName, setNewDisplayName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [addBusy, setAddBusy] = useState(false);
+
+  // Modal / trạng thái Sửa tên hiển thị
+  const [editingAccount, setEditingAccount] = useState<AdminAccount | null>(null);
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [editBusy, setEditBusy] = useState(false);
+
+  // Modal / trạng thái Đặt lại mật khẩu
+  const [resetAccount, setResetAccount] = useState<AdminAccount | null>(null);
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+
+  // Xóa tài khoản
+  const [deletingAccount, setDeletingAccount] = useState<AdminAccount | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  const fetchAccounts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { data, response, error: apiError } = await api.GET("/api/admin/accounts");
+      if (response.ok && data) {
+        setAccounts(data);
+      } else {
+        setError(getErrorMessage(apiError, "Không tải được danh sách tài khoản."));
+      }
+    } catch {
+      setError("Không kết nối được tới máy chủ.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchAccounts();
+  }, [fetchAccounts]);
+
+  async function handleCreateAccount(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    if (newPassword.length < 12) {
+      setError("Mật khẩu khởi tạo phải có tối thiểu 12 ký tự.");
+      return;
+    }
+
+    setAddBusy(true);
+    try {
+      const { response, error: apiError } = await api.POST("/api/admin/accounts", {
+        body: {
+          email: newEmail.trim(),
+          displayName: newDisplayName.trim(),
+          password: newPassword,
+        },
+      });
+
+      if (response.ok) {
+        setSuccess(`Đã tạo tài khoản cho ${newEmail.trim()}.`);
+        setNewEmail("");
+        setNewDisplayName("");
+        setNewPassword("");
+        setShowAddForm(false);
+        await fetchAccounts();
+      } else {
+        setError(getErrorMessage(apiError, "Không thể tạo tài khoản. Kiểm tra lại thông tin."));
+      }
+    } catch {
+      setError("Không kết nối được tới máy chủ.");
+    } finally {
+      setAddBusy(false);
+    }
+  }
+
+  async function handleToggleActive(target: AdminAccount) {
+    if (target.id === currentAdmin?.id) {
+      setError("Không tự khóa tài khoản của mình.");
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    const newStatus = !target.isActive;
+    const actionLabel = newStatus ? "mở khóa" : "khóa";
+
+    try {
+      const { response, error: apiError } = await api.PATCH("/api/admin/accounts/{accountId}", {
+        params: { path: { accountId: target.id } },
+        body: { isActive: newStatus },
+      });
+
+      if (response.ok) {
+        setSuccess(`Đã ${actionLabel} tài khoản ${target.email}.`);
+        await fetchAccounts();
+      } else {
+        setError(getErrorMessage(apiError, `Không thể ${actionLabel} tài khoản.`));
+      }
+    } catch {
+      setError("Không kết nối được tới máy chủ.");
+    }
+  }
+
+  async function handleUpdateDisplayName(event: FormEvent) {
+    event.preventDefault();
+    if (!editingAccount) return;
+
+    setError(null);
+    setSuccess(null);
+    setEditBusy(true);
+
+    try {
+      const { response, error: apiError } = await api.PATCH("/api/admin/accounts/{accountId}", {
+        params: { path: { accountId: editingAccount.id } },
+        body: { displayName: editDisplayName.trim() },
+      });
+
+      if (response.ok) {
+        setSuccess(`Đã cập nhật tên hiển thị cho ${editingAccount.email}.`);
+        setEditingAccount(null);
+        await fetchAccounts();
+      } else {
+        setError(getErrorMessage(apiError, "Không thể cập nhật tên hiển thị."));
+      }
+    } catch {
+      setError("Không kết nối được tới máy chủ.");
+    } finally {
+      setEditBusy(false);
+    }
+  }
+
+  async function handleResetPassword(event: FormEvent) {
+    event.preventDefault();
+    if (!resetAccount) return;
+
+    setError(null);
+    setSuccess(null);
+
+    if (resetNewPassword.length < 12) {
+      setError("Mật khẩu mới phải có tối thiểu 12 ký tự.");
+      return;
+    }
+
+    setResetBusy(true);
+    try {
+      const { response, error: apiError } = await api.POST("/api/admin/accounts/{accountId}/password", {
+        params: { path: { accountId: resetAccount.id } },
+        body: { newPassword: resetNewPassword },
+      });
+
+      if (response.ok) {
+        setSuccess(`Đã đặt lại mật khẩu cho tài khoản ${resetAccount.email}.`);
+        setResetAccount(null);
+        setResetNewPassword("");
+      } else {
+        setError(getErrorMessage(apiError, "Không thể đặt lại mật khẩu."));
+      }
+    } catch {
+      setError("Không kết nối được tới máy chủ.");
+    } finally {
+      setResetBusy(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (!deletingAccount) return;
+
+    if (deletingAccount.id === currentAdmin?.id) {
+      setError("Không tự xóa tài khoản của mình.");
+      setDeletingAccount(null);
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setDeleteBusy(true);
+
+    try {
+      const { response, error: apiError } = await api.DELETE("/api/admin/accounts/{accountId}", {
+        params: { path: { accountId: deletingAccount.id } },
+      });
+
+      if (response.ok) {
+        setSuccess(`Đã xóa tài khoản ${deletingAccount.email}.`);
+        setDeletingAccount(null);
+        await fetchAccounts();
+      } else {
+        setError(getErrorMessage(apiError, "Không thể xóa tài khoản."));
+      }
+    } catch {
+      setError("Không kết nối được tới máy chủ.");
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
+  return (
+    <section className="accounts-page">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+        <h1>Tài khoản quản trị</h1>
+        <button
+          type="button"
+          onClick={() => {
+            setShowAddForm((prev) => !prev);
+            setError(null);
+          }}
+        >
+          {showAddForm ? "Đóng form" : "+ Thêm tài khoản"}
+        </button>
+      </div>
+
+      {error && (
+        <div role="alert" className="alert-error">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div role="status" className="alert-success">
+          {success}
+        </div>
+      )}
+
+      {/* Form tạo tài khoản mới */}
+      {showAddForm && (
+        <form onSubmit={handleCreateAccount} className="form-card" style={{ marginBottom: "1.5rem" }}>
+          <h2>Thêm tài khoản quản trị viên mới</h2>
+          <div className="form-grid">
+            <label>
+              Email
+              <input
+                type="email"
+                required
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="admin@threetwelve.local"
+              />
+            </label>
+            <label>
+              Tên hiển thị
+              <input
+                type="text"
+                required
+                value={newDisplayName}
+                onChange={(e) => setNewDisplayName(e.target.value)}
+                placeholder="Tên quản trị viên"
+              />
+            </label>
+            <label>
+              Mật khẩu khởi tạo (tối thiểu 12 ký tự)
+              <input
+                type="password"
+                required
+                minLength={12}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </label>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+            <button type="submit" disabled={addBusy}>
+              {addBusy ? "Đang tạo..." : "Tạo tài khoản"}
+            </button>
+            <button type="button" className="secondary" onClick={() => setShowAddForm(false)}>
+              Hủy
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Bảng danh sách tài khoản */}
+      {loading ? (
+        <p className="status">Đang tải danh sách tài khoản...</p>
+      ) : accounts.length === 0 ? (
+        <p className="status">Chưa có tài khoản nào.</p>
+      ) : (
+        <div className="table-wrapper">
+          <table className="accounts-table">
+            <thead>
+              <tr>
+                <th>Tên hiển thị</th>
+                <th>Email</th>
+                <th>Trạng thái</th>
+                <th>Đăng nhập gần nhất</th>
+                <th>Ngày tạo</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {accounts.map((acc) => {
+                const isMe = acc.id === currentAdmin?.id;
+                return (
+                  <tr key={acc.id}>
+                    <td>
+                      <strong>{acc.displayName}</strong>
+                      {isMe && <span className="tag-self"> (Bạn)</span>}
+                    </td>
+                    <td>{acc.email}</td>
+                    <td>
+                      <span className={`badge ${acc.isActive ? "badge-active" : "badge-inactive"}`}>
+                        {acc.isActive ? "Hoạt động" : "Đã khóa"}
+                      </span>
+                    </td>
+                    <td>{formatDate(acc.lastLoginAt ?? null)}</td>
+                    <td>{formatDate(acc.createdAt)}</td>
+                    <td>
+                      <div className="actions-cell">
+                        <button
+                          type="button"
+                          className="sm secondary"
+                          onClick={() => {
+                            setEditingAccount(acc);
+                            setEditDisplayName(acc.displayName);
+                            setError(null);
+                          }}
+                        >
+                          Sửa tên
+                        </button>
+
+                        <button
+                          type="button"
+                          className="sm secondary"
+                          disabled={isMe}
+                          title={isMe ? "Không tự khóa tài khoản của chính mình" : undefined}
+                          onClick={() => void handleToggleActive(acc)}
+                        >
+                          {acc.isActive ? "Khóa" : "Mở khóa"}
+                        </button>
+
+                        {!isMe && (
+                          <button
+                            type="button"
+                            className="sm secondary"
+                            onClick={() => {
+                              setResetAccount(acc);
+                              setResetNewPassword("");
+                              setError(null);
+                            }}
+                          >
+                            Đặt lại MK
+                          </button>
+                        )}
+
+                        {!isMe && (
+                          <button
+                            type="button"
+                            className="sm danger"
+                            onClick={() => {
+                              setDeletingAccount(acc);
+                              setError(null);
+                            }}
+                          >
+                            Xóa
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Modal / Dialog: Sửa tên hiển thị */}
+      {editingAccount && (
+        <div className="modal-backdrop">
+          <div className="modal-content">
+            <h3>Sửa tên hiển thị</h3>
+            <p className="status" style={{ margin: "0.25rem 0 1rem" }}>
+              Tài khoản: {editingAccount.email}
+            </p>
+            <form onSubmit={handleUpdateDisplayName}>
+              <label>
+                Tên hiển thị mới
+                <input
+                  type="text"
+                  required
+                  value={editDisplayName}
+                  onChange={(e) => setEditDisplayName(e.target.value)}
+                  autoFocus
+                />
+              </label>
+              <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem", justifyContent: "flex-end" }}>
+                <button type="button" className="secondary" onClick={() => setEditingAccount(null)}>
+                  Hủy
+                </button>
+                <button type="submit" disabled={editBusy}>
+                  {editBusy ? "Đang lưu..." : "Lưu"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal / Dialog: Đặt lại mật khẩu cho tài khoản khác */}
+      {resetAccount && (
+        <div className="modal-backdrop">
+          <div className="modal-content">
+            <h3>Đặt lại mật khẩu</h3>
+            <p className="status" style={{ margin: "0.25rem 0 1rem" }}>
+              Đặt lại mật khẩu cho: <strong>{resetAccount.displayName}</strong> ({resetAccount.email})
+            </p>
+            <form onSubmit={handleResetPassword}>
+              <label>
+                Mật khẩu mới (tối thiểu 12 ký tự)
+                <input
+                  type="password"
+                  required
+                  minLength={12}
+                  value={resetNewPassword}
+                  onChange={(e) => setResetNewPassword(e.target.value)}
+                  autoFocus
+                />
+              </label>
+              <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem", justifyContent: "flex-end" }}>
+                <button type="button" className="secondary" onClick={() => setResetAccount(null)}>
+                  Hủy
+                </button>
+                <button type="submit" disabled={resetBusy}>
+                  {resetBusy ? "Đang lưu..." : "Cập nhật mật khẩu"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal / Dialog xác nhận xóa tài khoản */}
+      {deletingAccount && (
+        <div className="modal-backdrop">
+          <div className="modal-content">
+            <h3>Xác nhận xóa tài khoản</h3>
+            <p style={{ margin: "0.5rem 0 1rem" }}>
+              Bạn có chắc chắn muốn xóa tài khoản <strong>{deletingAccount.displayName}</strong> (
+              {deletingAccount.email}) không? Hành động này không thể hoàn tác.
+            </p>
+            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+              <button type="button" className="secondary" onClick={() => setDeletingAccount(null)}>
+                Hủy
+              </button>
+              <button type="button" className="danger" disabled={deleteBusy} onClick={() => void handleDeleteAccount()}>
+                {deleteBusy ? "Đang xóa..." : "Xác nhận xóa"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}

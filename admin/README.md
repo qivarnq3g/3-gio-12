@@ -45,4 +45,4 @@ Build ra `dist/`, proxy ngược phục vụ ở `/admin`.
 | `src/api/` | `client.ts`: gọi API bằng `openapi-fetch`, xử lý `401` |
 | `src/auth/` | `AuthProvider` giữ tài khoản đang đăng nhập; `RequireAuth` đưa người chưa đăng nhập về `/admin/login` |
 | `src/layout/` | `AdminLayout`: thanh bên, nút đăng xuất |
-| `src/pages/` | Các trang. `LoginPage` đã xong; dashboard (#28), câu đố (#29), tài khoản và đổi mật khẩu (#27) đang là trang chờ |
+| `src/pages/` | Các trang. `LoginPage`, `AccountsPage` và `ProfilePage` (#27) đã xong; dashboard (#28) và câu đố (#29) đang là trang chờ |
