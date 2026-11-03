@@ -369,18 +369,37 @@ public static class LocalRealisticPreview
             Puddle(root, k, new Vector3(R(-.7f, .5f), .009f, -y), new Vector2(R(.9f, 1.6f), R(.7f, 1.3f)), R(0, 180));
     }
 
-    static void ParkBikes()
+    static void DressGarage()
+    {
+        var root = new GameObject("Garage dressing").transform;
+        var rng = new System.Random(1253);
+        float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
+        foreach (var side in new[] { -1, 1 })
+        {
+            var into = new Vector3(side, 0, 0); float x = side * 4.5f;
+            for (float y = 48.6f; y < 57.6f; y += R(1.1f, 2f))
+                if (rng.NextDouble() < .65) { float h = R(1.2f, 2.2f); Decal(root, "D_Leak" + rng.Next(6), new Vector3(x, 2.8f - h / 2, -y), into, new Vector2(R(.8f, 1.5f), h)); }
+            for (float y = 48.2f; y < 57.8f; y += 3.2f) Decal(root, "D_DampBase", new Vector3(x, .45f, -(y + 1.6f)), into, new Vector2(3.3f, .9f), .5f);
+        }
+        for (float x = -4f; x < 4.2f; x += R(1.2f, 2f))
+            if (rng.NextDouble() < .7) { float h = R(1.2f, 2.2f); Decal(root, "D_Leak" + rng.Next(6), new Vector3(x, 2.8f - h / 2, -57.8f), Vector3.back, new Vector2(R(.8f, 1.5f), h)); }
+        for (float x = -4.2f; x < 4.3f; x += 3f) Decal(root, "D_DampBase", new Vector3(x + 1.5f, .45f, -57.8f), Vector3.back, new Vector2(3.1f, .9f), .5f);
+        Decal(root, "D_PosterDrill", new Vector3(-4.5f, 1.5f, -49.6f), Vector3.left, new Vector2(.32f, .45f), .4f, null, 3);
+    }
+
+    static void ParkBikes() => ParkBikes(new[] { (-.925f, 6.5f, 0f), (.925f, 13.5f, 180f), (-.925f, 19f, 0f), (.925f, 22.5f, 180f), (-.925f, 31f, 180f), (.925f, 34.5f, 0f) }, "Parked Cub ", 0);
+
+    static void ParkBikes((float x, float y, float yaw)[] spots, string prefix, int paintOffset)
     {
         var cubAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/prop_motorbike_cub.fbx"); if (cubAsset == null) return;
-        var spots = new[] { (-.925f, 6.5f, 0f), (.925f, 13.5f, 180f), (-.925f, 19f, 0f), (.925f, 22.5f, 180f), (-.925f, 31f, 180f), (.925f, 34.5f, 0f) };
         var paints = new[] { new Color(.12f, .22f, .5f), new Color(.75f, .75f, .73f), new Color(.08f, .08f, .09f), new Color(.6f, .08f, .08f), new Color(.2f, .35f, .25f), new Color(.5f, .45f, .35f) };
         for (int k = 0; k < spots.Length; k++)
         {
             var (x, y, yaw) = spots[k];
-            int bike = k;
+            int bike = (k + paintOffset) % paints.Length;
             var cub = (GameObject)PrefabUtility.InstantiatePrefab(cubAsset);
             PrefabUtility.UnpackPrefabInstance(cub, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
-            cub.name = "Parked Cub " + k;
+            cub.name = prefix + k;
             cub.transform.SetPositionAndRotation(new Vector3(x, 0, -y), Quaternion.Euler(0, yaw + (k % 3 - 1) * 6, 0));
             foreach (var r in cub.GetComponentsInChildren<MeshRenderer>())
                 r.sharedMaterials = r.sharedMaterials.Select(Convert).Select(m =>
@@ -546,18 +565,12 @@ public static class LocalRealisticPreview
         }
         envs.ForEach(Collide); Collide(blockout);
 
-        var cubAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/prop_motorbike_cub.fbx");
-        if (cubAsset != null)
-        {
-            var cub = (GameObject)PrefabUtility.InstantiatePrefab(cubAsset);
-            PrefabUtility.UnpackPrefabInstance(cub, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
-            cub.transform.SetPositionAndRotation(new Vector3(-3.15f, 0, -52.6f), Quaternion.Euler(0, 90, 0));
-            foreach (var r in cub.GetComponentsInChildren<MeshRenderer>()) r.sharedMaterials = r.sharedMaterials.Select(Convert).ToArray();
-            var b = RendererBounds(cub); var box = cub.AddComponent<BoxCollider>();
-            box.center = cub.transform.InverseTransformPoint(b.center); box.size = new Vector3(.7f, b.size.y, 1.8f);
-        }
+        var slots = blockout.GetComponentsInChildren<Renderer>().Where(r => r.name.StartsWith("Garage_Bike_")).OrderBy(r => r.name)
+            .Select((r, k) => (r.name, r.bounds.center.x, -r.bounds.center.z, (r.bounds.center.x < 0 ? 90f : 270f) + (k % 4 == 2 ? 180 : 0) + (k % 3 - 1) * 5)).ToArray();
+        ParkBikes(slots.Select(s => (s.Item2, s.Item3, s.Item4)).ToArray(), "Garage Cub ", 6);
         ParkBikes();
         DressAlley();
+        DressGarage();
         TintShutters(alley);
 
         RenderSettings.skybox = SkyGlow();
@@ -575,7 +588,7 @@ public static class LocalRealisticPreview
         AssetDatabase.CreateAsset(profile, $"{MatRoot}/RealisticNight.asset");
         var volume = new GameObject("Realistic post").AddComponent<Volume>(); volume.isGlobal = true; volume.priority = 50; volume.sharedProfile = profile;
 
-        Point("Garage bulb", new Vector3(0, 2.5f, -53), new Color(1f, .74f, .45f), 13, 9f);
+        Point("Garage bulb", new Vector3(0, 2.5f, -53), new Color(1f, .72f, .42f), 9, 5f); Halo(new Vector3(0, 2.62f, -53), new Color(1f, .72f, .42f, .5f), .6f);
         Point("Room7 tube", new Vector3(-3.3f, 12.9f, -44.5f), new Color(.86f, .94f, 1f), 8, 6f);
         foreach (var t in blockout.GetComponentsInChildren<Transform>().Where(t => t.name.Contains("MotionLight")).ToList())
         {
@@ -626,6 +639,10 @@ public static class LocalRealisticPreview
             ("alley_back", new Vector3(-.3f, 1.6f, -40), new Vector3(4, 0, 0)),
             ("alley_gate", new Vector3(-.6f, 1.6f, -38.5f), new Vector3(6, 150, 0)),
             ("garage", new Vector3(0, 1.6f, -48.5f), new Vector3(10, 180, 0)),
+            ("garage_entry", new Vector3(.3f, 1.6f, -45.5f), new Vector3(6, 185, 0)),
+            ("garage_back", new Vector3(-.5f, 1.6f, -57.2f), new Vector3(8, 15, 0)),
+            ("garage_wave", new Vector3(-.4f, 1.5f, -50.2f), new Vector3(22, 120, 0)),
+            ("garage_left", new Vector3(1.2f, 1.6f, -55.5f), new Vector3(10, 315, 0)),
             ("room7", new Vector3(-2.3f, 11.8f, -42.3f), new Vector3(15, 200, 0)) };
         var rt = new RenderTexture(1280, 720, 24, RenderTextureFormat.ARGB32); var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
         Directory.CreateDirectory(dir);
