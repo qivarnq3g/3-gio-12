@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -13,6 +14,59 @@ namespace BaGio12.Gameplay
         public static readonly Color Accent = new Color(.78f, .16f, .13f);
         public static readonly Color Shade = new Color(.02f, .02f, .025f, .82f);
         public static readonly Color Card = new Color(.06f, .06f, .07f, .72f);
+
+        static readonly Dictionary<string, TMP_FontAsset> fonts = new Dictionary<string, TMP_FontAsset>();
+
+        public static TMP_FontAsset Font(string resource)
+        {
+            if (fonts.TryGetValue(resource, out var cached) && cached != null) return cached;
+            var source = Resources.Load<Font>(resource);
+            TMP_FontAsset asset = null;
+            if (source != null)
+            {
+                asset = TMP_FontAsset.CreateFontAsset(source, 90, 9, UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA, 1024, 1024);
+                if (asset != null && TMP_Settings.defaultFontAsset != null) asset.fallbackFontAssetTable = new List<TMP_FontAsset> { TMP_Settings.defaultFontAsset };
+            }
+            fonts[resource] = asset != null ? asset : TMP_Settings.defaultFontAsset;
+            return fonts[resource];
+        }
+
+        public static Texture2D Stripe(int width, int height, float shear)
+        {
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            var pixels = new Color32[width * height];
+            float slant = shear * height;
+            for (int y = 0; y < height; y++)
+                for (int x = 0; x < width; x++)
+                {
+                    float v = y / (height - 1f) * 2 - 1;
+                    float across = Mathf.Exp(-v * v * 3.2f);
+                    float left = slant * y / (height - 1f);
+                    float u = Mathf.Clamp01((x - left) / Mathf.Max(1, width - slant));
+                    float along = Mathf.SmoothStep(0, 1, u / .12f) * Mathf.Pow(1 - u, 1.6f);
+                    byte a = (byte)(255 * Mathf.Clamp01(across * along));
+                    pixels[y * width + x] = new Color32(255, 255, 255, a);
+                }
+            texture.SetPixels32(pixels); texture.Apply();
+            return texture;
+        }
+
+        public static Texture2D Mottle(int width, int height, int seed)
+        {
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+            var pixels = new Color32[width * height];
+            for (int y = 0; y < height; y++)
+                for (int x = 0; x < width; x++)
+                {
+                    float n = Mathf.PerlinNoise(seed + x * .035f, seed + y * .035f) * .6f + Mathf.PerlinNoise(seed * 2 + x * .12f, y * .12f) * .4f;
+                    float dx = x / (width - 1f) * 2 - 1, dy = y / (height - 1f) * 2 - 1;
+                    float vignette = Mathf.Clamp01(1 - (dx * dx * .6f + dy * dy) * .55f);
+                    byte v = (byte)(255 * Mathf.Clamp01(n * vignette));
+                    pixels[y * width + x] = new Color32(v, v, v, 255);
+                }
+            texture.SetPixels32(pixels); texture.Apply();
+            return texture;
+        }
 
         public static Canvas Canvas(Transform owner, string name, int order)
         {
