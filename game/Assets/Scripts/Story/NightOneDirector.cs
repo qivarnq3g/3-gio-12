@@ -265,10 +265,6 @@ namespace BaGio12.Story
             else if(InRoom && Modal!="")ApplyBagChange(true);
             else StartCoroutine(SitTransition());
             DeliverBatch("B");
-
-
-
-
         }
         IEnumerator SitTransition()
         {
@@ -400,9 +396,6 @@ namespace BaGio12.Story
             if (sleep)
             {
                 BlackTitle = ""; BlackTitle = "Đêm xuống"; SetClock("03:40",1); DeliverBatch("D"); yield return new WaitForSeconds(2);
-
-
-
             }
             else
             {

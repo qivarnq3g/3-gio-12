@@ -40,6 +40,15 @@ namespace BaGio12.Prototype
         PrototypeData data;
         Font uiFont, lightFont, boldFont;
         VisualElement rootContainer, phoneContainer, phone, screenHost;
+        VisualElement statusBarElement, homeIndicatorElement, powerBarElement;
+        Label powerLabel;
+        VisualElement toastElement;
+        Coroutine toastCoroutine;
+        bool isPoweredOff;
+        readonly List<string> pendingBatches = new List<string>();
+
+        public bool IsPoweredOff => isPoweredOff;
+        public bool HasDelivered(string batch) => delivered.Contains(batch);
         VisualElement hudPill;
         Label hudBadge, hudTime, clock;
         readonly Stack<System.Action> back = new Stack<System.Action>();
@@ -249,6 +258,11 @@ namespace BaGio12.Prototype
         public void DeliverBatch(string batch)
         {
             if (string.IsNullOrEmpty(batch) || delivered.Contains(batch)) return;
+            if (isPoweredOff)
+            {
+                if (!pendingBatches.Contains(batch)) pendingBatches.Add(batch);
+                return;
+            }
             Record("batch:" + batch);
             Refresh();
         }
@@ -329,9 +343,24 @@ namespace BaGio12.Prototype
 
             if (state.saw_shop_camera) SetFlag("saw_shop_camera");
 
+            isPoweredOff = state.phone_powered_off;
+            UpdatePowerUi();
+
+            bool batchAPending = state.phone_powered_off && IsBatchPending(state, "20:56");
+            bool batchBPending = state.phone_powered_off && IsBatchPending(state, "21:26");
+            bool batchCPending = state.phone_powered_off && IsBatchPending(state, "21:35");
+            bool batchDPending = state.phone_powered_off && IsBatchPending(state, "03:40");
+
             if (state.phoneEverPicked)
             {
-                ApplyBatch("A");
+                if (batchAPending)
+                {
+                    if (!pendingBatches.Contains("A")) pendingBatches.Add("A");
+                }
+                else
+                {
+                    ApplyBatch("A");
+                }
             }
 
             // Times of past sends are not kept in NightOneState, so they show the restored clock.
@@ -342,14 +371,28 @@ namespace BaGio12.Prototype
 
             if (state.timeJumped)
             {
-                ApplyBatch("B");
+                if (batchBPending)
+                {
+                    if (!pendingBatches.Contains("B")) pendingBatches.Add("B");
+                }
+                else
+                {
+                    ApplyBatch("B");
+                }
             }
 
             foreach (var s in afterJump) RestoreSent(s, state.clock);
 
             if (state.numberArrived)
             {
-                ApplyBatch("C");
+                if (batchCPending)
+                {
+                    if (!pendingBatches.Contains("C")) pendingBatches.Add("C");
+                }
+                else
+                {
+                    ApplyBatch("C");
+                }
             }
 
             if (state.number_choice == "blocked")
@@ -365,10 +408,120 @@ namespace BaGio12.Prototype
 
             if (state.batchD)
             {
-                ApplyBatch("D");
+                if (batchDPending)
+                {
+                    if (!pendingBatches.Contains("D")) pendingBatches.Add("D");
+                }
+                else
+                {
+                    ApplyBatch("D");
+                }
             }
 
-            Refresh();
+            if (isPoweredOff)
+            {
+                ShowPoweredOff();
+            }
+            else
+            {
+                if (pendingBatches.Count > 0)
+                {
+                    var toFlush = new List<string>(pendingBatches);
+                    pendingBatches.Clear();
+                    foreach (var b in toFlush) DeliverBatch(b);
+                }
+                Refresh();
+            }
+        }
+
+        static bool IsBatchPending(NightOneState state, string timestamp)
+        {
+            if (state?.pendingMessages == null || state.pendingMessages.Count == 0) return false;
+            return state.pendingMessages.Any(m => m != null && m.Contains(timestamp));
+        }
+
+        public void TogglePower()
+        {
+            var director = FindAnyObjectByType<NightOneDirector>();
+            if (director != null)
+            {
+                director.TogglePower();
+            }
+            else
+            {
+                SetPoweredOff(!isPoweredOff);
+            }
+        }
+
+        public void SetPoweredOff(bool off)
+        {
+            isPoweredOff = off;
+            UpdatePowerUi();
+            if (isPoweredOff)
+            {
+                ShowPoweredOff();
+            }
+            else
+            {
+                var toDeliver = new List<string>(pendingBatches);
+                pendingBatches.Clear();
+                foreach (var b in toDeliver) DeliverBatch(b);
+                ShowHome();
+            }
+        }
+
+        void UpdatePowerUi()
+        {
+            if (powerLabel != null) powerLabel.text = isPoweredOff ? " Bật nguồn" : " Tắt nguồn";
+            if (statusBarElement != null) statusBarElement.style.display = isPoweredOff ? DisplayStyle.None : DisplayStyle.Flex;
+            if (homeIndicatorElement != null) homeIndicatorElement.style.display = isPoweredOff ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
+        public void RefusePasscode()
+        {
+            const string refusal = "Máy người ta, đặt mã lỡ người ta không mở được.";
+            var director = FindAnyObjectByType<NightOneDirector>();
+            if (director != null) director.Say(refusal);
+            ShowToast(refusal);
+        }
+
+        public void ShowToast(string message)
+        {
+            if (phone == null) return;
+            if (toastElement == null)
+            {
+                toastElement = Row();
+                toastElement.style.position = Position.Absolute;
+                toastElement.style.bottom = 80;
+                toastElement.style.left = 40;
+                toastElement.style.right = 40;
+                toastElement.style.paddingLeft = 24;
+                toastElement.style.paddingRight = 24;
+                toastElement.style.paddingTop = 16;
+                toastElement.style.paddingBottom = 16;
+                toastElement.style.backgroundColor = new Color(0.12f, 0.12f, 0.15f, 0.95f);
+                Radius(toastElement, 24);
+                toastElement.style.justifyContent = Justify.Center;
+                toastElement.style.alignItems = Align.Center;
+                toastElement.pickingMode = PickingMode.Ignore;
+                phone.Add(toastElement);
+            }
+            toastElement.Clear();
+            var txt = T(message, 26, Ink, boldFont);
+            txt.style.whiteSpace = WhiteSpace.Normal;
+            txt.style.unityTextAlign = TextAnchor.MiddleCenter;
+            toastElement.Add(txt);
+            toastElement.style.display = DisplayStyle.Flex;
+
+            if (toastCoroutine != null) StopCoroutine(toastCoroutine);
+            toastCoroutine = StartCoroutine(HideToastAfterDelay(3.5f));
+        }
+
+        IEnumerator HideToastAfterDelay(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            if (toastElement != null) toastElement.style.display = DisplayStyle.None;
+            toastCoroutine = null;
         }
 
         void RestoreSent(string id, string time)
@@ -482,6 +635,7 @@ namespace BaGio12.Prototype
                 case "tic": ShowTicList(); break;
                 case "chat": if (openChat != null) ShowChat(openChat); break;
                 case "lock": ShowLock(); break;
+                case "powered_off": if (!isPoweredOff) ShowHome(); break;
             }
         }
 
@@ -623,7 +777,40 @@ namespace BaGio12.Prototype
             topBar.RegisterCallback<PointerUpEvent>(_ => CloseViaPlayerOrDirect());
             phoneContainer.Add(topBar);
 
+            // Power toggle button top-left above bezel
+            powerBarElement = Row();
+            powerBarElement.style.position = Position.Absolute;
+            powerBarElement.style.top = 24;
+            powerBarElement.style.left = 36;
+            powerBarElement.style.paddingLeft = 20;
+            powerBarElement.style.paddingRight = 20;
+            powerBarElement.style.paddingTop = 10;
+            powerBarElement.style.paddingBottom = 10;
+            powerBarElement.style.backgroundColor = new Color(0.12f, 0.12f, 0.15f, 0.85f);
+            Radius(powerBarElement, 20);
+            var pwrIcon = Icon(IcLight, 24, Dim);
+            powerBarElement.Add(pwrIcon);
+            powerLabel = T(isPoweredOff ? " Bật nguồn" : " Tắt nguồn", 24, Dim, boldFont);
+            powerLabel.style.marginLeft = 8;
+            powerBarElement.Add(powerLabel);
+            powerBarElement.RegisterCallback<PointerUpEvent>(_ => TogglePower());
+            phoneContainer.Add(powerBarElement);
+
             phoneContainer.Add(bezel);
+
+            // Hardware power key on the right edge of bezel
+            var powerKey = new VisualElement();
+            powerKey.name = "hardware-power-key";
+            powerKey.style.position = Position.Absolute;
+            powerKey.style.right = -12;
+            powerKey.style.top = 180;
+            powerKey.style.width = 10;
+            powerKey.style.height = 70;
+            powerKey.style.backgroundColor = new Color(0.25f, 0.25f, 0.28f);
+            Radius(powerKey, 4);
+            powerKey.RegisterCallback<PointerUpEvent>(_ => TogglePower());
+            bezel.Add(powerKey);
+
             phone = new VisualElement();
             phone.style.backgroundColor = Surface;
             phone.style.overflow = Overflow.Hidden;
@@ -643,8 +830,10 @@ namespace BaGio12.Prototype
             screenHost.style.position = Position.Absolute;
             screenHost.style.left = screenHost.style.right = screenHost.style.top = screenHost.style.bottom = 0;
             phone.Add(screenHost);
-            phone.Add(StatusBar());
-            phone.Add(HomeIndicator());
+            statusBarElement = StatusBar();
+            phone.Add(statusBarElement);
+            homeIndicatorElement = HomeIndicator();
+            phone.Add(homeIndicatorElement);
 
             root.Add(phoneContainer);
         }
@@ -715,7 +904,13 @@ namespace BaGio12.Prototype
         {
             var s = new VisualElement(); s.style.alignItems = Align.Center;
             Cover(s, "Scenes/phong-tro-blur", Color.white);
-            var lockIc = Icon(IcLock, 34, Dim); lockIc.style.marginTop = 150; s.Add(lockIc);
+            var lockIc = Icon(IcLock, 34, Dim); lockIc.style.marginTop = 150;
+            lockIc.RegisterCallback<PointerUpEvent>(e =>
+            {
+                e.StopPropagation();
+                RefusePasscode();
+            });
+            s.Add(lockIc);
             var date = T(data.lockDate, 36, Ink); date.style.marginTop = 26; s.Add(date);
             var big = T(now, 250, Ink, lightFont); big.style.marginTop = -10; big.style.letterSpacing = -6; s.Add(big);
 
@@ -763,10 +958,92 @@ namespace BaGio12.Prototype
             grid.Add(App("Icons/icon-mosa", "Mosa", ShowMosa));
             s.Add(grid);
 
+            var grid2 = Row(); grid2.style.marginTop = 40; grid2.style.paddingLeft = 32; grid2.style.paddingRight = 32; grid2.style.justifyContent = Justify.FlexStart;
+            grid2.Add(AppVector(IcLock, "Cài đặt", new Color(0.35f, 0.42f, 0.5f), ShowSettings));
+            s.Add(grid2);
+
             var dots = Row(); dots.style.position = Position.Absolute; dots.style.bottom = 120; dots.style.left = 0; dots.style.right = 0; dots.style.justifyContent = Justify.Center;
             for (int i = 0; i < 3; i++) { var d = new VisualElement(); d.style.width = d.style.height = 12; Radius(d, 6); d.style.marginLeft = d.style.marginRight = 7; d.style.backgroundColor = i == 0 ? Ink : Faint; dots.Add(d); }
             s.Add(dots);
             Switch(s, null, "home");
+        }
+
+        void ShowSettings()
+        {
+            var s = AppScreen();
+            var head = Row(); head.style.paddingLeft = 56; head.style.paddingRight = 48; head.style.marginTop = 130; head.style.alignItems = Align.Center;
+            var b = Icon(IcBack, 44, Ink); Pad(b, 22); b.RegisterCallback<PointerUpEvent>(_ => GoBack()); head.Add(b);
+            var title = T("Cài đặt", 52, Ink, boldFont); title.style.marginLeft = 24; head.Add(title);
+            s.Add(head);
+
+            var list = new ScrollView(ScrollViewMode.Vertical); list.style.marginTop = 36; list.style.flexGrow = 1;
+
+            var lockRow = SettingRow(IcLock, "Mật khẩu & Khóa", "Đặt mã khóa máy", () => RefusePasscode());
+            list.Add(lockRow);
+
+            var powerRow = SettingRow(IcLight, "Nguồn điện", isPoweredOff ? "Bật nguồn máy" : "Tắt nguồn máy", () => TogglePower());
+            list.Add(powerRow);
+
+            s.Add(list);
+            Switch(s, ShowHome, "settings");
+        }
+
+        VisualElement SettingRow(string icon, string title, string sub, System.Action onClick)
+        {
+            var row = Row();
+            row.style.marginLeft = row.style.marginRight = 36;
+            row.style.marginBottom = 16;
+            row.style.paddingLeft = row.style.paddingRight = 28;
+            row.style.paddingTop = row.style.paddingBottom = 22;
+            row.style.backgroundColor = Raised;
+            Radius(row, 24);
+            row.style.alignItems = Align.Center;
+
+            row.Add(Icon(icon, 36, Accent));
+            var col = new VisualElement();
+            col.style.marginLeft = 24;
+            col.style.flexGrow = 1;
+            col.Add(T(title, 32, Ink, boldFont));
+            col.Add(T(sub, 24, Faint));
+            row.Add(col);
+
+            if (onClick != null) row.RegisterCallback<PointerUpEvent>(_ => onClick());
+            return row;
+        }
+
+        void ShowPoweredOff()
+        {
+            var s = new VisualElement();
+            s.style.flexGrow = 1;
+            s.style.backgroundColor = new Color(0.015f, 0.015f, 0.02f);
+            s.style.alignItems = Align.Center;
+            s.style.justifyContent = Justify.Center;
+
+            var offIcon = Icon(IcLight, 44, Faint);
+            s.Add(offIcon);
+
+            var offTxt = T("Máy đã tắt nguồn", 34, Dim, boldFont);
+            offTxt.style.marginTop = 20;
+            s.Add(offTxt);
+
+            var subTxt = T("Chạm nút bên dưới hoặc nút nguồn để bật lại", 24, Faint);
+            subTxt.style.marginTop = 12;
+            s.Add(subTxt);
+
+            var btn = Row();
+            btn.style.marginTop = 36;
+            btn.style.paddingLeft = 32;
+            btn.style.paddingRight = 32;
+            btn.style.paddingTop = 16;
+            btn.style.paddingBottom = 16;
+            btn.style.backgroundColor = new Color(0.18f, 0.18f, 0.22f);
+            Radius(btn, 24);
+            var btnTxt = T("Bật nguồn", 28, Ink, boldFont);
+            btn.Add(btnTxt);
+            btn.RegisterCallback<PointerUpEvent>(_ => TogglePower());
+            s.Add(btn);
+
+            Switch(s, null, "powered_off");
         }
 
         // ---------- Tic (Chat) ----------
