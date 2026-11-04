@@ -624,7 +624,14 @@ public static class LocalRealisticPreview
         EditorSceneManager.SaveScene(scene, ScenePath);
         foreach (var p in Object.FindObjectsByType<ReflectionProbe>(FindObjectsSortMode.None)) p.RenderProbe();
         Shots(cam);
-        var report = BuildPipeline.BuildPlayer(new[] { ScenePath }, "D:/Projects/3-gio-12-play/BuildReal/3gio12-tathuc.exe", BuildTarget.StandaloneWindows64, BuildOptions.None);
+        var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+        {
+            scenes = new[] { ScenePath },
+            locationPathName = "D:/Projects/3-gio-12-play/BuildReal/3gio12-tathuc.exe",
+            target = BuildTarget.StandaloneWindows64,
+            options = BuildOptions.None,
+            extraScriptingDefines = new[] { "PLAYTEST_BUILD" }
+        });
         Debug.Log("REAL_PREVIEW_BUILD " + report.summary.result);
         EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
     }

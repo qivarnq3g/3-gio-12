@@ -47,6 +47,9 @@ namespace BaGio12.Gameplay
             if (!GetComponent<PlayerFootsteps>()) gameObject.AddComponent<PlayerFootsteps>();
             if (!GetComponent<ControlsHint>()) gameObject.AddComponent<ControlsHint>();
             if (!GetComponent<PauseMenu>()) gameObject.AddComponent<PauseMenu>();
+#if UNITY_EDITOR || PLAYTEST_BUILD
+            if (!GetComponent<PlaytestReadout>()) gameObject.AddComponent<PlaytestReadout>();
+#endif
             inputs = Instantiate(inputTemplate);
             var map = inputs.FindActionMap("Player", true);
             move = map.FindAction("Move", true); look = map.FindAction("Look", true);

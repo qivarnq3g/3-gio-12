@@ -301,6 +301,7 @@ namespace BaGio12.Gameplay
         {
             inPage = false; dragging = -1;
             player.PauseMenuLocked = false;
+            lightsOn = false;
             hum.Stop();
             SaveIfDirty();
         }
