@@ -1516,14 +1516,50 @@ label {
   transition: width 0.5s ease;
 }
 
+.empty-notice-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 1rem 1.25rem;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 12px;
+  color: #c4b5fd;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.empty-notice-banner svg {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  color: #a78bfa;
+}
+
+.empty-notice-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.empty-notice-content strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.empty-notice-content p {
+  color: var(--text-muted);
+  margin: 0;
+}
+
 .empty-card {
-  padding: 2rem;
+  padding: 2.25rem 1.5rem;
   text-align: center;
   color: var(--text-muted);
   font-size: 0.9rem;
   background: var(--bg);
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px dashed var(--border);
+  line-height: 1.5;
 }
 
 @media (max-width: 900px) {

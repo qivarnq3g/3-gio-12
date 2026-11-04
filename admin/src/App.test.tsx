@@ -439,3 +439,43 @@ test("DashboardPage: displays error alert and allows retry when API fails", asyn
   const playerValues = await screen.findAllByText("128");
   expect(playerValues.length).toBeGreaterThanOrEqual(1);
 });
+
+test("DashboardPage: displays clean empty state when database has 0 events", async () => {
+  const emptyData = {
+    from: "2026-10-05T00:00:00Z",
+    to: "2026-11-04T12:00:00Z",
+    players: 0,
+    sessions: 0,
+    playtime: {
+      totalSeconds: 0,
+      averageSessionSeconds: null,
+    },
+    nights: [],
+    caughtLocations: [],
+    quitLocations: [],
+    endings: [],
+    choices: [],
+  };
+
+  serve({
+    "GET /api/admin/auth/me": () => ({ status: 200, body: account }),
+    "GET /api/admin/dashboard": () => ({ status: 200, body: emptyData }),
+  });
+
+  renderAt("/");
+
+  expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+
+  // Banner indicating zero data in database
+  expect(await screen.findByText("Chưa có dữ liệu thống kê trong khoảng thời gian này")).toBeInTheDocument();
+
+  // Zero values in metric cards
+  const zeroValues = screen.getAllByText("0");
+  expect(zeroValues.length).toBeGreaterThanOrEqual(2);
+
+  // Empty cards for each section
+  expect(screen.getByText("Chưa ghi nhận người chơi nào bắt đầu các đêm trong khoảng thời gian này.")).toBeInTheDocument();
+  expect(screen.getByText("Không có dữ liệu người chơi bị bắt.")).toBeInTheDocument();
+  expect(screen.getByText("Chưa có người chơi nào hoàn thành kết thúc.")).toBeInTheDocument();
+  expect(screen.getByText("Không có lựa chọn nào được ghi nhận.")).toBeInTheDocument();
+});

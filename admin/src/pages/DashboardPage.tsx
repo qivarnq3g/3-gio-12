@@ -164,6 +164,19 @@ export function DashboardPage() {
       {/* Dashboard Data */}
       {data && (
         <>
+          {/* Zero data informative banner */}
+          {data.players === 0 && (
+            <div className="empty-notice-banner" role="status">
+              <AlertCircleIcon />
+              <div className="empty-notice-content">
+                <strong>Chưa có dữ liệu thống kê trong khoảng thời gian này</strong>
+                <p>
+                  Cơ sở dữ liệu chưa ghi nhận sự kiện nào từ người chơi (phụ thuộc vào luồng gửi sự kiện từ game - Task #25). Toàn bộ chỉ số đang phản ánh chính xác trạng thái thực tế là 0.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Top Metric Cards */}
           <div className="metrics-grid">
             <div className="metric-card">
