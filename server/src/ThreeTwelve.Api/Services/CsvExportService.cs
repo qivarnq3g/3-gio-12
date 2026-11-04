@@ -60,7 +60,7 @@ public sealed class CsvExportService(IDashboardService dashboard, AppDbContext d
 
         var events = db.TelemetryEvents
             .AsNoTracking()
-            .Where(e => e.ReceivedAt >= range.From && e.ReceivedAt < range.To)
+            .Where(e => e.ReceivedAt >= range.From && e.ReceivedAt <= range.To)
             .OrderBy(e => e.ReceivedAt);
 
         await foreach (var e in events.AsAsyncEnumerable().WithCancellation(ct))

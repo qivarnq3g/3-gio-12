@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Time.Testing;
+using ThreeTwelve.Api.Contracts;
 using ThreeTwelve.Api.Domain;
 using ThreeTwelve.Api.Services;
 
@@ -75,19 +76,27 @@ public sealed class AdminDashboardTests(AdminApiFactory factory) : IClassFixture
         using var client = factory.CreateClient();
         using var admin = await factory.LoginAsync();
 
+        var now = factory.Clock.GetUtcNow();
         var installationId = Guid.NewGuid();
         var batch = TelemetryPayloads.Batch(installationId,
-            TelemetryPayloads.SessionStarted(),
-            TelemetryPayloads.NightStarted(1),
-            TelemetryPayloads.PlayerCaught(1, "n1.parking", "n1.alley_start"),
-            TelemetryPayloads.ChoiceMade(1, "1a"),
-            TelemetryPayloads.NightCompleted(1, durationSeconds: 300, isReplay: false),
-            TelemetryPayloads.EndingReached(1, "bystander"),
-            TelemetryPayloads.SessionEnded(reason: "quit_menu", durationSeconds: 450, night: 1, areaId: "n1.parking")
+            TelemetryPayloads.SessionStarted(now.AddMinutes(-20)),
+            TelemetryPayloads.NightStarted(1, now.AddMinutes(-18)),
+            TelemetryPayloads.PlayerCaught(1, "n1.parking", "n1.alley_start", now.AddMinutes(-15)),
+            TelemetryPayloads.ChoiceMade(1, "1a", now.AddMinutes(-12)),
+            TelemetryPayloads.NightCompleted(1, durationSeconds: 300, isReplay: false, occurredAt: now.AddMinutes(-10)),
+            TelemetryPayloads.EndingReached(1, "bystander", now.AddMinutes(-8)),
+            TelemetryPayloads.SessionEnded(reason: "quit_to_menu", durationSeconds: 450, night: 1, areaId: "n1.parking", occurredAt: now.AddMinutes(-5))
         );
 
         var batchRes = await client.PostAsJsonAsync(BatchUrl, batch);
         Assert.Equal(HttpStatusCode.OK, batchRes.StatusCode);
+
+        var batchBody = await batchRes.Content.ReadFromJsonAsync<TelemetryBatchResponse>();
+        Assert.NotNull(batchBody);
+        Assert.Equal(7, batchBody.Accepted);
+        Assert.Empty(batchBody.Rejected);
+
+        factory.Clock.Advance(TimeSpan.FromSeconds(5));
 
         var response = await admin.GetAsync(DashboardUrl);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

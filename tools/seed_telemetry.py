@@ -121,12 +121,12 @@ def generate_sample_players(num_players=15):
             else:
                 # Quit in night 2
                 t += timedelta(minutes=6)
-                events.append(make_event("session_ended", sess_id, seq, t, reason="quit_menu", durationSeconds=900, night=2, areaId="n2.parking"))
+                events.append(make_event("session_ended", sess_id, seq, t, reason="quit_to_menu", durationSeconds=900, night=2, areaId="n2.parking"))
                 seq += 1
         else:
             # Quit in night 1
             t += timedelta(minutes=4)
-            events.append(make_event("session_ended", sess_id, seq, t, reason="quit_menu", durationSeconds=500, night=1, areaId="n1.alley"))
+            events.append(make_event("session_ended", sess_id, seq, t, reason="quit_to_menu", durationSeconds=500, night=1, areaId="n1.alley"))
             seq += 1
 
         batches.append({
