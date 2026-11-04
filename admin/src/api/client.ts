@@ -6,6 +6,11 @@ export type CreateAdminAccountRequest = components["schemas"]["CreateAdminAccoun
 export type UpdateAdminAccountRequest = components["schemas"]["UpdateAdminAccountRequest"];
 export type ChangePasswordRequest = components["schemas"]["ChangePasswordRequest"];
 export type ResetPasswordRequest = components["schemas"]["ResetPasswordRequest"];
+export type DashboardSummary = components["schemas"]["DashboardSummary"];
+export type NightStats = components["schemas"]["NightStats"];
+export type LocationCount = components["schemas"]["LocationCount"];
+export type EndingStats = components["schemas"]["EndingStats"];
+export type ChoiceStats = components["schemas"]["ChoiceStats"];
 
 export const api = createClient<paths>({
   baseUrl: window.location.origin,

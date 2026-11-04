@@ -10,6 +10,7 @@ public sealed class ServiceExceptionHandler(IProblemDetailsService problemDetail
     {
         var (status, title) = exception switch
         {
+            BadRequestException => (StatusCodes.Status400BadRequest, "Yêu cầu không hợp lệ"),
             NotFoundException => (StatusCodes.Status404NotFound, "Không tìm thấy"),
             ConflictException => (StatusCodes.Status409Conflict, "Trái với trạng thái hiện tại"),
             _ => (0, ""),

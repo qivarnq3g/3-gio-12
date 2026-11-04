@@ -25,3 +25,7 @@ export function getErrorMessage(error: unknown, fallback: string): string {
   }
   return fallback;
 }
+
+export function formatApiError(error: unknown, fallback = "Đã xảy ra lỗi khi kết nối máy chủ."): string {
+  return getErrorMessage(error, fallback);
+}

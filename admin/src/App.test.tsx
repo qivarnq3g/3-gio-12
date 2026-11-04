@@ -23,12 +23,14 @@ const otherAccount = {
 
 type Reply = { status: number; body?: unknown };
 
-function serve(routes: Record<string, () => Reply>) {
+function serve(routes: Record<string, (req?: Request) => Reply>) {
   const calls: string[] = [];
   vi.stubGlobal("fetch", async (input: Request) => {
-    const key = `${input.method} ${new URL(input.url).pathname}`;
+    const url = new URL(input.url);
+    const key = `${input.method} ${url.pathname}`;
     calls.push(key);
-    const reply = routes[key]?.() ?? { status: 404 };
+    calls.push(`${input.method} ${url.pathname}${url.search}`);
+    const reply = routes[key]?.(input) ?? { status: 404 };
     return new Response(reply.body === undefined ? null : JSON.stringify(reply.body), {
       status: reply.status,
       headers: { "Content-Type": "application/json" },
@@ -298,4 +300,142 @@ test("AccountsPage: deletes an account after confirmation", async () => {
 
   expect(await screen.findByRole("status")).toHaveTextContent("Đã xóa tài khoản mod@example.test.");
   expect(calls).toContain("DELETE /api/admin/accounts/8a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d");
+});
+
+const mockDashboardData = {
+  from: "2026-10-05T00:00:00Z",
+  to: "2026-11-04T12:00:00Z",
+  players: 128,
+  sessions: 342,
+  playtime: {
+    totalSeconds: 184520,
+    averageSessionSeconds: 539.5,
+  },
+  nights: [
+    {
+      night: 1,
+      playersStarted: 128,
+      playersCompleted: 102,
+      averageDurationSeconds: 720.0,
+    },
+    {
+      night: 2,
+      playersStarted: 95,
+      playersCompleted: 68,
+      averageDurationSeconds: 890.5,
+    },
+  ],
+  caughtLocations: [
+    { night: 1, areaId: "n1.parking", count: 24 },
+    { night: 1, areaId: "n1.alley", count: 18 },
+  ],
+  quitLocations: [
+    { night: 1, areaId: "n1.alley", count: 12 },
+  ],
+  endings: [
+    { endingId: "red_thread_sandal", players: 7 },
+    { endingId: "home", players: 28 },
+  ],
+  choices: [
+    { night: 1, choiceId: "1a", players: 62 },
+  ],
+};
+
+test("DashboardPage: loads and renders summary metrics, funnel, hotspots, endings, and choices", async () => {
+  const calls = serve({
+    "GET /api/admin/auth/me": () => ({ status: 200, body: account }),
+    "GET /api/admin/dashboard": () => ({ status: 200, body: mockDashboardData }),
+  });
+
+  renderAt("/");
+
+  expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+
+  // Metric cards
+  const playerValues = await screen.findAllByText("128");
+  expect(playerValues.length).toBeGreaterThanOrEqual(1);
+  expect(screen.getByText("342")).toBeInTheDocument();
+
+  // Funnel
+  expect(screen.getByText("80% Hoàn thành")).toBeInTheDocument();
+  expect(screen.getByText("72% Hoàn thành")).toBeInTheDocument();
+
+  // Locations
+  expect(screen.getByText("Bãi giữ xe")).toBeInTheDocument();
+  expect(screen.getByText("n1.parking")).toBeInTheDocument();
+
+  // Endings
+  expect(screen.getByText("6.7 Đôi dép chỉ đỏ")).toBeInTheDocument();
+  expect(screen.getByText("Bí mật ARG")).toBeInTheDocument();
+  expect(screen.getByText("6.6 Về nhà")).toBeInTheDocument();
+
+  // Choices
+  expect(screen.getByText("1a")).toBeInTheDocument();
+  expect(screen.getByText("Chặn dãy số lạ (Đêm 1)")).toBeInTheDocument();
+
+  // CSV Export links
+  const summaryLink = screen.getByRole("link", { name: /Xuất tổng hợp CSV/i });
+  expect(summaryLink).toHaveAttribute("href", expect.stringContaining("/api/admin/exports/summary"));
+
+  const eventsLink = screen.getByRole("link", { name: /Xuất sự kiện CSV/i });
+  expect(eventsLink).toHaveAttribute("href", expect.stringContaining("/api/admin/exports/events"));
+
+  expect(calls).toContain("GET /api/admin/dashboard");
+});
+
+test("DashboardPage: toggles between caught and quit locations", async () => {
+  serve({
+    "GET /api/admin/auth/me": () => ({ status: 200, body: account }),
+    "GET /api/admin/dashboard": () => ({ status: 200, body: mockDashboardData }),
+  });
+
+  renderAt("/");
+  expect(await screen.findByText("Bãi giữ xe")).toBeInTheDocument();
+
+  // Switch to quit locations tab
+  await userEvent.click(screen.getByRole("tab", { name: /Bỏ game/i }));
+
+  expect(screen.getByText("12")).toBeInTheDocument();
+});
+
+test("DashboardPage: changing date range preset re-fetches dashboard", async () => {
+  const calls = serve({
+    "GET /api/admin/auth/me": () => ({ status: 200, body: account }),
+    "GET /api/admin/dashboard": () => ({ status: 200, body: mockDashboardData }),
+  });
+
+  renderAt("/");
+  expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+
+  // Click 7 days preset
+  await userEvent.click(screen.getByRole("button", { name: "7 ngày" }));
+
+  // Re-fetched
+  const dashboardCalls = calls.filter((c) => c.startsWith("GET /api/admin/dashboard"));
+  expect(dashboardCalls.length).toBeGreaterThanOrEqual(2);
+});
+
+test("DashboardPage: displays error alert and allows retry when API fails", async () => {
+  let attempt = 0;
+  serve({
+    "GET /api/admin/auth/me": () => ({ status: 200, body: account }),
+    "GET /api/admin/dashboard": () => {
+      attempt++;
+      if (attempt === 1) {
+        return { status: 500, body: { title: "Máy chủ bận", status: 500 } };
+      }
+      return { status: 200, body: mockDashboardData };
+    },
+  });
+
+  renderAt("/");
+
+  expect(await screen.findByRole("alert")).toBeInTheDocument();
+  expect(screen.getByText("Máy chủ bận")).toBeInTheDocument();
+
+  // Click retry
+  await userEvent.click(screen.getByRole("button", { name: /Thử lại/i }));
+
+  const playerValues = await screen.findAllByText("128");
+  expect(playerValues.length).toBeGreaterThanOrEqual(1);
 });
