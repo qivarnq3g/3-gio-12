@@ -39,3 +39,7 @@ File gốc nặng (`.blend`, `.psd`, ảnh AI gốc) để trên Drive, không �
 
 - [Kiến trúc hệ thống](docs/thiet-ke/kien-truc-he-thong.md)
 - [Lược đồ lớp phần game](docs/thiet-ke/luoc-do-lop-game.md)
+
+## Bản quyền
+
+Kho này không phải mã nguồn mở. Nhóm giữ toàn quyền với mã nguồn, kịch bản, hình ảnh, âm thanh và bản build; không được sao chép hay dùng lại khi chưa được phép. Chi tiết ở [LICENSE](LICENSE). Tài sản của bên thứ ba theo giấy phép riêng, liệt kê ở [NGUON.md](game/Assets/Art/_Source/NGUON.md).
