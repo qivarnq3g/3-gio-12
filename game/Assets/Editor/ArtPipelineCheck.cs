@@ -71,6 +71,7 @@ public static class ArtPipelineCheck
                 {
                     if (m == null) { failures.Add(path + ": missing material on " + r.name); continue; }
                     var matPath = AssetDatabase.GetAssetPath(m);
+                    if (matPath.StartsWith("Assets/Art/Models/Environment/Materials/") && m.shader.name == "Universal Render Pipeline/Lit") continue;
                     if (!matPath.StartsWith("Assets/Art/Materials/")) failures.Add(path + ": material " + m.name + " not from Assets/Art/Materials (" + matPath + ")");
                     if (m.shader.name != "Toon/Toon") failures.Add(path + ": material " + m.name + " uses shader " + m.shader.name);
                 }

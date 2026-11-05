@@ -10,7 +10,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
-public static class LocalRealisticPreview
+public static class RealisticSceneBuilder
 {
     const string ScenePath = "Assets/Scenes/RealisticPreview.unity";
     const string TexRoot = "Assets/Art/TexturesPBR";
@@ -618,6 +618,7 @@ public static class LocalRealisticPreview
         var gi = envs.Where(e => e != street).Where(e => { var c = RendererBounds(e).center; return c.z > -70 && c.z < 5 && Mathf.Abs(c.x) < 20; }).ToList();
         MarkStatic(gi);
         Debug.Log($"REAL_PREVIEW_SCENE materials={Cache.Count} static_roots={string.Join(",", gi.Select(g => g.name))}");
+        PlayBoundsBuilder.Generate();
         EditorSceneManager.SaveScene(scene, ScenePath);
         AssetDatabase.SaveAssets();
         if (System.Environment.GetCommandLineArgs().Contains("-bake")) Bake();

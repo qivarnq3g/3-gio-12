@@ -55,7 +55,8 @@ Chốt ngày 30/10/2026 (#3). Mẫu đã đi trọn quy trình: `game/Assets/Art
 | 3 | Sketchfab | Xem từng model; chỉ lấy CC0 hoặc CC-BY và ghi tên tác giả | Thứ khó dựng mà nguồn 2 không có |
 
 - Không dùng công cụ AI tạo model 3D. Nhóm tự dựng (chốt 31/10/2026).
-- Không lấy model có thương hiệu thật (logo xe, biển hiệu) và không để nguyên model tả thực: game dùng hình cách điệu, màu phẳng, đường viền rõ.
+- Không lấy model có thương hiệu thật (logo xe, biển hiệu).
+- Game dùng hình tả thực (đổi ngày 02/11/2026, thay kiểu cách điệu ngày 27/10). Model chính giữ khối thật, ưu tiên mẫu quét từ vật thật. Cảnh `Assets/Scenes/RealisticPreview.unity` do `RealisticSceneBuilder` dựng: script đọc vật liệu `M_...` của model rồi đổi sang vật liệu URP Lit trong `Assets/Art/MaterialsPBR`, dùng ảnh vân trong `Assets/Art/TexturesPBR`. Bảng `Surfaces` trong script quy định mỗi `M_...` dùng ảnh vân nào; vật liệu mới phải thêm vào bảng này. Riêng `env_alley.fbx` và `env_garage.fbx` xuất từ bản tả thực nên vật liệu URP Lit nằm trong `Assets/Art/Models/Environment/Materials`; `ArtPipelineCheck` chấp nhận thư mục này.
 
 ### Dựng trong Blender
 
@@ -83,10 +84,10 @@ Chọn cách làm theo việc chữ có đổi trong lúc chơi hay không, và 
 
 - Trong Blender, ưu tiên tách vùng có chữ thành mặt riêng ngay trên lưới của vật, gán vật liệu riêng; cách này không có hai mặt chồng nhau nên không bao giờ nhấp nháy. Chỉ khi vật cong hoặc nhiều mặt mới đặt một tấm phẳng mỏng nổi lên khỏi bề mặt 3 mm. Cách 1 mm dễ nhấp nháy khi nhìn từ xa vì độ chính xác chiều sâu giảm theo khoảng cách, mà đường lớn dài khoảng 440 m; nếu 3 mm vẫn nhấp nháy ở xa thì tăng lên 5 mm. Trải UV của mặt chữ phủ khít ảnh, trong khoảng 0 đến 1, và gán vật liệu riêng `M_<TenTiengAnh>`.
 - Ảnh PNG, cạnh là lũy thừa của 2: 512 cho phần lớn đồ vật, 1024 khi chữ nhỏ mà người chơi phải đọc. Đặt tên `T_<TenTiengAnh>.png` trong `game/Assets/Art/Textures/`.
-- Vẽ phẳng đúng kiểu hình của game, không dùng ảnh chụp. Chữ tiếng Việt dùng phông có đủ dấu. Không có tên hay logo của thương hiệu thật.
+- Dùng ảnh chụp hoặc ảnh quét được, ghi nguồn trong `NGUON.md`. Chữ tiếng Việt dùng phông có đủ dấu. Không có tên hay logo của thương hiệu thật.
 - Không cần chỉnh thiết lập nhập ảnh: `ModelImportRules.cs` tự đặt cho mọi ảnh trong `Assets/Art/Textures/` là sRGB bật, nén chất lượng cao (`High Quality`), mipmap bật, lọc `Trilinear`, `Aniso Level` 8, `Wrap Mode: Clamp`, cỡ tối đa 1024. Mipmap giữ bật để chữ không lấp lánh khi nhìn từ xa; chữ nhòe khi nhìn nghiêng do mipmap thì `Aniso Level` 8 bù lại.
 - Ảnh lặp cho mặt lớn (tường, cửa cuốn, vỉa hè, nhựa đường) đặt tên `T_Tile<TenTiengAnh>.png`. Ảnh này vẽ gần trắng, chỉ có vân, vết ố và chỗ đậm nhạt; màu chính vẫn lấy từ `BaseColor` của vật liệu, nên một ảnh dùng được cho nhiều màu sơn. UV được phép ra ngoài 0 đến 1 để ảnh lặp lại, và `ModelImportRules.cs` đặt `Wrap Mode: Repeat` cho riêng các ảnh có tên bắt đầu bằng `T_Tile`.
-- Trong Unity, vật liệu vẫn dùng shader `Toon/Toon`: gán ảnh vào `BaseMap`, bật `Use BaseMap as 1st_ShadeMap` và `Use 1st_ShadeMap as 2nd_ShadeMap` để chữ không tối đi ở vùng bóng và vùng bóng sâu.
+- Vật liệu nguồn trong `Assets/Art/Materials` vẫn dùng shader `Toon/Toon` để `ArtPipelineCheck` kiểm và `RealisticSceneBuilder` đọc màu, ảnh: gán ảnh vào `BaseMap`, bật `Use BaseMap as 1st_ShadeMap` và `Use 1st_ShadeMap as 2nd_ShadeMap` để chữ không tối đi ở vùng bóng và vùng bóng sâu.
 
 Chữ, số đổi trong lúc chơi:
 
