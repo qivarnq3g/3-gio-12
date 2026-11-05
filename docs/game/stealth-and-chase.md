@@ -12,12 +12,12 @@ Scene kiểm tra: `Assets/Scenes/Night01/NightOneGraybox.unity`. Các điểm n�
 |---|---|
 | Tuần tra/lịch nhìn | Lịch riêng của từng observer; trẻ nhỏ di chuyển bằng NavMeshAgent, không xóa đường đi mỗi frame; hướng nhìn theo chuyển động khi đang đi |
 | Thấy người chơi | Nón nhìn 90°, tầm 8 m; tường/xe che raycast. Chú ý tăng theo sáng/tối, cúi và chạy |
-| Nghe | Tiếng chạy trong 5 m hoặc tiếng thở do thương tích trong 3 m làm observer gần nhất đủ điều kiện quay về nguồn; tiếng hô lan trong 15 m |
+| Nghe | Tiếng chạy làm observer gần nhất đủ điều kiện trong 5 m quay về nguồn; tiếng thở khi nấp sau lần bắt thứ hai được mọi observer đủ điều kiện trong 3 m nghe thấy; tiếng hô lan trong 15 m |
 | Observer vắng mặt | Cô Liên trước/sau lịch xuất hiện và actor inactive không phản ứng với tiếng động |
 | Nghi → đuổi → tìm | Tiếp cận vị trí nhìn thấy lần cuối; đuổi khi phát hiện trong nhà xe/đặt máy hoặc thấy lại; mất tầm nhìn thì tìm rồi bỏ |
 | Cắt dấu | Đứng yên ở điểm nấp và ngoài tầm nhìn tất cả observer liên tục 8 giây; di chuyển quá 5 cm khỏi vị trí bắt đầu đếm hoặc bị nhìn thấy thì đếm lại |
 | Đèn pin | Phải rọi đúng liên tục 1 giây, trong 5 m, có tầm nhìn. Lệch tia hoặc bị che làm thời gian rọi về 0 |
-| Bắt gần | Kẻ đuổi trong 1,2 m phải đang nhìn thấy người chơi; không bắt xuyên tường chỉ vì khoảng cách ngắn |
+| Bắt gần | Kẻ đuổi trong 1,2 m bắt được cả bên hông/sau lưng nếu raycast giữa hai người không bị che; tường/xe vẫn chặn bắt, độc lập với nón nhìn 90° |
 | Đặt máy | Cúi, giữ E 2 giây, không có người đang nghi/đuổi/tìm. Đặt xong thì đường quay về không còn bị bắt |
 
 `NightObserver` giữ máy trạng thái và NavMesh; `NightOneDirector` điều phối tiếng động, điểm nấp, hậu quả bị bắt và chuyển màn. Các observer đứng yên không bắt buộc có NavMeshAgent; mọi truy cập agent ở Update/Start được kiểm tra null.
@@ -44,7 +44,7 @@ THREEGIO12_DATA_ROOT=/tmp/3gio12-stealth-review \
   -executeMethod StealthRegression.Run -logFile /tmp/stealth-review.log
 ```
 
-Script tự vào Play Mode và thoát; không thêm `-quit`. Log thành công: `STEALTH_REGRESSION_PASSED`. Kiểm tra trong scene thật: raycast che bởi tường, đèn pin ngắt quãng, bắt xuyên tường, tiếng hô với observer chưa xuất hiện, nấp khi di chuyển/đứng yên, và tuần tra có dịch chuyển NavMesh theo thời gian mô phỏng.
+Script tự vào Play Mode và thoát; không thêm `-quit`. Log thành công: `STEALTH_REGRESSION_PASSED`. Kiểm tra trong scene thật: raycast che bởi tường, đèn pin ngắt quãng, bắt xuyên tường và bắt sau lưng, tiếng thở tới nhiều observer, tiếng hô với observer chưa xuất hiện, nấp khi di chuyển/đứng yên, và tuần tra có dịch chuyển NavMesh theo thời gian mô phỏng.
 
 Chạy thêm các bài cũ `NightOneSmoke.Run`, `NightOneReviewRegression.Run` với `THREEGIO12_SKIP_START_MENU=1` và dữ liệu thử riêng để xác minh ba lần bị bắt, thoát prologue, các nhánh Đêm 1 và checkpoint. `SaveProgressRegression.Write` rồi `.Read` ở hai tiến trình riêng kiểm tra tương thích phần lưu tiến độ.
 

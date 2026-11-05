@@ -95,7 +95,7 @@ namespace BaGio12.Stealth
             if (Mode == ObserverMode.Chasing)
             {
                 if (visible) Travel(lastSeen); else Change(ObserverMode.Searching);
-                if (visible && Vector3.Distance(transform.position, director.player.transform.position) < 1.2f) director.Caught();
+                if (Vector3.Distance(transform.position, director.player.transform.position) < 1.2f && HasUnobstructedPathToPlayer()) director.Caught();
             }
             if (Mode == ObserverMode.Searching)
             {
@@ -110,6 +110,12 @@ namespace BaGio12.Stealth
         {
             if (stationary || agent == null || !agent.isOnNavMesh) return;
             if (NavMesh.SamplePosition(point,out var hit,2,NavMesh.AllAreas)) { agent.isStopped=false; agent.SetDestination(hit.position); }
+        }
+        bool HasUnobstructedPathToPlayer()
+        {
+            Vector3 origin = transform.position + Vector3.up * 1.5f;
+            Vector3 delta = director.player.eyes.transform.position - origin;
+            return !Physics.Raycast(origin, delta.normalized, delta.magnitude, PlayerGeometry.WorldMask, QueryTriggerInteraction.Ignore);
         }
         public bool CanSeePlayer()
         {

@@ -110,12 +110,12 @@ namespace BaGio12.Story
                 { hidingSeconds = 0; hideAnchor = player.transform.position; }
                 else hidingSeconds += Time.deltaTime;
                 if (hidingSeconds >= 8) foreach (var o in observers) o.LoseTrail();
-                if (player.IsRunning || (State.prologue_beaten >= 2 && Hidden))
-                {
-                    float hearingRange = player.IsRunning ? 5 : 3;
-                    observers.Where(o => o.CanHear && Vector3.Distance(o.transform.position, player.transform.position) <= hearingRange)
+                if (player.IsRunning)
+                    observers.Where(o => o.CanHear && Vector3.Distance(o.transform.position, player.transform.position) <= 5)
                         .OrderBy(o => Vector3.Distance(o.transform.position, player.transform.position)).FirstOrDefault()?.Hear(player.transform.position, false);
-                }
+                if (State.prologue_beaten >= 2 && Hidden)
+                    foreach (var observer in observers.Where(o => o.CanHear && Vector3.Distance(o.transform.position, player.transform.position) <= 3))
+                        observer.Hear(player.transform.position, false);
                 if (leftStart && player.transform.position.z < 1.2f)
                 {
                     if (State.phonePlaced) StartCoroutine(CompletePrologue());
