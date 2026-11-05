@@ -42,3 +42,6 @@ art-source/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Design document build output
+docs/thiet-ke/build/

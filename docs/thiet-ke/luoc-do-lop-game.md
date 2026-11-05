@@ -1,12 +1,10 @@
 # Lược đồ lớp phần game
 
-Phụ trách: Phúc. Phục vụ #11 và phần lược đồ lớp trong thuyết minh thiết kế #13.
+Phụ trách: Phúc. Phục vụ #11 và phần lược đồ lớp trong thuyết minh thiết kế #13. Đối chiếu với `main` tại commit [`95b7317`](https://github.com/qivarnq3g/3-gio-12/tree/95b73172d47f7f7cb2bcee8f75c5eb6274cbfbb1), sau khi ghép #6, #14 và #10. Phần lưu tiến độ của #21 đã đối chiếu với `main` tại commit `591b994` (mục 4.1). Khi #17, #20 hoặc phần game của #25 được gộp, đối chiếu lại sơ đồ và sửa ngày đối chiếu ở mục 1 trước khi nộp #13. Đoạn này là ghi chú cho nhóm, không vào bản nộp; trong nội dung bên dưới không ghi số issue, vì script dựng Word báo lỗi khi gặp.
 
 ## 1. Phạm vi và phiên bản đối chiếu
 
-Lược đồ dưới đây giữ mốc đối chiếu ban đầu. Phần lưu đĩa và cài đặt bổ sung ở #21 được mô tả trong [Lưu tiến độ và cài đặt](../game/save-and-settings.md), gồm các lớp mới và cách tích hợp vào director.
-
-Đối chiếu với `main` tại commit [`95b7317`](https://github.com/qivarnq3g/3-gio-12/tree/95b73172d47f7f7cb2bcee8f75c5eb6274cbfbb1), ngày 31/10/2026, sau khi ghép #6, #14 và tài liệu kiến trúc #10. Game hiện dùng góc nhìn thứ nhất. Phần máy chủ và web thuộc #12; ranh giới giữa các thành phần xem [kiến trúc hệ thống](kien-truc-he-thong.md).
+Các sơ đồ đối chiếu với mã nguồn game ngày 31/10/2026, khi đã có điều khiển góc nhìn thứ nhất và bản chơi thô Đêm 1. Riêng phần lưu tiến độ và cài đặt ở mục 4.1 đối chiếu ngày 05/11/2026. Phần máy chủ và web ở task #12; ranh giới giữa các thành phần ở task #10.
 
 Các sơ đồ dưới đây mô tả lớp đã có trong code. Chỉ liệt kê thành viên liên quan đến trách nhiệm và quan hệ chính, không chép toàn bộ hàm dựng UI, hàm Unity lifecycle hay cấu hình màn chơi. Các kiểu `MonoBehaviour`, `Camera`, `CharacterController`, `NavMeshAgent`, `InputActionAsset`, `UIDocument` là kiểu của Unity/package, không phải lớp tự viết.
 
@@ -24,6 +22,8 @@ Trường/property trên sơ đồ giữ nguyên tên code. Sự kiện được
 ## 2. Nhân vật, camera và tương tác
 
 Nguồn: [FirstPersonPlayer.cs](../../game/Assets/Scripts/Player/FirstPersonPlayer.cs), [WorldInteractable.cs](../../game/Assets/Scripts/Player/WorldInteractable.cs), [PlayerGeometry.cs](../../game/Assets/Scripts/Player/PlayerGeometry.cs), [TestDoor.cs](../../game/Assets/Scripts/Player/TestDoor.cs), [TestPickup.cs](../../game/Assets/Scripts/Player/TestPickup.cs), [NightInteraction.cs](../../game/Assets/Scripts/Story/NightInteraction.cs).
+
+### 2.1. Nhân vật và camera
 
 ```mermaid
 classDiagram
@@ -54,6 +54,40 @@ classDiagram
     }
     class WorldInteractable {
         <<abstract>>
+    }
+    class PlayerGeometry {
+        <<static>>
+        +float StandingHeight
+        +float CrouchedHeight
+        +int PlayerMask
+        +int WorldMask
+    }
+    class CharacterController {
+        <<Unity>>
+    }
+    class Camera {
+        <<Unity>>
+    }
+    MonoBehaviour <|-- FirstPersonPlayer
+    FirstPersonPlayer --> "1" CharacterController : yêu cầu component
+    FirstPersonPlayer --> "1" Camera : camera eyes
+    FirstPersonPlayer --> "0..1" WorldInteractable : mục tiêu raycast
+    FirstPersonPlayer ..> PlayerGeometry : capsule và layer mask
+```
+
+`FirstPersonPlayer` đọc Unity Input System, điều khiển `CharacterController`, xoay camera và raycast tìm `WorldInteractable`. Không có lớp camera riêng: `eyes` là camera con, yaw ở transform nhân vật và pitch ở camera. `PlayerGeometry` tập trung kích thước capsule và layer mask; các chiều cao là hằng số, các mask là property tĩnh.
+
+### 2.2. Tương tác
+
+```mermaid
+classDiagram
+    direction TB
+    class MonoBehaviour {
+        <<Unity>>
+    }
+    class FirstPersonPlayer
+    class WorldInteractable {
+        <<abstract>>
         +string Prompt
         +HandleInput(FirstPersonPlayer player, bool pressed, bool held) void
         +Interact(FirstPersonPlayer player) void
@@ -74,34 +108,17 @@ classDiagram
     }
     class PlayerGeometry {
         <<static>>
-        +float StandingHeight
-        +float CrouchedHeight
-        +int PlayerMask
-        +int WorldMask
     }
-    class CharacterController {
-        <<Unity>>
-    }
-    class Camera {
-        <<Unity>>
-    }
-    MonoBehaviour <|-- FirstPersonPlayer
     MonoBehaviour <|-- WorldInteractable
     WorldInteractable <|-- TestDoor
     WorldInteractable <|-- TestPickup
     WorldInteractable <|-- NightInteraction
-    FirstPersonPlayer --> "1" CharacterController : yêu cầu component
-    FirstPersonPlayer --> "1" Camera : camera eyes
-    FirstPersonPlayer --> "0..1" WorldInteractable : mục tiêu raycast
-    FirstPersonPlayer ..> PlayerGeometry : capsule và layer mask
     TestDoor ..> PlayerGeometry : tránh đóng lên nhân vật
     WorldInteractable ..> FirstPersonPlayer : tham số tương tác
     NightInteraction --> "0..1" NightOneDirector : tìm trong scene khi cần
 ```
 
-`FirstPersonPlayer` đọc Unity Input System, điều khiển `CharacterController`, xoay camera và raycast tìm `WorldInteractable`. Không có lớp camera riêng: `eyes` là camera con, yaw ở transform nhân vật và pitch ở camera. `PlayerGeometry` tập trung kích thước capsule và layer mask; các chiều cao là hằng số, các mask là property tĩnh.
-
-`WorldInteractable.HandleInput` mặc định gọi `Interact` khi vừa nhấn. `NightInteraction` ghi đè để hỗ trợ giữ E đặt điện thoại; các hành động khác chuyển tới `NightOneDirector.Act(action)`. `TestDoor` và `TestPickup` phục vụ scene thử #6, không phải hệ inventory/cửa tổng quát. Tham chiếu `target` được tìm lại mỗi frame và có thể null.
+`WorldInteractable.HandleInput` mặc định gọi `Interact` khi vừa nhấn. `NightInteraction` ghi đè để hỗ trợ giữ E đặt điện thoại; các hành động khác chuyển tới `NightOneDirector.Act(action)`. `TestDoor` và `TestPickup` phục vụ cảnh thử điều khiển, không phải hệ inventory/cửa tổng quát. Tham chiếu `target` được tìm lại mỗi frame và có thể null.
 
 ## 3. Điều phối Đêm 1 và kẻ truy đuổi
 
@@ -172,7 +189,7 @@ classDiagram
 
 Bốn lớp `NightOneDirector`, `NightObserver`, `NightOneHud`, `NightRoomDoor` đều kế thừa `MonoBehaviour` (lược bỏ các mũi tên Unity ở sơ đồ này cho dễ đọc). `NightOneDirector` giữ trạng thái cốt truyện, điều kiện hành động, checkpoint và các observer được gán từ scene. Director đăng ký `FirstPersonPlayer.PhoneChanged` và `FellOutOfWorld`, đồng thời gán `CanOpenPhone`; nó gỡ đăng ký khi bị hủy.
 
-`NightObserver` tính tầm nhìn bằng khoảng cách, góc nhìn và raycast, tăng/giảm `Attention`, rồi chuyển `ObserverMode`; `NavMeshAgent` đảm nhiệm đường đi khi observer có agent. Quan hệ `0..1` thể hiện tham chiếu có thể null; `Travel` bỏ qua di chuyển khi observer đứng yên hoặc agent null. Khi phát hiện hoặc bắt được người chơi, observer gọi director để xử lý tiếng hô và hậu quả. Director cũng gọi ngược observer để báo tiếng động hoặc reset. Đây là quan hệ hai chiều đang có, chưa tách thành hệ AI độc lập cho #20.
+`NightObserver` tính tầm nhìn bằng khoảng cách, góc nhìn và raycast, tăng/giảm `Attention`, rồi chuyển `ObserverMode`; `NavMeshAgent` đảm nhiệm đường đi khi observer có agent. Quan hệ `0..1` thể hiện tham chiếu có thể null; `Travel` bỏ qua di chuyển khi observer đứng yên hoặc agent null. Khi phát hiện hoặc bắt được người chơi, observer gọi director để xử lý tiếng hô và hậu quả. Director cũng gọi ngược observer để báo tiếng động hoặc reset. Đây là quan hệ hai chiều đang có, chưa tách thành hệ AI độc lập cho các đêm sau.
 
 `NightOneHud` vẽ UI qua IMGUI, đọc `story.State` và gọi hành động trên director. `NightRoomDoor` thay đổi `Collider.isTrigger` theo stage, không phải lớp con của `WorldInteractable`; component `NightInteraction` cùng GameObject mới xử lý E.
 
@@ -241,7 +258,78 @@ classDiagram
 
 `CheckpointService` giữ một snapshot trong RAM, vị trí và hướng quay. `Save` sao chép state đầu vào; `Restore` trả một bản sao khác, không đưa instance snapshot ra ngoài. `NightOneDirector` áp dụng lại state, pose và trạng thái thế giới. Riêng hồi phục an toàn trong prologue giữ hình phạt bị bắt, không gọi restore snapshot để xóa hình phạt.
 
-Đây chưa phải lưu game bền vững: không ghi file, không đọc lại sau khi thoát ứng dụng, chưa lưu cài đặt hay nhiều slot. `schemaVersion` hiện là field của DTO, chưa có cơ chế migrate save từ đĩa. Các phần đó thuộc #21 và cần cập nhật sơ đồ khi triển khai.
+`CheckpointService` chỉ giữ dữ liệu trong RAM và không đọc lại được sau khi thoát ứng dụng. Phần ghi xuống đĩa ở mục 4.1 chụp thêm snapshot này vào tệp lưu.
+
+### 4.1. Lưu tiến độ và cài đặt
+
+Nguồn: [NightPersistence.cs](../../game/Assets/Scripts/Persistence/NightPersistence.cs), [LocalJsonStore.cs](../../game/Assets/Scripts/Persistence/LocalJsonStore.cs), [NightSaveData.cs](../../game/Assets/Scripts/Persistence/NightSaveData.cs), [GamePreferences.cs](../../game/Assets/Scripts/Persistence/GamePreferences.cs), [NightOnePersistence.cs](../../game/Assets/Scripts/Story/NightOnePersistence.cs), [NightObserverPersistence.cs](../../game/Assets/Scripts/Stealth/NightObserverPersistence.cs).
+
+```mermaid
+classDiagram
+    direction TB
+    class NightPersistence {
+        +story NightOneDirector
+        +Preferences GamePreferences
+        +Status string
+        +Ready bool
+        +HasSave bool
+        +DataRoot string$
+        +Flush() bool
+        +ContinueSaved() bool
+        +StartNewGame() bool
+        +DeleteProgress() bool
+        +SavePreferences() bool
+    }
+    class LocalJsonStore~T~ {
+        +Exists bool
+        +TryLoad(value, message) bool
+        +Save(value, message) bool
+        +Delete(message) bool
+    }
+    class NightSaveData {
+        +schemaVersion int
+        +state NightOneState
+        +checkpointState NightOneState
+        +checkpointId string
+        +position Vector3
+        +alertLights bool[]
+        +observers ObserverSaveData[]
+    }
+    class ObserverSaveData {
+        +id string
+        +mode ObserverMode
+        +position Vector3
+        +attention float
+        +Valid() bool
+    }
+    class GamePreferences {
+        +schemaVersion int
+        +volume float
+        +mouseSensitivity float
+        +quality int
+        +showContentWarning bool
+        +Apply(player) void
+    }
+    class NightOneDirector {
+        +CaptureSave() NightSaveData
+        +ApplySave(save) bool
+    }
+    class NightObserver {
+        +CaptureObserver() ObserverSaveData
+        +ApplyObserver(data) void
+    }
+    NightPersistence --> "1" NightOneDirector : chụp và khôi phục
+    NightPersistence --> "2" LocalJsonStore~T~ : tiến độ và cài đặt
+    NightPersistence --> "1" GamePreferences : áp dụng
+    NightOneDirector ..> NightSaveData : tạo và đọc
+    NightSaveData --> "2" NightOneState : state và checkpointState
+    NightSaveData --> "*" ObserverSaveData : từng người quan sát
+    NightObserver ..> ObserverSaveData : tạo và đọc
+```
+
+`NightPersistence` là `MonoBehaviour` gắn vào director. Lớp này tự lưu khoảng 2 giây một lần theo thời gian thực và lưu thêm khi mất focus, tạm dừng hoặc thoát ứng dụng; không lưu giữa lúc chuyển cảnh. `LocalJsonStore<T>` bọc dữ liệu bằng số phiên bản và mã băm SHA-256, ghi qua tệp tạm rồi mới thay tệp chính, giữ bản dự phòng `.bak` và kiểm tra hợp lệ trước khi trả dữ liệu cho game. Tiến độ nằm ở `night-one.json`, cài đặt nằm ở `preferences.json`, chỉ có một vị trí lưu và không gửi lên máy chủ.
+
+`NightOneDirector` và `NightObserver` là lớp `partial`; các hàm chụp và khôi phục đặt trong `NightOnePersistence.cs` và `NightObserverPersistence.cs`. `FirstPersonPlayer` có thêm `ViewPitch` và `RestoreView` để khôi phục góc nhìn và tư thế cúi. Phần lưu hiện chỉ áp dụng cho Đêm 1 và chưa có cơ chế chuyển đổi tệp lưu giữa các phiên bản dữ liệu.
 
 ## 5. Điện thoại: bản thô Đêm 1 và prototype UI
 
@@ -308,7 +396,7 @@ classDiagram
 
 `PhonePrototype` kế thừa `MonoBehaviour`; các DTO còn lại là lớp `[Serializable]` thông thường. `Boot()` là static private và chỉ tự khởi tạo trong `SampleScene`. Prototype dùng UI Toolkit/`UIDocument`, đọc `Resources/Prototype/chat-mau.json`, giữ lịch sử tin đã hiện trong RAM. Tin nhắn đã hiện được lưu trong `Dictionary<string, List<Message>> shown`; lựa chọn đã bấm nằm trong `HashSet<string> chose`.
 
-Prototype này chưa nối với director hoặc HUD của Đêm 1; vì vậy không vẽ quan hệ giữa `PhonePrototype` và `FirstPersonPlayer`/`NightOneDirector`. Việc thay UI giữ chỗ bằng điện thoại hoàn chỉnh thuộc #17, cần chốt lại các lớp và luồng dữ liệu khi ghép.
+Prototype này chưa nối với director hoặc HUD của Đêm 1; vì vậy không vẽ quan hệ giữa `PhonePrototype` và `FirstPersonPlayer`/`NightOneDirector`. Việc thay UI giữ chỗ bằng điện thoại hoàn chỉnh chưa làm; khi ghép cần chốt lại các lớp và luồng dữ liệu.
 
 ## 6. Sự kiện thống kê và ranh giới gửi mạng
 
@@ -360,32 +448,19 @@ classDiagram
 
 Director phát `TelemetryProduced` với payload có kiểu; `NightTelemetry` cung cấp UUID, session ID, sequence, thời điểm UTC và JSON. `InternalEvent` là kênh debug nội bộ `(string type, string detail)` riêng, không phải sự kiện HTTP theo OpenAPI. Các lớp payload không kế thừa `MonoBehaviour`.
 
-Trong code game đang đối chiếu chưa có subscriber sản phẩm gửi HTTP, consent, installation ID, batch, queue lưu đĩa hay retry. Sơ đồ không thêm lớp gửi mạng giả định; phần adapter game thuộc #25. API server đã có nhánh triển khai riêng không đồng nghĩa game đã gửi được thống kê.
+Trong code game đang đối chiếu chưa có subscriber sản phẩm gửi HTTP, consent, installation ID, batch, queue lưu đĩa hay retry. Sơ đồ không thêm lớp gửi mạng giả định; phần game gửi thống kê lên máy chủ chưa làm. Máy chủ đã có API nhận thống kê không có nghĩa game đã gửi được.
 
 Khi làm adapter, cần chuyển đổi payload nội bộ sang DTO hợp đồng: `CaughtTelemetry.position` chỉ phục vụ cục bộ, không có trong event `player_caught` của OpenAPI; không gửi nguyên `ToJson()` của payload này lên endpoint có schema đóng. `installationId`, `gameVersion`, `platform` nằm ở envelope batch, không phải field của `NightTelemetry`. Việc gửi chỉ diễn ra khi người chơi đồng ý theo tài liệu kiến trúc/API.
 
-## 7. Đối chiếu tiêu chí #11 và phần còn lại
+## 7. Phạm vi đã mô tả và phần còn lại
 
-| Nhóm lớp yêu cầu | Đã mô tả | Phạm vi chưa triển khai đầy đủ |
+| Nhóm lớp | Đã mô tả | Phạm vi chưa triển khai đầy đủ |
 |---|---|---|
 | Nhân vật | `FirstPersonPlayer`, camera, `PlayerGeometry` | Mở rộng gameplay theo các đêm sau |
-| Tương tác | `WorldInteractable`, `TestDoor`, `TestPickup`, `NightInteraction`, `NightRoomDoor` | Inventory/hệ tương tác tổng quát nếu các issue sau yêu cầu |
-| Kẻ truy đuổi | `NightObserver`, `ObserverMode`, quan hệ director/NavMesh | Hệ truy đuổi hoàn chỉnh #20 |
-| Lưu game | `NightOneState`, `StoryClock`, `CheckpointService` | Lưu đĩa, tiến độ và cài đặt #21 |
-| Điện thoại | HUD Đêm 1 và các DTO/prototype UI Toolkit | Ghép điện thoại hoàn chỉnh #17 |
-| Gửi thống kê | Payload `NightTelemetry` và sự kiện phát từ director | Consent, buffer, retry, HTTP adapter game #25 |
+| Tương tác | `WorldInteractable`, `TestDoor`, `TestPickup`, `NightInteraction`, `NightRoomDoor` | Inventory/hệ tương tác tổng quát nếu các đêm sau cần |
+| Kẻ truy đuổi | `NightObserver`, `ObserverMode`, quan hệ director/NavMesh | Hệ truy đuổi hoàn chỉnh cho các đêm sau |
+| Lưu game | `NightOneState`, `StoryClock`, `CheckpointService`, `NightPersistence`, `LocalJsonStore<T>`, `NightSaveData`, `GamePreferences` | Lưu cho đêm 2, đêm 3 và chuyển đổi phiên bản tệp lưu |
+| Điện thoại | HUD Đêm 1 và các DTO/prototype UI Toolkit | Ghép điện thoại hoàn chỉnh |
+| Gửi thống kê | Payload `NightTelemetry` và sự kiện phát từ director | Xin đồng ý, bộ đệm, gửi lại, phần gửi HTTP của game |
 
-Các lớp trình bày phụ (`NightBagPresentation`, `NightInjuryFeedback`, `NightPassingBike`, `TestWorldClock`) và script trong `Assets/Editor/` được lược bỏ để tập trung vào sáu nhóm của issue. Lược bỏ khỏi sơ đồ không có nghĩa xóa hoặc đổi trách nhiệm trong code.
-
-### Hướng dẫn đưa vào thuyết minh
-
-- Giữ các sơ đồ theo từng nhóm để đọc được trên trang báo cáo; không ép toàn bộ vào một hình nhỏ.
-- Giữ tên lớp, tên thành viên và chiều mũi tên khi vẽ lại; ghi chú rõ checkpoint RAM và payload cục bộ.
-- Mermaid trong Markdown là nguồn chính; GitHub render trực tiếp. Có thể xuất SVG để đưa vào báo cáo bằng Mermaid CLI 11, không chỉnh tay bản xuất thay cho nguồn.
-- Khi #17, #20, #21 hoặc phần game #25 được merge, đối chiếu lại sơ đồ và ghi phiên bản code mới trước khi nộp #13.
-
-### Kiểm tra trước khi gộp
-
-- [x] Có đủ sáu nhóm trong yêu cầu #11, ghi rõ hiện trạng và phần còn thiếu.
-- [x] Tên lớp/thành viên và quan hệ đã đối chiếu code tại commit nêu trên.
-- [ ] Một thành viên khác kiểm tra sơ đồ và approve PR (điều kiện hoàn thành #11).
+Các lớp trình bày phụ (`NightBagPresentation`, `NightInjuryFeedback`, `NightPassingBike`, `TestWorldClock`) và script trong `Assets/Editor/` được lược bỏ để tập trung vào sáu nhóm trên. Lược bỏ khỏi sơ đồ không có nghĩa xóa hoặc đổi trách nhiệm trong code.
