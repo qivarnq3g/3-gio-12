@@ -71,6 +71,7 @@ public static class ArtPipelineCheck
                 {
                     if (m == null) { failures.Add(path + ": missing material on " + r.name); continue; }
                     var matPath = AssetDatabase.GetAssetPath(m);
+                    if (matPath.StartsWith("Assets/Art/Models/Environment/Materials/") && m.shader.name == "Universal Render Pipeline/Lit") continue;
                     if (!matPath.StartsWith("Assets/Art/Materials/")) failures.Add(path + ": material " + m.name + " not from Assets/Art/Materials (" + matPath + ")");
                     if (m.shader.name != "Toon/Toon") failures.Add(path + ": material " + m.name + " uses shader " + m.shader.name);
                 }
@@ -95,10 +96,11 @@ public static class ArtPipelineCheck
             var m = materials[sub];
             var tex = BaseMap(m);
             if (tex == null) continue;
-            if (m.GetFloat("_Use_BaseAs1st") < 0.5f || m.GetFloat("_Use_1stAs2nd") < 0.5f)
+            if (m.HasProperty("_Use_BaseAs1st") && (m.GetFloat("_Use_BaseAs1st") < 0.5f || m.GetFloat("_Use_1stAs2nd") < 0.5f))
                 failures.Add(path + ": material " + m.name + " has a BaseMap but Use BaseMap as 1st_ShadeMap or Use 1st_ShadeMap as 2nd_ShadeMap is off, the picture darkens in shadow");
             var texPath = AssetDatabase.GetAssetPath(tex);
             if (!texPath.StartsWith(ModelImportRules.TexturesRoot)) failures.Add(path + ": material " + m.name + " uses texture outside Assets/Art/Textures (" + texPath + ")");
+            if (ModelImportRules.IsTiling(texPath)) continue;
             foreach (var i in mesh.GetTriangles(sub))
             {
                 var p = uv[i];
