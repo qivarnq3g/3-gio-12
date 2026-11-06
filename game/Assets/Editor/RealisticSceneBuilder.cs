@@ -438,25 +438,53 @@ public static class RealisticSceneBuilder
     static void ParkBikes((float x, float y, float yaw)[] spots, string prefix, int paintOffset)
     {
         var cubAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/prop_motorbike_cub.fbx"); if (cubAsset == null) return;
-        var paints = new[] { new Color(.12f, .22f, .5f), new Color(.75f, .75f, .73f), new Color(.08f, .08f, .09f), new Color(.6f, .08f, .08f), new Color(.2f, .35f, .25f), new Color(.5f, .45f, .35f) };
         for (int k = 0; k < spots.Length; k++)
         {
             var (x, y, yaw) = spots[k];
-            int bike = (k + paintOffset) % paints.Length;
+            int bike = (k + paintOffset) % BikePaints.Length;
             var cub = (GameObject)PrefabUtility.InstantiatePrefab(cubAsset);
             PrefabUtility.UnpackPrefabInstance(cub, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
             cub.name = prefix + k;
             cub.transform.SetPositionAndRotation(new Vector3(x, 0, -y), Quaternion.Euler(0, yaw + (k % 3 - 1) * 6, 0));
             foreach (var r in cub.GetComponentsInChildren<MeshRenderer>())
-                r.sharedMaterials = r.sharedMaterials.Select(Convert).Select(m =>
-                {
-                    if (m == null || m.name != "M_CubRed") return m;
-                    var key = "M_CubRed_" + bike; if (Cache.TryGetValue(key, out var v)) return v;
-                    v = new Material(m) { name = key }; v.SetColor("_BaseColor", paints[bike]); Save(v); return Cache[key] = v;
-                }).ToArray();
+                r.sharedMaterials = r.sharedMaterials.Select(t => BikeMaterial(t, bike)).ToArray();
             var b = RendererBounds(cub); var box = cub.AddComponent<BoxCollider>();
             box.center = cub.transform.InverseTransformPoint(b.center); box.size = new Vector3(.7f, b.size.y, 1.8f);
         }
+    }
+
+    static readonly Color[] BikePaints = { new Color(.12f, .22f, .5f), new Color(.75f, .75f, .73f), new Color(.08f, .08f, .09f), new Color(.6f, .08f, .08f), new Color(.2f, .35f, .25f), new Color(.5f, .45f, .35f) };
+
+    static Material BikeMaterial(Material toon, int bike)
+    {
+        var m = ExistingPBR(toon);
+        if (m == null || m.name != "M_CubRed") return m;
+        var key = "M_CubRed_" + bike;
+        var v = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{key}.mat");
+        if (v != null) return v;
+        v = new Material(m) { name = key }; v.SetColor("_BaseColor", BikePaints[bike]); Save(v);
+        return v;
+    }
+
+    public static void PatchBikeMaterials()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var source = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/prop_motorbike_cub.fbx").GetComponentsInChildren<MeshRenderer>();
+        int bikes = 0;
+        foreach (var (prefix, offset) in new[] { ("Parked Cub ", 0), ("Garage Cub ", 6) })
+            foreach (var root in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name.StartsWith(prefix)).ToList())
+            {
+                int bike = (int.Parse(root.name.Substring(prefix.Length)) + offset) % BikePaints.Length;
+                var renderers = root.GetComponentsInChildren<MeshRenderer>();
+                if (renderers.Length != source.Length) { Debug.LogError("REAL_BIKE_MATERIALS mismatch " + root.name); EditorApplication.Exit(1); return; }
+                for (int i = 0; i < renderers.Length; i++)
+                    renderers[i].sharedMaterials = source[i].sharedMaterials.Select(t => BikeMaterial(t, bike)).ToArray();
+                bikes++;
+            }
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        Debug.Log("REAL_BIKE_MATERIALS bikes=" + bikes);
+        EditorApplication.Exit(bikes > 0 ? 0 : 1);
     }
 
     static void TintShutters(GameObject alley)

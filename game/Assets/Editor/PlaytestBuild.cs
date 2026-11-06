@@ -30,6 +30,7 @@ public static class PlaytestBuild
 
     static bool PreviewPlayer(string path, BuildTarget target)
     {
+        if (SceneMaterialsRegression.CountEmptySlots() != 0) return false;
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
         {
             scenes = new[] { "Assets/Scenes/RealisticPreview.unity" },
