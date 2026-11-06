@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -10,6 +11,26 @@ public static class RealisticStreetFixes
     const float SignEmission = .75f;
     const float SignSmoothness = .2f;
     const float SignLightGap = .85f;
+    const float FloorLift = .005f;
+    const float GateHeight = 2.4f;
+    const string ShallowAlleyRoot = "Shallow alleys";
+    const string ShallowAlleyPrefix = "ShallowAlley_";
+    const float FenceThickness = .1f;
+    static readonly (float x0, float x1, float z, float height, string material)[] OpenLots =
+    {
+        (13.25f, 16.5f, -.1f, 3.4f, "M_BrickExposed"), (62f, 65.5f, -.1f, 3.4f, "M_BrickExposed"),
+        (166f, 183f, 16f, 3.4f, "M_TinRust"), (-118.2f, -91f, 27.9f, 3.4f, "M_TinRust"), (-148f, -145f, 16f, 3.4f, "M_BrickExposed"), (-92f, -91f, 16f, 3.4f, "M_TinRust")
+    };
+    const string GroundPatchMaterial = "M_ConcreteFloor";
+    static readonly (Vector3 min, Vector3 max)[] GroundPatches = { (new Vector3(-13.25f, -.12f, -48f), new Vector3(16.5f, -.02f, .05f)), (new Vector3(-92.1f, -.12f, 15.9f), new Vector3(-90.9f, -.02f, 28.1f)) };
+    static readonly Dictionary<string, string> ShallowAlleyMaterials = new Dictionary<string, string>
+    {
+        { "BackWall", "M_FacadeGray" }, { "NarrowHouse", "M_FacadeCream" }, { "Floor", "M_ConcreteFloor" },
+        { "GateBar", "M_SteelDark" }, { "GateRailLow", "M_SteelDark" }, { "GateRailTop", "M_SteelDark" },
+        { "Crate", "M_PlasticRed" }, { "CrateTarp", "M_CanvasBlue" }, { "TeaTarp", "M_CanvasBlue" },
+        { "TeaCooler", "M_PlasticWhite" }, { "TeaStool", "M_PlasticBlue" }, { "TeaStoolStack", "M_PlasticBlue" },
+        { "TeaTable", "M_PlasticWhite" }, { "TrashBin", "M_PlasticGreen" }
+    };
 
     sealed class Part { public int[] verts; public Bounds bounds; public string material; }
 
@@ -24,7 +45,78 @@ public static class RealisticStreetFixes
         var trees = renderers.FirstOrDefault(r => r.name == "MainRoad_Trees");
         var poles = renderers.Where(r => r.name == "MainRoad_UtilityPoles").SelectMany(r => Parts(r, n => n == "M_ConcretePole")).Select(p => p.bounds).ToList();
         if (trees != null) SpreadTrees(trees, signs, poles);
+        ShallowAlleys(matRoot);
         Physics.SyncTransforms();
+    }
+
+    public static int ShallowAlleys(string matRoot)
+    {
+        var old = GameObject.Find(ShallowAlleyRoot);
+        if (old != null) Object.DestroyImmediate(old);
+        var parts = Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).Where(r => r.name.StartsWith(ShallowAlleyPrefix)).ToList();
+        var root = new GameObject(ShallowAlleyRoot);
+        var groups = new Dictionary<string, List<Bounds>>();
+        foreach (var part in parts)
+        {
+            var kind = Regex.Replace(part.name, @"^ShallowAlley_[NF]\d+_|(_?\d+)+$", "");
+            if (!ShallowAlleyMaterials.TryGetValue(kind, out var material)) continue;
+            var box = part.bounds;
+            if (kind == "Floor") box.SetMinMax(box.min, box.max + Vector3.up * FloorLift);
+            if (!groups.TryGetValue(material, out var boxes)) groups[material] = boxes = new List<Bounds>();
+            boxes.Add(box);
+            if (kind == "GateBar") continue;
+            var solid = new GameObject(part.name);
+            solid.transform.SetParent(root.transform);
+            var collider = solid.AddComponent<BoxCollider>();
+            collider.center = kind == "GateRailLow" ? new Vector3(box.center.x, GateHeight * .5f, box.center.z) : box.center;
+            collider.size = kind == "GateRailLow" ? new Vector3(box.size.x, GateHeight, box.size.z) : box.size;
+        }
+        foreach (var lot in OpenLots)
+        {
+            var box = new Bounds(); box.SetMinMax(new Vector3(lot.x0, 0, lot.z), new Vector3(lot.x1, lot.height, lot.z + FenceThickness));
+            if (!groups.TryGetValue(lot.material, out var boxes)) groups[lot.material] = boxes = new List<Bounds>();
+            boxes.Add(box);
+            var solid = new GameObject("OpenLot_" + lot.x0);
+            solid.transform.SetParent(root.transform);
+            var collider = solid.AddComponent<BoxCollider>();
+            collider.center = box.center; collider.size = box.size;
+        }
+        if (!groups.TryGetValue(GroundPatchMaterial, out var ground)) groups[GroundPatchMaterial] = ground = new List<Bounds>();
+        foreach (var area in GroundPatches) { var patch = new Bounds(); patch.SetMinMax(area.min, area.max); ground.Add(patch); }
+        var mesh = new Mesh { name = ShallowAlleyRoot, indexFormat = IndexFormat.UInt32, subMeshCount = groups.Count };
+        var vertices = new List<Vector3>(); var normals = new List<Vector3>(); var uvs = new List<Vector2>();
+        var triangles = groups.Keys.Select(_ => new List<int>()).ToList();
+        int slot = 0;
+        foreach (var boxes in groups.Values)
+        {
+            foreach (var box in boxes) AddBox(box, vertices, normals, uvs, triangles[slot]);
+            slot++;
+        }
+        mesh.SetVertices(vertices); mesh.SetNormals(normals); mesh.SetUVs(0, uvs);
+        for (int i = 0; i < groups.Count; i++) mesh.SetTriangles(triangles[i], i);
+        mesh.RecalculateBounds(); mesh.RecalculateTangents();
+        root.AddComponent<MeshFilter>().sharedMesh = mesh;
+        var renderer = root.AddComponent<MeshRenderer>();
+        renderer.sharedMaterials = groups.Keys.Select(n => AssetDatabase.LoadAssetAtPath<Material>($"{matRoot}/{n}.mat")).ToArray();
+        return groups.Values.Sum(g => g.Count);
+    }
+
+    static void AddBox(Bounds box, List<Vector3> vertices, List<Vector3> normals, List<Vector2> uvs, List<int> triangles)
+    {
+        foreach (var normal in new[] { Vector3.right, Vector3.left, Vector3.up, Vector3.down, Vector3.forward, Vector3.back })
+        {
+            var u = normal.y != 0 ? Vector3.right : Vector3.Cross(Vector3.up, normal);
+            var v = Vector3.Cross(normal, u);
+            var center = box.center + Vector3.Scale(normal, box.extents);
+            var du = Vector3.Scale(u, box.extents); var dv = Vector3.Scale(v, box.extents);
+            int start = vertices.Count;
+            foreach (var corner in new[] { center - du - dv, center - du + dv, center + du + dv, center + du - dv })
+            {
+                vertices.Add(corner); normals.Add(normal);
+                uvs.Add(new Vector2(Vector3.Dot(corner, u), Vector3.Dot(corner, v)));
+            }
+            triangles.AddRange(new[] { start, start + 2, start + 1, start, start + 3, start + 2 });
+        }
     }
 
     static void TuneSigns(string matRoot)

@@ -726,6 +726,17 @@ public static class RealisticSceneBuilder
         cam.transform.localPosition = Vector3.up * PlayerGeometry.StandingEye; cam.transform.localRotation = Quaternion.identity;
     }
 
+    public static void PatchShallowAlleys()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        int boxes = RealisticStreetFixes.ShallowAlleys(MatRoot);
+        var bounds = PlayBoundsBuilder.Generate();
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        Debug.Log("REAL_SHALLOW_ALLEYS boxes=" + boxes + " walls=" + bounds.walls + " leaks_after=" + bounds.after);
+        EditorApplication.Exit(bounds.after == 0 ? 0 : 1);
+    }
+
     public static void Capture()
     {
         var args = System.Environment.GetCommandLineArgs();
