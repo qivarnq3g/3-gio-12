@@ -78,11 +78,41 @@ public static class StealthRegression
             }
             if (Time.time < until) return;
             Check(Vector3.Distance(child.transform.position, patrolStart) > .2f, "patrol path was reset before movement");
+            CheckAppearanceWindow();
             CheckNoiseRecipients();
             CheckCloseCapture();
             Debug.Log("STEALTH_REGRESSION_PASSED"); Finish(0);
         }
         catch (Exception e) { Debug.LogException(e); Finish(1); }
+    }
+    static void CheckAppearanceWindow()
+    {
+        story.ResetPrologue(); foreach (var observer in story.observers) observer.enabled = false;
+        var lien = story.observers.First(x => x.once);
+        var save = story.CaptureSave(); save.prologueDeparted = true; save.prologueElapsed = 54.7f;
+        save.position = new Vector3(0, .1f, 22); save.leftStart = false;
+        foreach (var observer in save.observers) observer.mode = ObserverMode.Inactive;
+        var data = save.observers.First(x => x.id == lien.name);
+        data.mode = ObserverMode.Chasing; data.modeTime = 2; data.position = new Vector3(0, .03f, 18);
+        data.rotation = Quaternion.identity; data.lastSeen = save.position;
+        Check(story.ApplySave(save), "appearance fixture rejected"); Physics.SyncTransforms();
+        Check(lien.IsPresent && lien.CanSeePlayer(), "54.7s pursuit fixture has no visible target");
+        save.prologueElapsed = 55.9f;
+        Check(story.ApplySave(save), "after-window save rejected"); Physics.SyncTransforms(); lien.SendMessage("Update");
+        Check(lien.Mode == ObserverMode.Chasing && lien.IsPresent && Vector3.Distance(lien.transform.position, data.position) < .1f
+            && lien.GetComponentsInChildren<Renderer>().Any(x => x.enabled), "55s deadline interrupted or hid an active pursuit");
+        var resumed = story.CaptureSave();
+        // Old v1 payloads may still contain the removed, unused counter.
+        resumed = JsonUtility.FromJson<BaGio12.Persistence.NightSaveData>(JsonUtility.ToJson(resumed).Insert(1, "\"unseenSeconds\":12.5,"));
+        Check(story.ApplySave(resumed) && lien.IsPresent, "legacy save/restore lost an after-window pursuit");
+        resumed.position = new Vector3(0, .1f, 0);
+        Check(story.ApplySave(resumed), "lost-sight fixture rejected"); Physics.SyncTransforms(); lien.SendMessage("Update");
+        Check(lien.Mode == ObserverMode.Searching && lien.IsPresent, "lost target did not start a visible search after the window");
+        var search = lien.CaptureObserver(); search.modeTime = 19.5f; lien.ApplyObserver(search); lien.SendMessage("Update");
+        Check(lien.Mode == ObserverMode.Searching && lien.IsPresent, "search ended before its 20s timeout");
+        search.modeTime = 20.1f; lien.ApplyObserver(search); lien.SendMessage("Update");
+        Check(lien.Mode == ObserverMode.Normal && !lien.IsPresent && !lien.GetComponentsInChildren<Renderer>().Any(x => x.enabled),
+            "observer did not hide after finishing its search outside the appearance window");
     }
     static void CheckNoiseRecipients()
     {
@@ -109,11 +139,15 @@ public static class StealthRegression
         Check(listeners[0].CaptureObserver().focusRemaining > 0 && listeners[1].CaptureObserver().focusRemaining == 0
             && outside.CaptureObserver().focusRemaining == 0, "running noise reached more than the nearest listener");
         running.Invoke(story.player, new object[] { false });
+        second.mode = ObserverMode.Searching; second.modeTime = 7; second.lastSeen = Vector3.zero;
         listeners[0].ApplyObserver(first); listeners[1].ApplyObserver(second);
         story.State.prologue_beaten = 2; Physics.SyncTransforms();
         Check(story.Hidden && Vector3.Distance(outside.transform.position, point) > 3, "breathing range fixture invalid");
         story.SendMessage("Update");
-        Check(listeners.All(x => x.CaptureObserver().focusRemaining > 0), "injured breathing did not reach both listeners within 3m");
+        Check(listeners.All(x => x.CaptureObserver().focusRemaining > 0), "injured breathing did not reach normal/searching listeners within 3m");
+        var searching = listeners[1].CaptureObserver();
+        Check(searching.mode == ObserverMode.Searching && searching.modeTime == 7 && Vector3.Distance(searching.lastSeen, point) < .001f,
+            "searching listener did not update the sound position, or its timeout/state was reset");
         Check(outside.CaptureObserver().focusRemaining == 0 && inactive.CaptureObserver().focusRemaining == 0,
             "breathing reached an out-of-range or inactive listener");
     }

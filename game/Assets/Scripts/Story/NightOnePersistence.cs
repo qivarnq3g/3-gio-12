@@ -17,7 +17,7 @@ namespace BaGio12.Story
                 checkpointState = checkpoint, checkpointId = Checkpoints.Id, checkpointPosition = point, checkpointYaw = facing,
                 position = player.transform.position, yaw = player.transform.eulerAngles.y, pitch = player.ViewPitch,
                 crouched = player.IsCrouched, activePhone = player.ActivePhone, objective = Objective, modal = Modal,
-                hidingSeconds = hidingSeconds, roomSeconds = roomSeconds, unseenSeconds = unseenSeconds, immuneRemaining = Mathf.Max(0, immuneUntil - Time.time),
+                hidingSeconds = hidingSeconds, roomSeconds = roomSeconds, immuneRemaining = Mathf.Max(0, immuneUntil - Time.time),
                 prologueElapsed = PrologueElapsed, prologueDeparted = PrologueDeparted, leftStart = leftStart, shoutCount = shoutCount,
                 playedSeconds = Mathf.Max(0, Time.time - nightStartedAt), isReplay = isReplay, completedInSession = completedInSession,
                 alertLights = alertLights.Select(x => x.enabled).ToArray(), parkingAlert = parkingAlertLight != null && parkingAlertLight.enabled,
@@ -36,7 +36,7 @@ namespace BaGio12.Story
                 State = save.state.Copy(); Clock = new StoryClock(State);
                 Checkpoints.Save(save.checkpointId, save.checkpointState, save.checkpointPosition, save.checkpointYaw);
                 hidingSeconds = save.hidingSeconds; hideAnchor = save.position;
-                roomSeconds = save.roomSeconds; unseenSeconds = save.unseenSeconds; immuneUntil = Time.time + save.immuneRemaining;
+                roomSeconds = save.roomSeconds; immuneUntil = Time.time + save.immuneRemaining;
                 PrologueElapsed = save.prologueElapsed; PrologueDeparted = save.prologueDeparted; leftStart = save.leftStart; shoutCount = save.shoutCount;
                 nightStartedAt = Time.time - save.playedSeconds; isReplay = save.isReplay; completedInSession = save.completedInSession;
                 player.SetOverlay(false); player.SetPhone(0); player.Teleport(save.position, save.yaw); player.RestoreView(save.pitch, save.crouched);

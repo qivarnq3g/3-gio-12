@@ -52,7 +52,7 @@ namespace BaGio12.Story
         public bool CanPlace => State.stage == NightStage.Prologue && !State.phonePlaced && !Busy && !observers.Any(x => x.ActiveThreat);
         public bool NotebookOpen { get; private set; }
         public bool HasNgan => State.hasNganPhone;
-        float subtitleUntil, roomSeconds, unseenSeconds, immuneUntil;
+        float subtitleUntil, roomSeconds, immuneUntil;
         float hidingSeconds;
         Vector3 hideAnchor;
         int shoutCount;
@@ -104,7 +104,6 @@ namespace BaGio12.Story
                 if(PrologueDeparted)PrologueElapsed+=Time.deltaTime;
                 if (player.transform.position.z > 5) leftStart = true;
                 bool seen = observers.Any(x => x.CanSeePlayer());
-                unseenSeconds = seen ? 0 : unseenSeconds + Time.deltaTime;
                 // Remaining unseen while moving is not eight seconds of staying in cover.
                 if (!Hidden || seen || Vector3.Distance(hideAnchor, player.transform.position) > .05f)
                 { hidingSeconds = 0; hideAnchor = player.transform.position; }
@@ -114,8 +113,8 @@ namespace BaGio12.Story
                     observers.Where(o => o.CanHear && Vector3.Distance(o.transform.position, player.transform.position) <= 5)
                         .OrderBy(o => Vector3.Distance(o.transform.position, player.transform.position)).FirstOrDefault()?.Hear(player.transform.position, false);
                 if (State.prologue_beaten >= 2 && Hidden)
-                    foreach (var observer in observers.Where(o => o.CanHear && Vector3.Distance(o.transform.position, player.transform.position) <= 3))
-                        observer.Hear(player.transform.position, false);
+                    foreach (var observer in observers.Where(o => o.CanHearBreathing && Vector3.Distance(o.transform.position, player.transform.position) <= 3))
+                        observer.HearBreathing(player.transform.position);
                 if (leftStart && player.transform.position.z < 1.2f)
                 {
                     if (State.phonePlaced) StartCoroutine(CompletePrologue());
@@ -427,7 +426,7 @@ namespace BaGio12.Story
             player.Teleport(alleyStart.position); player.RunMultiplier = 1;
             foreach (var o in observers) o.ResetObserver(false);
             foreach (var l in alertLights) l.enabled = false;
-            leftStart = false; shoutCount = 0; unseenSeconds = 0; hidingSeconds = 0; hideAnchor = player.transform.position; PrologueDeparted=false;PrologueElapsed=0;
+            leftStart = false; shoutCount = 0; hidingSeconds = 0; hideAnchor = player.transform.position; PrologueDeparted=false;PrologueElapsed=0;
             if(parkingAlertLight!=null)parkingAlertLight.enabled=false;
             Objective = "Tới nhà xe cuối hẻm. Cúi và đặt chiếc máy dưới chân xe.";
         }
