@@ -32,6 +32,8 @@ Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** c
 | `TexturesPBR/PH_*`, lưới và vật liệu `PH_*` trong `Models/Environment/env_alley.fbx`, `MeshesPBR/`, `MaterialsPBR/` | Model quét của Poly Haven: cardboard_box_01, exterior_aircon_unit, lightbulb_01, modular_electric_cables, modular_metal_gutter, old_tyre, planter_pot_clay, plastic_bottle_gallon, plastic_crate_03, plastic_monobloc_chair_01, potted_plant_02, power_box_01, pull_chain_light_socket, rollershutter_door, security_camera_01, steel_frame_shelves_01, trashbag | CC0 1.0 | 03/11/2026 |
 | `Decals/D_Leak*`, `D_Cracks*`, `D_Manhole*` và các vết ố | Làm từ ảnh của ambientCG (ambientcg.com): AsphaltDamage001, Leaking001 đến 006, Leaking008, ManholeCover008 | CC0 1.0 | 03/11/2026 |
 | `Decals/D_Poster*`, `D_Plate*`, `D_RoomForRent`, `D_ShopSign`, `Models/Environment/env_alley.fbx` (phần nhà) | Nhóm tự làm | Của nhóm | 03/11/2026 |
+| `Models/Environment/env_street_tree.fbx` (thân, cành), `Textures/T_StreetTreeBark*.png`, `T_StreetTreeBranch*.png`, `T_StreetTreeLeaves.png` | Model quét tree_small_02 của Poly Haven; nhóm rút gọn thân, cành và làm thẻ lá trong Blender 5.2 (5.400 tam giác) | CC0 1.0 | 06/11/2026 |
+| `Models/Environment/env_boarding_house.fbx`, `Models/Environment/env_street_details.fbx` | Nhóm tự dựng bằng script trong Blender 5.2 theo khối thô nhà trọ và số đo cảnh (13.366 và 16.060 tam giác) | Của nhóm | 06/11/2026 |
 
 # Phông chữ
 

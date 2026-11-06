@@ -13,6 +13,12 @@ public static class RealisticStreetFixes
     const float SignLightGap = .85f;
     const float FloorLift = .005f;
     const float GateHeight = 2.4f;
+    const string StreetTreeRoot = "Street trees";
+    const string StreetTreeModel = "Assets/Art/Models/Environment/env_street_tree.fbx";
+    const string StreetTreeMaterials = "Assets/Art/Models/Environment/Materials";
+    const string TreeTextures = "Assets/Art/Textures";
+    const float StreetTreeHeight = 8.56f;
+    const float TreeCutoff = .4f;
     const string ShallowAlleyRoot = "Shallow alleys";
     const string ShallowAlleyPrefix = "ShallowAlley_";
     const float FenceThickness = .1f;
@@ -23,6 +29,7 @@ public static class RealisticStreetFixes
     };
     const string GroundPatchMaterial = "M_ConcreteFloor";
     static readonly (Vector3 min, Vector3 max)[] GroundPatches = { (new Vector3(-13.25f, -.12f, -48f), new Vector3(16.5f, -.02f, .05f)), (new Vector3(-92.1f, -.12f, 15.9f), new Vector3(-90.9f, -.02f, 28.1f)) };
+    static readonly HashSet<string> ShallowAlleyModeled = new HashSet<string> { "Bike", "Crate", "CrateTarp", "TeaCooler", "TeaStool", "TeaStoolStack", "TeaTable", "TeaTarp", "TrashBin" };
     static readonly Dictionary<string, string> ShallowAlleyMaterials = new Dictionary<string, string>
     {
         { "BackWall", "M_FacadeGray" }, { "NarrowHouse", "M_FacadeCream" }, { "Floor", "M_ConcreteFloor" },
@@ -46,7 +53,104 @@ public static class RealisticStreetFixes
         var poles = renderers.Where(r => r.name == "MainRoad_UtilityPoles").SelectMany(r => Parts(r, n => n == "M_ConcretePole")).Select(p => p.bounds).ToList();
         if (trees != null) SpreadTrees(trees, signs, poles);
         ShallowAlleys(matRoot);
+        StreetTrees();
         Physics.SyncTransforms();
+    }
+
+    static List<List<Part>> TreeGroups(List<Part> parts)
+    {
+        var groups = new List<List<Part>>();
+        foreach (var side in new[] { false, true })
+            foreach (var p in parts.Where(p => p.bounds.center.z > RoadCenterZ == side).OrderBy(p => p.bounds.center.x))
+            {
+                var last = groups.LastOrDefault(g => g[0].bounds.center.z > RoadCenterZ == side);
+                if (last != null && p.bounds.min.x - last.Max(q => q.bounds.max.x) < 2.5f) last.Add(p); else groups.Add(new List<Part> { p });
+            }
+        return groups;
+    }
+
+    static Material TreeMaterial(string name, string baseMap, string normalMap, bool leaves)
+    {
+        var path = $"{StreetTreeMaterials}/{name}.mat";
+        var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (m == null) { m = new Material(Shader.Find("Universal Render Pipeline/Lit")); AssetDatabase.CreateAsset(m, path); }
+        m.shader = Shader.Find("Universal Render Pipeline/Lit");
+        m.SetColor("_BaseColor", Color.white);
+        m.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>($"{TreeTextures}/{baseMap}.png"));
+        if (normalMap != null) { m.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture2D>($"{TreeTextures}/{normalMap}.png")); m.EnableKeyword("_NORMALMAP"); }
+        m.SetFloat("_Smoothness", leaves ? .22f : .12f);
+        m.enableInstancing = true;
+        if (leaves)
+        {
+            m.SetFloat("_AlphaClip", 1); m.SetFloat("_Cutoff", TreeCutoff); m.SetFloat("_Cull", (float)CullMode.Off);
+            m.EnableKeyword("_ALPHATEST_ON"); m.SetOverrideTag("RenderType", "TransparentCutout"); m.renderQueue = (int)RenderQueue.AlphaTest;
+        }
+        EditorUtility.SetDirty(m);
+        return m;
+    }
+
+    public static int StreetTrees()
+    {
+        var model = AssetDatabase.LoadAssetAtPath<GameObject>(StreetTreeModel);
+        var renderers = Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None);
+        var old = renderers.FirstOrDefault(r => r.name == "MainRoad_Trees");
+        if (model == null || old == null) return 0;
+        var previous = GameObject.Find(StreetTreeRoot);
+        if (previous != null) Object.DestroyImmediate(previous);
+        var materials = new[] { TreeMaterial("M_StreetTreeBark", "T_StreetTreeBark", "T_StreetTreeBark_Normal", false), TreeMaterial("M_StreetTreeBranch", "T_StreetTreeBranch", "T_StreetTreeBranch_Normal", false), TreeMaterial("M_StreetTreeLeaves", "T_StreetTreeLeaves", null, true) };
+        var signs = renderers.SelectMany(r => Parts(r, n => n.StartsWith("M_SignStreet"))).Select(p => p.bounds).ToList();
+        var poles = renderers.Where(r => r.name == "MainRoad_UtilityPoles").SelectMany(r => Parts(r, n => n == "M_ConcretePole")).Select(p => p.bounds).ToList();
+        old.enabled = false;
+        var oldCollider = old.GetComponent<MeshCollider>(); if (oldCollider != null) oldCollider.enabled = false;
+        Physics.SyncTransforms();
+        var crown = model.GetComponentInChildren<MeshFilter>().sharedMesh;
+        var crownVertices = crown.vertices;
+        var crownVerts = crown.GetTriangles(crown.subMeshCount - 1).Distinct().Where((_, i) => i % 4 == 0).Select(i => crownVertices[i]).ToArray();
+        var world = old.GetComponent<MeshFilter>().sharedMesh.vertices.Select(old.transform.TransformPoint).ToArray();
+        var root = new GameObject(StreetTreeRoot);
+        var rng = new System.Random(1203);
+        int placed = 0, tight = 0; float tallest = 0;
+        foreach (var g in TreeGroups(Parts(old, _ => true)))
+        {
+            var leaves = g.Where(p => p.material.StartsWith("M_Leaf")).Select(p => p.bounds).ToList();
+            if (leaves.Count == 0 || leaves.Max(b => b.max.y) < 1) continue;
+            var trunk = g.Where(p => p.material == "M_TreeBark").OrderByDescending(p => p.bounds.size.y).First();
+            float low = trunk.verts.Min(i => world[i].y);
+            var feet = trunk.verts.Where(i => world[i].y < low + .1f).Select(i => world[i]).ToList();
+            var foot = feet.Aggregate(Vector3.zero, (a, b) => a + b) / feet.Count;
+            float wanted = Mathf.Clamp(leaves.Max(b => b.max.y) * 1.25f / StreetTreeHeight, .7f, 1.05f) * (float)(.92 + rng.NextDouble() * .14);
+            float startYaw = (float)rng.NextDouble() * 360;
+            bool far = foot.z > RoadCenterZ;
+            (float scale, float yaw, int hits)? best = null;
+            foreach (var shrink in new[] { 1f, .9f, .8f, .7f, .6f })
+            {
+                for (int k = 0; k < 16 && best?.hits != 0; k++)
+                {
+                    float yaw = startYaw + k * 22.5f, scale = wanted * shrink;
+                    var rot = Quaternion.Euler(0, yaw, 0);
+                    var box = new Bounds(foot + rot * crownVerts[0] * scale, Vector3.zero);
+                    foreach (var v in crownVerts) box.Encapsulate(foot + rot * v * scale);
+                    int hits = signs.Count(s => s.center.z > RoadCenterZ == far && box.max.x + .2f > s.min.x && box.min.x - .2f < s.max.x && box.max.z + .2f > s.min.z && box.min.z - .2f < s.max.z && box.max.y > s.min.y)
+                        + poles.Count(q => Mathf.Abs(q.center.x - box.center.x) < box.extents.x && Mathf.Abs(q.center.z - box.center.z) < box.extents.z)
+                        + Physics.OverlapBox(box.center, box.extents * .95f).Count(c => c.name.StartsWith("MainRoad_Houses") || c.name.StartsWith("env_"));
+                    if (best == null || hits < best.Value.hits) best = (scale, yaw, hits);
+                }
+                if (best?.hits == 0) break;
+            }
+            var tree = (GameObject)PrefabUtility.InstantiatePrefab(model);
+            tree.name = "Street tree " + placed;
+            tree.transform.SetParent(root.transform);
+            tree.transform.SetPositionAndRotation(foot, Quaternion.Euler(0, best.Value.yaw, 0));
+            tree.transform.localScale = Vector3.one * best.Value.scale;
+            foreach (var r in tree.GetComponentsInChildren<MeshRenderer>()) r.sharedMaterials = materials;
+            var solid = tree.AddComponent<CapsuleCollider>();
+            solid.center = new Vector3(0, 1.5f / best.Value.scale, 0); solid.height = 3 / best.Value.scale; solid.radius = .16f / best.Value.scale;
+            tallest = Mathf.Max(tallest, StreetTreeHeight * best.Value.scale);
+            placed++; if (best.Value.hits > 0) tight++;
+        }
+        AssetDatabase.SaveAssets();
+        Debug.Log($"REAL_STREET_TREES placed={placed} tight={tight} tallest={tallest:F1}");
+        return placed;
     }
 
     public static int ShallowAlleys(string matRoot)
@@ -62,8 +166,11 @@ public static class RealisticStreetFixes
             if (!ShallowAlleyMaterials.TryGetValue(kind, out var material)) continue;
             var box = part.bounds;
             if (kind == "Floor") box.SetMinMax(box.min, box.max + Vector3.up * FloorLift);
-            if (!groups.TryGetValue(material, out var boxes)) groups[material] = boxes = new List<Bounds>();
-            boxes.Add(box);
+            if (!ShallowAlleyModeled.Contains(kind))
+            {
+                if (!groups.TryGetValue(material, out var boxes)) groups[material] = boxes = new List<Bounds>();
+                boxes.Add(box);
+            }
             if (kind == "GateBar") continue;
             var solid = new GameObject(part.name);
             solid.transform.SetParent(root.transform);
@@ -170,13 +277,7 @@ public static class RealisticStreetFixes
         var filter = renderer.GetComponent<MeshFilter>(); var mesh = filter.sharedMesh; var t = renderer.transform;
         var parts = Parts(renderer, _ => true);
         var world = mesh.vertices.Select(t.TransformPoint).ToArray();
-        var groups = new List<List<Part>>();
-        foreach (var side in new[] { false, true })
-            foreach (var p in parts.Where(p => p.bounds.center.z > RoadCenterZ == side).OrderBy(p => p.bounds.center.x))
-            {
-                var last = groups.LastOrDefault(g => g[0].bounds.center.z > RoadCenterZ == side);
-                if (last != null && p.bounds.min.x - last.Max(q => q.bounds.max.x) < 2.5f) last.Add(p); else groups.Add(new List<Part> { p });
-            }
+        var groups = TreeGroups(parts);
         var placed = new List<float>(); int shifted = 0, removed = 0, leaned = 0;
         foreach (var g in groups)
         {

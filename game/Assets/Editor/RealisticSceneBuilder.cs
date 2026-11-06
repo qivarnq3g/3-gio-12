@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using BaGio12.Gameplay;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
@@ -692,6 +693,8 @@ public static class RealisticSceneBuilder
         DressAlley();
         DressGarage();
         RealisticStreetFixes.Apply(MatRoot);
+        BoardingHouse();
+        StreetDetails();
         EditorSceneManager.SaveScene(scene, ScenePath);
         AssetDatabase.SaveAssets();
         Debug.Log("REAL_PREVIEW_PATCH decals=" + Object.FindObjectsByType<DecalProjector>(FindObjectsSortMode.None).Length);
@@ -701,6 +704,23 @@ public static class RealisticSceneBuilder
     static void Shots(Camera cam, string prefix = "Real", string dir = "Logs")
     {
         var views = new (string name, Vector3 pos, Vector3 rot)[] {
+            ("bh_corridor", new Vector3(-2.2f, 11.8f, -41f), new Vector3(6, 270, 0)),
+            ("bh_door", new Vector3(-7.4f, 11.8f, -40.7f), new Vector3(10, 215, 0)),
+            ("bh_stairs", new Vector3(-5.5f, 11.8f, -39.7f), new Vector3(25, 95, 0)),
+            ("bh_stairs_up", new Vector3(-2.7f, 7.4f, -38.7f), new Vector3(-20, 270, 0)),
+            ("bh_wc", new Vector3(-11.6f, 11.8f, -39.8f), new Vector3(18, 250, 0)),
+            ("bh_wc_stall", new Vector3(-11.65f, 11.9f, -39.95f), new Vector3(42, 340, 0)),
+            ("bh_lien", new Vector3(-2.4f, 1.6f, -45.2f), new Vector3(12, 245, 0)),
+            ("bh_entry", new Vector3(-2f, 1.6f, -38.8f), new Vector3(6, 200, 0)),
+            ("d_traffic", new Vector3(-66.6f, 2.4f, 12.2f), new Vector3(-24, 260, 0)),
+            ("d_pump", new Vector3(-103.2f, 1.5f, 18.6f), new Vector3(12, 300, 0)),
+            ("d_pump2", new Vector3(-108.5f, 1.6f, 22.2f), new Vector3(12, 180, 0)),
+            ("d_tea", new Vector3(16.2f, 1.5f, 15.2f), new Vector3(24, 355, 0)),
+            ("d_crate", new Vector3(-133.2f, 1.6f, 16.2f), new Vector3(10, 5, 0)),
+            ("d_bike", new Vector3(90.3f, 1.5f, 16.8f), new Vector3(18, 340, 0)),
+            ("road_east", new Vector3(20, 1.6f, 7), new Vector3(-6, 90, 0)),
+            ("road_west", new Vector3(-20, 1.6f, 9), new Vector3(-6, 270, 0)),
+            ("road_up", new Vector3(60, 1.6f, 11), new Vector3(-30, 60, 0)),
             ("alley", new Vector3(0, 1.6f, -1), new Vector3(5, 180, 0)),
             ("alley_mid", new Vector3(.4f, 1.6f, -30), new Vector3(3, 180, 0)),
             ("alley_shop", new Vector3(.8f, 1.55f, -4.2f), new Vector3(4, 300, 0)),
@@ -735,6 +755,72 @@ public static class RealisticSceneBuilder
         EditorSceneManager.SaveScene(scene, ScenePath);
         Debug.Log("REAL_SHALLOW_ALLEYS boxes=" + boxes + " walls=" + bounds.walls + " leaks_after=" + bounds.after);
         EditorApplication.Exit(bounds.after == 0 ? 0 : 1);
+    }
+
+    const string BoardingHouseModel = "Assets/Art/Models/Environment/env_boarding_house.fbx";
+    const string BoardingHouseRoot = "env_boarding_house";
+    const string BoardingHouseBike = "Boarding Cub ";
+    const string StreetDetailsModel = "Assets/Art/Models/Environment/env_street_details.fbx";
+    const string StreetDetailsRoot = "env_street_details";
+    const string ShallowAlleyBike = "Shallow alley Cub ";
+    const string BoardingHouseBulb = "Boarding ground bulb";
+
+    static Material ExistingPBR(Material toon)
+    {
+        if (toon == null) return null;
+        var m = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{toon.name}.mat");
+        return m != null ? m : Convert(toon);
+    }
+
+    public static int BoardingHouse()
+    {
+        foreach (var old in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name == BoardingHouseRoot || t.name.StartsWith(BoardingHouseBike)).ToList())
+            if (old != null) Object.DestroyImmediate(old.gameObject);
+        var boxes = Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(r => r.name.StartsWith("BH_") && r.transform.root.name == "night1_3_blockout").ToList();
+        var bike = boxes.FirstOrDefault(r => r.name == "BH_G_Bike_Lien");
+        if (bike != null) { var c = bike.bounds.center; ParkBikes(new[] { (c.x, -c.z, 90f) }, BoardingHouseBike, 3); var col = bike.GetComponent<Collider>(); if (col != null) col.enabled = false; }
+        foreach (var r in boxes) r.enabled = false;
+        var previousBulb = GameObject.Find(BoardingHouseBulb); if (previousBulb != null) Object.DestroyImmediate(previousBulb);
+        var house = Place(BoardingHouseModel); house.name = BoardingHouseRoot;
+        Point(BoardingHouseBulb, new Vector3(-3.6f, 2.9f, -42.4f), new Color(1f, .74f, .46f), 7, 2.2f, false);
+        foreach (var r in house.GetComponentsInChildren<MeshRenderer>()) r.sharedMaterials = r.sharedMaterials.Select(ExistingPBR).ToArray();
+        return boxes.Count;
+    }
+
+    public static int StreetDetails()
+    {
+        foreach (var old in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name == StreetDetailsRoot || t.name.StartsWith(ShallowAlleyBike)).ToList())
+            if (old != null) Object.DestroyImmediate(old.gameObject);
+        RealisticStreetFixes.ShallowAlleys(MatRoot);
+        var bikes = Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(r => Regex.IsMatch(r.name, @"^ShallowAlley_[NF]\d+_Bike_\d+$")).OrderBy(r => r.name)
+            .Select(r => { var c = r.bounds.center; return (c.x, -c.z, 80f + r.name.Length % 3 * 12f); }).ToArray();
+        ParkBikes(bikes, ShallowAlleyBike, 1);
+        var details = Place(StreetDetailsModel); details.name = StreetDetailsRoot;
+        foreach (var r in details.GetComponentsInChildren<MeshRenderer>()) r.sharedMaterials = r.sharedMaterials.Select(ExistingPBR).ToArray();
+        return bikes.Length;
+    }
+
+    public static void PatchBoardingHouse()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        int boxes = BoardingHouse();
+        Debug.Log("REAL_STREET_DETAILS bikes=" + StreetDetails());
+        var bounds = PlayBoundsBuilder.Generate();
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        Debug.Log("REAL_BOARDING_HOUSE boxes=" + boxes + " walls=" + bounds.walls + " leaks_after=" + bounds.after);
+        EditorApplication.Exit(boxes > 0 && bounds.after == 0 ? 0 : 1);
+    }
+
+    public static void PatchStreetTrees()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        int trees = RealisticStreetFixes.StreetTrees();
+        var bounds = PlayBoundsBuilder.Generate();
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        Debug.Log("REAL_STREET_TREES_PATCH trees=" + trees + " walls=" + bounds.walls + " leaks_after=" + bounds.after);
+        EditorApplication.Exit(trees > 0 && bounds.after == 0 ? 0 : 1);
     }
 
     public static void Capture()
