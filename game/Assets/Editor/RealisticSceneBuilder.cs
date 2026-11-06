@@ -471,7 +471,7 @@ public static class RealisticSceneBuilder
         var scene = EditorSceneManager.OpenScene(ScenePath);
         var source = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/prop_motorbike_cub.fbx").GetComponentsInChildren<MeshRenderer>();
         int bikes = 0;
-        foreach (var (prefix, offset) in new[] { ("Parked Cub ", 0), ("Garage Cub ", 6) })
+        foreach (var (prefix, offset) in new[] { ("Parked Cub ", 0), ("Garage Cub ", 6), (RoadBikePrefix, 12) })
             foreach (var root in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name.StartsWith(prefix)).ToList())
             {
                 int bike = (int.Parse(root.name.Substring(prefix.Length)) + offset) % BikePaints.Length;
@@ -729,12 +729,34 @@ public static class RealisticSceneBuilder
         EditorApplication.Exit(0);
     }
 
+    static string ShotsOnly;
+
+    static void FlatLight()
+    {
+        foreach (var l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None)) l.enabled = false;
+        foreach (var v in Object.FindObjectsByType<Volume>(FindObjectsSortMode.None)) v.enabled = false;
+        RenderSettings.ambientMode = AmbientMode.Flat; RenderSettings.ambientLight = new Color(.45f, .45f, .45f); RenderSettings.fog = false;
+        foreach (var e in new[] { new Vector3(40, 30, 0), new Vector3(35, 200, 0), new Vector3(60, 110, 0) })
+        {
+            var l = new GameObject("Flat light").AddComponent<Light>(); l.type = LightType.Directional; l.intensity = .8f; l.transform.rotation = Quaternion.Euler(e);
+        }
+    }
+
     static void Shots(Camera cam, string prefix = "Real", string dir = "Logs")
     {
         var views = new (string name, Vector3 pos, Vector3 rot)[] {
             ("bh_corridor", new Vector3(-2.2f, 11.8f, -41f), new Vector3(6, 270, 0)),
             ("bh_door", new Vector3(-7.4f, 11.8f, -40.7f), new Vector3(10, 215, 0)),
             ("bh_stairs", new Vector3(-5.5f, 11.8f, -39.7f), new Vector3(25, 95, 0)),
+            ("front_near", new Vector3(20f, 1.6f, 2.3f), new Vector3(6, 72, 0)),
+            ("front_near2", new Vector3(-30f, 1.6f, 2.3f), new Vector3(6, 288, 0)),
+            ("front_far", new Vector3(56f, 1.6f, 13.8f), new Vector3(6, 105, 0)),
+            ("front_cart", new Vector3(-21.3f, 1.5f, 2.6f), new Vector3(12, 239, 0)),
+            ("front_bike", new Vector3(-26f, 1.45f, 2.8f), new Vector3(10, 248, 0)),
+            ("front_bin", new Vector3(-31.8f, 1.5f, 3.6f), new Vector3(12, 243, 0)),
+            ("front_trash", new Vector3(-3.6f, 1.4f, 3.2f), new Vector3(14, 243, 0)),
+            ("front_tyres", new Vector3(-28.5f, 1.5f, 2.2f), new Vector3(14, 235, 0)),
+            ("front_eatery", new Vector3(30.8f, 1.5f, 2.4f), new Vector3(14, 234, 0)),
             ("bh_corridor_end", new Vector3(-4.6f, 11.8f, -40.95f), new Vector3(10, 262, 0)),
             ("bh_plate", new Vector3(-3.4f, 11.8f, -40.8f), new Vector3(14, 318, 0)),
             ("bh_landing", new Vector3(-4.1f, 6.9f, -39.7f), new Vector3(-8, 92, 0)),
@@ -768,7 +790,7 @@ public static class RealisticSceneBuilder
             ("room7", new Vector3(-2.3f, 11.8f, -42.3f), new Vector3(15, 200, 0)) };
         var rt = new RenderTexture(1280, 720, 24, RenderTextureFormat.ARGB32); var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
         Directory.CreateDirectory(dir);
-        foreach (var v in views)
+        foreach (var v in views.Where(s => ShotsOnly == null || s.name.StartsWith(ShotsOnly)))
         {
             cam.transform.SetPositionAndRotation(v.pos, Quaternion.Euler(v.rot));
             cam.targetTexture = rt; for (int i = 0; i < 8; i++) cam.Render(); RenderTexture.active = rt;
@@ -831,6 +853,41 @@ public static class RealisticSceneBuilder
         var details = Place(StreetDetailsModel); details.name = StreetDetailsRoot;
         foreach (var r in details.GetComponentsInChildren<MeshRenderer>()) r.sharedMaterials = r.sharedMaterials.Select(ExistingPBR).ToArray();
         return bikes.Length;
+    }
+
+    const string StreetFrontsModel = "Assets/Art/Models/Environment/env_street_fronts.fbx";
+    const string StreetFrontsSolids = "Assets/Art/Models/Environment/env_street_fronts_solids.txt";
+    const string StreetFrontsRoot = "env_street_fronts";
+    const string StreetBikes = "Assets/Art/Models/Environment/env_street_bikes.txt";
+    const string RoadBikePrefix = "Road Cub ";
+
+    public static int StreetFronts()
+    {
+        var previous = GameObject.Find(StreetFrontsRoot); if (previous != null) Object.DestroyImmediate(previous);
+        var fronts = Place(StreetFrontsModel); fronts.name = StreetFrontsRoot;
+        foreach (var r in fronts.GetComponentsInChildren<MeshRenderer>()) r.sharedMaterials = r.sharedMaterials.Select(ExistingPBR).ToArray();
+        var solids = new GameObject("Street front colliders"); solids.transform.SetParent(fronts.transform, false);
+        foreach (var line in File.ReadAllLines(StreetFrontsSolids).Where(l => l.Length > 0))
+        {
+            var v = line.Split(' ').Select(s => float.Parse(s, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+            var box = solids.AddComponent<BoxCollider>(); box.center = new Vector3(v[0], v[1], v[2]); box.size = new Vector3(v[3], v[4], v[5]);
+        }
+        var old = GameObject.Find("MainRoad_Props"); if (old != null) Object.DestroyImmediate(old);
+        foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name.StartsWith(RoadBikePrefix)).ToList()) Object.DestroyImmediate(t.gameObject);
+        var bikes = File.ReadAllLines(StreetBikes).Where(l => l.Length > 0).Select(l => l.Split(' ').Select(s => float.Parse(s, System.Globalization.CultureInfo.InvariantCulture)).ToArray());
+        ParkBikes(bikes.Select(v => (v[0], -v[1], v[2])).ToArray(), RoadBikePrefix, 12);
+        return solids.GetComponents<BoxCollider>().Length;
+    }
+
+    public static void PatchStreetFronts()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        int boxes = StreetFronts();
+        var bounds = PlayBoundsBuilder.Generate();
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        Debug.Log("REAL_STREET_FRONTS boxes=" + boxes + " walls=" + bounds.walls + " leaks_after=" + bounds.after);
+        EditorApplication.Exit(boxes > 0 && bounds.after == 0 ? 0 : 1);
     }
 
     const string BoardingDressModel = "Assets/Art/Models/Environment/env_boarding_dress.fbx";
@@ -948,8 +1005,10 @@ public static class RealisticSceneBuilder
         var args = System.Environment.GetCommandLineArgs();
         int i = System.Array.IndexOf(args, "-shots");
         var dir = i >= 0 && i + 1 < args.Length ? args[i + 1] : "Logs";
+        int only = System.Array.IndexOf(args, "-only"); if (only >= 0) ShotsOnly = args[only + 1];
         EditorSceneManager.OpenScene(ScenePath);
         var cam = Object.FindObjectsByType<Camera>(FindObjectsSortMode.None).First(c => c.CompareTag("MainCamera"));
+        if (args.Contains("-flat")) FlatLight();
         Shots(cam, "Real", dir);
         var clay = new Material(Shader.Find("Universal Render Pipeline/Lit")); clay.SetColor("_BaseColor", new Color(.55f, .55f, .55f)); clay.SetFloat("_Smoothness", .2f);
         foreach (var d in Object.FindObjectsByType<DecalProjector>(FindObjectsSortMode.None)) d.enabled = false;
