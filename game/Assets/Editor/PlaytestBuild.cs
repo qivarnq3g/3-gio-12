@@ -15,11 +15,16 @@ public static class PlaytestBuild
 
     public static void Preview()
     {
+        bool windows = PreviewPlayer("../BuildReal/3gio12-tathuc.exe", BuildTarget.StandaloneWindows64);
+        EditorApplication.Exit(windows ? 0 : 1);
+    }
+
+    public static void PreviewLinux()
+    {
         PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.StandaloneLinux64, false);
         PlayerSettings.SetGraphicsAPIs(BuildTarget.StandaloneLinux64, new[] { GraphicsDeviceType.Vulkan, GraphicsDeviceType.OpenGLCore });
         AssetDatabase.SaveAssets();
-        bool windows = PreviewPlayer("../BuildReal/3gio12-tathuc.exe", BuildTarget.StandaloneWindows64);
-        bool linux = windows && PreviewPlayer("../BuildLinux/3gio12.x86_64", BuildTarget.StandaloneLinux64);
+        bool linux = PreviewPlayer("../BuildLinux/3gio12.x86_64", BuildTarget.StandaloneLinux64);
         EditorApplication.Exit(linux ? 0 : 1);
     }
 
