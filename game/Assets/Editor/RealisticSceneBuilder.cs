@@ -16,6 +16,7 @@ public static class RealisticSceneBuilder
     const string TexRoot = "Assets/Art/TexturesPBR";
     const string MatRoot = "Assets/Art/MaterialsPBR";
     const string DecalRoot = "Assets/Art/Decals";
+    const float DecalDepth = .1f;
     const string AlleyModel = "Assets/Art/Models/Environment/env_alley.fbx";
     static readonly string[] Models = {
         "Assets/Art/Models/Environment/env_garage.fbx", "Assets/Art/Models/Environment/env_room7.fbx",
@@ -282,13 +283,51 @@ public static class RealisticSceneBuilder
         m.SetTexture("Base_Map", t);
         if (normal != null) { m.SetTexture("Normal_Map", Tex($"{DecalRoot}/{normal}.png", true, max: 1024)); m.SetFloat("Normal_Blend", .8f); }
         else m.SetFloat("Normal_Blend", 0f);
+        m.SetInt("_DrawOrder", Cache.Keys.Count(k => k.StartsWith("Decal_")) % 40);
         Save(m); return Cache[key] = m;
     }
-    static void Decal(Transform parent, string tex, Vector3 at, Vector3 forward, Vector2 size, float depth = .3f, string normal = null, float up = 0)
+    static readonly string[] Skins = { "M_Facade", "M_Wall", "M_Brick", "M_Concrete", "M_Sidewalk", "Block_" };
+    static bool Skin(Material m) => m != null && !m.name.Contains("Pole") && Skins.Any(m.name.StartsWith);
+    static Material HitMaterial(RaycastHit hit)
     {
+        if (!(hit.collider is MeshCollider c) || c.sharedMesh == null) return null;
+        var mats = c.GetComponent<Renderer>().sharedMaterials; int index = hit.triangleIndex * 3;
+        for (int s = 0; s < c.sharedMesh.subMeshCount && s < mats.Length; s++)
+        {
+            var d = c.sharedMesh.GetSubMesh(s);
+            if (index >= d.indexStart && index < d.indexStart + d.indexCount) return mats[s];
+        }
+        return null;
+    }
+    static float? SkinDepth(Vector3 from, Vector3 forward, bool strict)
+    {
+        foreach (var hit in Physics.RaycastAll(from, forward, 1f).OrderBy(h => h.distance))
+        {
+            if (Skin(HitMaterial(hit))) return hit.distance;
+            if (strict) return null;
+        }
+        return null;
+    }
+    static float? DecalPlane(Vector3 at, Quaternion rotation, Vector2 size, bool strict)
+    {
+        var forward = rotation * Vector3.forward; var right = rotation * Vector3.right * size.x / 2; var top = rotation * Vector3.up * size.y / 2;
+        var depths = new List<float>();
+        foreach (var (a, b) in new[] { (0f, 0f), (-.9f, -.9f), (.9f, -.9f), (-.9f, .9f), (.9f, .9f), (-.9f, 0f), (.9f, 0f), (0f, -.9f), (0f, .9f) })
+        {
+            var d = SkinDepth(at - forward * .5f + right * a + top * b, forward, strict);
+            if (d != null) depths.Add(d.Value); else if (strict) return null;
+        }
+        if (depths.Count == 0 || strict && depths.Max() - depths.Min() > .015f) return null;
+        depths.Sort(); return depths[depths.Count / 2] - .5f;
+    }
+    static bool Decal(Transform parent, string tex, Vector3 at, Vector3 forward, Vector2 size, string normal = null, float up = 0, bool strict = false)
+    {
+        var rotation = Quaternion.LookRotation(forward, Mathf.Abs(forward.y) > .9f ? Vector3.forward : Vector3.up) * Quaternion.Euler(0, 0, up);
+        var plane = DecalPlane(at, rotation, size, strict); if (plane == null) return false;
         var go = new GameObject("Decal " + tex); go.transform.SetParent(parent, false);
-        go.transform.SetPositionAndRotation(at, Quaternion.LookRotation(forward, Mathf.Abs(forward.y) > .9f ? Vector3.forward : Vector3.up) * Quaternion.Euler(0, 0, up));
-        var d = go.AddComponent<DecalProjector>(); d.material = DecalMat(tex, normal); d.size = new Vector3(size.x, size.y, depth); d.pivot = Vector3.zero; d.drawDistance = 60;
+        go.transform.SetPositionAndRotation(at + forward * plane.Value, rotation);
+        var d = go.AddComponent<DecalProjector>(); d.material = DecalMat(tex, normal); d.size = new Vector3(size.x, size.y, DecalDepth); d.pivot = Vector3.zero; d.drawDistance = 60;
+        return true;
     }
     static Material Additive(string tex, Color c)
     {
@@ -348,23 +387,29 @@ public static class RealisticSceneBuilder
         foreach (var side in new[] { -1, 1 })
         {
             var into = new Vector3(side, 0, 0); float x = side * 1.25f;
+            void Stick(System.Func<Vector3> spot, Vector2 size, float tilt)
+            {
+                for (int t = 0; t < 10; t++) if (Decal(root, posters[rng.Next(3)], spot(), into, size, null, tilt, true)) return;
+            }
             for (float y = .6f; y < 47.5f; y += R(1.2f, 2.4f))
                 foreach (var ledge in new[] { 3.25f, 6.65f })
                     if (rng.NextDouble() < .5) { float h = R(1.3f, 2.4f); Decal(root, "D_Leak" + rng.Next(6), new Vector3(x, ledge - h / 2, -y), into, new Vector2(R(.9f, 1.6f), h)); }
-            for (float y = 0; y < 48; y += 3) Decal(root, "D_DampBase", new Vector3(x, .5f, -(y + 1.5f)), into, new Vector2(3.1f, 1f), .5f);
+            for (float y = 0; y < 48; y += 3) Decal(root, "D_DampBase", new Vector3(x, .5f, -(y + 1.5f)), into, new Vector2(3.1f, 1f));
             var houses = side < 0 ? LeftHouses : RightHouses;
             for (int k = 0; k < houses.Length; k++)
             {
                 var (y0, y1) = houses[k];
-                Decal(root, "D_Plate" + ((k * 2 + (side > 0 ? 1 : 0)) % 13), new Vector3(x, 2.35f, -(y0 + .11f)), into, new Vector2(.22f, .14f), .4f);
-                if (rng.NextDouble() < .7) Decal(root, posters[rng.Next(3)], new Vector3(x, R(1.25f, 1.9f), -(y1 - .11f)), into, new Vector2(.2f, .28f), .4f, null, R(-4, 4));
-                if (rng.NextDouble() < .5) Decal(root, posters[rng.Next(3)], new Vector3(x, R(1.0f, 2.2f), -R(y0 + .6f, y1 - .6f)), into, new Vector2(.32f, .45f), .5f, null, R(-6, 6));
+                Decal(root, "D_Plate" + ((k * 2 + (side > 0 ? 1 : 0)) % 13), new Vector3(x, 2.35f, -(y0 + .11f)), into, new Vector2(.22f, .14f));
+                if (rng.NextDouble() < .7) Stick(() => new Vector3(x, R(1.25f, 1.9f), -(y1 - R(.11f, .9f))), new Vector2(.2f, .28f), R(-4, 4));
+                if (rng.NextDouble() < .5) Stick(() => new Vector3(x, R(1.0f, 2.2f), -R(y0 + .6f, y1 - .6f)), new Vector2(.32f, .45f), R(-6, 6));
             }
         }
-        Decal(root, "D_ShopSign", new Vector3(-1.25f, 3.06f, -2.5f), Vector3.left, new Vector2(4.1f, .44f), .5f);
-        Decal(root, "D_RoomForRent", new Vector3(1.25f, 1.55f, -44.75f), Vector3.right, new Vector2(.75f, .25f), .4f);
-        foreach (var y in new[] { 4.5f, 11f, 17.5f, 26f, 33f, 41f }) Decal(root, "D_Cracks", new Vector3(R(-.6f, .3f), 0, -y), Vector3.down, new Vector2(R(1.2f, 2f), R(1.2f, 2f)), .3f, "D_Cracks_normal", R(0, 360));
-        foreach (var y in new[] { 18.4f, 37.2f }) Decal(root, "D_Manhole", new Vector3(-.2f, 0, -y), Vector3.down, new Vector2(.75f, .75f), .3f, "D_Manhole_normal", R(0, 360));
+        Decal(root, "D_ShopSign", new Vector3(-1.25f, 3.06f, -2.5f), Vector3.left, new Vector2(4.1f, .44f));
+        Decal(root, "D_RoomForRent", new Vector3(1.25f, 1.55f, -44.75f), Vector3.right, new Vector2(.75f, .25f));
+        foreach (var y in new[] { 4.5f, 11f, 17.5f, 26f, 33f, 41f }) Decal(root, "D_Cracks", new Vector3(R(-.6f, .3f), 0, -y), Vector3.down, new Vector2(R(1.2f, 2f), R(1.2f, 2f)), "D_Cracks_normal", R(0, 360));
+        foreach (var y in new[] { 18.4f, 37.2f })
+            foreach (var shift in new[] { 0, .6f, -.6f, 1.2f, -1.2f, 1.8f, -1.8f, 2.4f, -2.4f })
+                if (Decal(root, "D_Manhole", new Vector3(-.2f, 0, -(y + shift)), Vector3.down, new Vector2(.75f, .75f), "D_Manhole_normal", R(0, 360), true)) break;
         foreach (var (y, k) in new[] { (3.2f, 0), (9.8f, 1), (14.5f, 2), (23.5f, 0), (28.9f, 1), (35.4f, 2), (45f, 1) })
             Puddle(root, k, new Vector3(R(-.7f, .5f), .009f, -y), new Vector2(R(.9f, 1.6f), R(.7f, 1.3f)), R(0, 180));
     }
@@ -379,12 +424,12 @@ public static class RealisticSceneBuilder
             var into = new Vector3(side, 0, 0); float x = side * 4.5f;
             for (float y = 48.6f; y < 57.6f; y += R(1.1f, 2f))
                 if (rng.NextDouble() < .65) { float h = R(1.2f, 2.2f); Decal(root, "D_Leak" + rng.Next(6), new Vector3(x, 2.8f - h / 2, -y), into, new Vector2(R(.8f, 1.5f), h)); }
-            for (float y = 48.2f; y < 57.8f; y += 3.2f) Decal(root, "D_DampBase", new Vector3(x, .45f, -(y + 1.6f)), into, new Vector2(3.3f, .9f), .5f);
+            for (float y = 48.2f; y < 57.8f; y += 3.2f) Decal(root, "D_DampBase", new Vector3(x, .45f, -(y + 1.6f)), into, new Vector2(3.3f, .9f));
         }
         for (float x = -4f; x < 4.2f; x += R(1.2f, 2f))
             if (rng.NextDouble() < .7) { float h = R(1.2f, 2.2f); Decal(root, "D_Leak" + rng.Next(6), new Vector3(x, 2.8f - h / 2, -57.8f), Vector3.back, new Vector2(R(.8f, 1.5f), h)); }
-        for (float x = -4.2f; x < 4.3f; x += 3f) Decal(root, "D_DampBase", new Vector3(x + 1.5f, .45f, -57.8f), Vector3.back, new Vector2(3.1f, .9f), .5f);
-        Decal(root, "D_PosterDrill", new Vector3(-4.5f, 1.5f, -49.6f), Vector3.left, new Vector2(.32f, .45f), .4f, null, 3);
+        for (float x = -4.2f; x < 4.3f; x += 3f) Decal(root, "D_DampBase", new Vector3(x + 1.5f, .45f, -57.8f), Vector3.back, new Vector2(3.1f, .9f));
+        Decal(root, "D_PosterDrill", new Vector3(-4.5f, 1.5f, -49.6f), Vector3.left, new Vector2(.32f, .45f), null, 3, true);
     }
 
     static void ParkBikes() => ParkBikes(new[] { (-.925f, 6.5f, 0f), (.925f, 13.5f, 180f), (-.925f, 19f, 0f), (.925f, 22.5f, 180f), (-.925f, 31f, 180f), (.925f, 34.5f, 0f) }, "Parked Cub ", 0);
@@ -569,9 +614,11 @@ public static class RealisticSceneBuilder
             .Select((r, k) => (r.name, r.bounds.center.x, -r.bounds.center.z, (r.bounds.center.x < 0 ? 90f : 270f) + (k % 4 == 2 ? 180 : 0) + (k % 3 - 1) * 5)).ToArray();
         ParkBikes(slots.Select(s => (s.Item2, s.Item3, s.Item4)).ToArray(), "Garage Cub ", 6);
         ParkBikes();
+        Physics.SyncTransforms();
         DressAlley();
         DressGarage();
         TintShutters(alley);
+        RealisticStreetFixes.Apply(MatRoot);
 
         RenderSettings.skybox = SkyGlow();
         RenderSettings.ambientMode = AmbientMode.Flat; RenderSettings.ambientLight = new Color(.018f, .022f, .032f);
@@ -635,6 +682,20 @@ public static class RealisticSceneBuilder
         });
         Debug.Log("REAL_PREVIEW_BUILD " + report.summary.result);
         EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
+    }
+
+    public static void Patch()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        foreach (var name in new[] { "Alley dressing", "Garage dressing" }) Object.DestroyImmediate(GameObject.Find(name));
+        Physics.SyncTransforms();
+        DressAlley();
+        DressGarage();
+        RealisticStreetFixes.Apply(MatRoot);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        AssetDatabase.SaveAssets();
+        Debug.Log("REAL_PREVIEW_PATCH decals=" + Object.FindObjectsByType<DecalProjector>(FindObjectsSortMode.None).Length);
+        EditorApplication.Exit(0);
     }
 
     static void Shots(Camera cam, string prefix = "Real", string dir = "Logs")
