@@ -735,6 +735,11 @@ public static class RealisticSceneBuilder
             ("bh_corridor", new Vector3(-2.2f, 11.8f, -41f), new Vector3(6, 270, 0)),
             ("bh_door", new Vector3(-7.4f, 11.8f, -40.7f), new Vector3(10, 215, 0)),
             ("bh_stairs", new Vector3(-5.5f, 11.8f, -39.7f), new Vector3(25, 95, 0)),
+            ("bh_corridor_end", new Vector3(-4.6f, 11.8f, -40.95f), new Vector3(10, 262, 0)),
+            ("bh_plate", new Vector3(-3.4f, 11.8f, -40.8f), new Vector3(14, 318, 0)),
+            ("bh_landing", new Vector3(-4.1f, 6.9f, -39.7f), new Vector3(-8, 92, 0)),
+            ("bh_wc_sink", new Vector3(-11.8f, 11.8f, -39.5f), new Vector3(30, 118, 0)),
+            ("bh_room7", new Vector3(-2.3f, 11.8f, -42.4f), new Vector3(14, 165, 0)),
             ("bh_stairs_up", new Vector3(-2.7f, 7.4f, -38.7f), new Vector3(-20, 270, 0)),
             ("bh_wc", new Vector3(-11.6f, 11.8f, -39.8f), new Vector3(18, 250, 0)),
             ("bh_wc_stall", new Vector3(-11.65f, 11.9f, -39.95f), new Vector3(42, 340, 0)),
@@ -826,6 +831,93 @@ public static class RealisticSceneBuilder
         var details = Place(StreetDetailsModel); details.name = StreetDetailsRoot;
         foreach (var r in details.GetComponentsInChildren<MeshRenderer>()) r.sharedMaterials = r.sharedMaterials.Select(ExistingPBR).ToArray();
         return bikes.Length;
+    }
+
+    const string BoardingDressModel = "Assets/Art/Models/Environment/env_boarding_dress.fbx";
+    const string BoardingDressRoot = "env_boarding_dress";
+    const string BoardingLandingLamp = "Boarding landing lamp ";
+
+    public static int BoardingDress()
+    {
+        foreach (var old in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name == BoardingDressRoot || t.name.StartsWith(BoardingLandingLamp)).ToList())
+            if (old != null) Object.DestroyImmediate(old.gameObject);
+        var dress = Place(BoardingDressModel); dress.name = BoardingDressRoot;
+        foreach (var r in dress.GetComponentsInChildren<MeshRenderer>())
+        {
+            r.sharedMaterials = r.sharedMaterials.Select(ExistingPBR).ToArray();
+            if (r.name.StartsWith("Solid_")) r.gameObject.AddComponent<BoxCollider>();
+        }
+        int k = 0;
+        foreach (var z in new[] { 1.7f, 5.1f, 8.5f })
+            Point(BoardingLandingLamp + k++, new Vector3(-5.95f, z + 1.36f, -39.2f), new Color(1f, .78f, .52f), 5f, 5.5f, false);
+        var stain = BoardingWall("M_BoardingWallStain", new Color(.78f, .7f, .52f));
+        var mold = BoardingWall("M_BoardingWallMold", new Color(.5f, .5f, .4f));
+        var house = new Bounds(new Vector3(-7.25f, 7f, -43f), new Vector3(12.2f, 15f, 10.2f));
+        foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(r => r.transform.IsChildOf(GameObject.Find(BoardingHouseRoot).transform) || (house.Contains(r.bounds.min) && house.Contains(r.bounds.max))))
+            r.sharedMaterials = r.sharedMaterials.Select(m => m == null || m.name == stain.name || m.name == mold.name || !m.HasProperty("_BaseMap") || m.GetTexture("_BaseMap") == null || m.GetTexture("_BaseMap").name != "peeling_painted_wall_albedo" ? m : m.name == "M_WallMoldStain" ? mold : stain).ToArray();
+        return dress.GetComponentsInChildren<MeshRenderer>().Length;
+    }
+
+    static int RecedeBoardingFacade(Material wall)
+    {
+        var renderer = GameObject.Find("Alley_Facades").GetComponent<MeshRenderer>();
+        var tr = renderer.transform; var mesh = renderer.GetComponent<MeshFilter>().sharedMesh;
+        var verts = new List<Vector3>(); var normals = new List<Vector3>(); var tangents = new List<Vector4>(); var uv0 = new List<Vector2>(); var uv1 = new List<Vector2>();
+        mesh.GetVertices(verts); mesh.GetNormals(normals); mesh.GetTangents(tangents); mesh.GetUVs(0, uv0); mesh.GetUVs(1, uv1);
+        var moved = new List<int>();
+        var keep = new List<int>[mesh.subMeshCount];
+        for (int s = 0; s < mesh.subMeshCount; s++)
+        {
+            var tris = mesh.GetTriangles(s); keep[s] = new List<int>(tris.Length);
+            for (int i = 0; i < tris.Length; i += 3)
+            {
+                var a = tr.TransformPoint(verts[tris[i]]); var b = tr.TransformPoint(verts[tris[i + 1]]); var c = tr.TransformPoint(verts[tris[i + 2]]);
+                bool inner = Mathf.Abs(a.x + 1.45f) < .02f && Mathf.Abs(b.x + 1.45f) < .02f && Mathf.Abs(c.x + 1.45f) < .02f
+                    && Mathf.Min(a.z, Mathf.Min(b.z, c.z)) > -48.1f && Mathf.Max(a.z, Mathf.Max(b.z, c.z)) < -37.9f
+                    && Vector3.Cross(b - a, c - a).x < 0;
+                if (!inner) { keep[s].Add(tris[i]); keep[s].Add(tris[i + 1]); keep[s].Add(tris[i + 2]); continue; }
+                for (int k = 0; k < 3; k++)
+                {
+                    int v = tris[i + k]; moved.Add(verts.Count);
+                    verts.Add(tr.InverseTransformPoint(tr.TransformPoint(verts[v]) + Vector3.right * .015f));
+                    normals.Add(normals[v]);
+                    if (tangents.Count > 0) tangents.Add(tangents[v]);
+                    if (uv0.Count > 0) uv0.Add(uv0[v]);
+                    if (uv1.Count > 0) uv1.Add(uv1[v]);
+                }
+            }
+        }
+        if (moved.Count == 0) return 0;
+        mesh.subMeshCount = keep.Length + 1;
+        mesh.SetVertices(verts); mesh.SetNormals(normals);
+        if (tangents.Count > 0) mesh.SetTangents(tangents);
+        if (uv0.Count > 0) mesh.SetUVs(0, uv0);
+        if (uv1.Count > 0) mesh.SetUVs(1, uv1);
+        for (int s = 0; s < keep.Length; s++) mesh.SetTriangles(keep[s], s);
+        mesh.SetTriangles(moved, keep.Length);
+        renderer.sharedMaterials = renderer.sharedMaterials.Append(wall).ToArray();
+        EditorUtility.SetDirty(mesh); AssetDatabase.SaveAssets();
+        return moved.Count / 3;
+    }
+
+    static Material BoardingWall(string name, Color tint)
+    {
+        var m = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{name}.mat");
+        if (m != null) return m;
+        m = new Material(AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/M_WallPaintYellow.mat")) { name = name };
+        m.SetColor("_BaseColor", tint); Save(m);
+        return m;
+    }
+
+    public static void PatchBoardingDress()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        int parts = BoardingDress();
+        Debug.Log("REAL_BOARDING_RECEDE tris=" + RecedeBoardingFacade(BoardingWall("M_BoardingWallStain", Color.white)));
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        Debug.Log("REAL_BOARDING_DRESS parts=" + parts);
+        EditorApplication.Exit(parts > 0 ? 0 : 1);
     }
 
     public static void PatchBoardingHouse()
