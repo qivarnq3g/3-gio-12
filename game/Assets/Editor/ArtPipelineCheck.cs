@@ -99,6 +99,7 @@ public static class ArtPipelineCheck
                 failures.Add(path + ": material " + m.name + " has a BaseMap but Use BaseMap as 1st_ShadeMap or Use 1st_ShadeMap as 2nd_ShadeMap is off, the picture darkens in shadow");
             var texPath = AssetDatabase.GetAssetPath(tex);
             if (!texPath.StartsWith(ModelImportRules.TexturesRoot)) failures.Add(path + ": material " + m.name + " uses texture outside Assets/Art/Textures (" + texPath + ")");
+            if (ModelImportRules.IsTiling(texPath)) continue;
             foreach (var i in mesh.GetTriangles(sub))
             {
                 var p = uv[i];
