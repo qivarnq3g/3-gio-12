@@ -211,7 +211,7 @@ public static class LocalRealisticPreview
         }
         mesh.uv = outUv; mesh.RecalculateTangents();
         Directory.CreateDirectory("Assets/Art/MeshesPBR");
-        AssetDatabase.CreateAsset(mesh, $"Assets/Art/MeshesPBR/{f.gameObject.GetInstanceID()}_{Mathf.Abs(src.name.GetHashCode())}.asset");
+        AssetDatabase.CreateAsset(mesh, $"Assets/Art/MeshesPBR/{f.gameObject.name}_{f.gameObject.GetHashCode()}_{Mathf.Abs(src.name.GetHashCode())}.asset");
         f.sharedMesh = mesh;
         var mc = f.GetComponent<MeshCollider>(); if (mc) mc.sharedMesh = mesh;
     }
@@ -387,27 +387,74 @@ public static class LocalRealisticPreview
         Decal(root, "D_PosterDrill", new Vector3(-4.5f, 1.5f, -49.6f), Vector3.left, new Vector2(.32f, .45f), .4f, null, 3);
     }
 
-    static void ParkBikes() => ParkBikes(new[] { (-.925f, 6.5f, 0f), (.925f, 13.5f, 180f), (-.925f, 19f, 0f), (.925f, 22.5f, 180f), (-.925f, 31f, 180f), (.925f, 34.5f, 0f) }, "Parked Cub ", 0);
+    static void ParkBikes(GameObject blockout)
+    {
+        var bikes = blockout.GetComponentsInChildren<Renderer>()
+            .Where(r => r.name.Contains("Bike")).OrderBy(r => r.name).ToArray();
+        (float x, float z, float yaw)[] Spots(IEnumerable<Renderer> renderers) => renderers.Select((r, k) =>
+        {
+            var center = r.bounds.center;
+            bool acrossAlley = r.bounds.size.x > r.bounds.size.z;
+            float yaw = acrossAlley ? (center.x < 0 ? 90f : 270f) : (center.x < 0 ? 0f : 180f);
+            return (center.x, center.z, yaw + (k % 4 == 2 ? 180f : 0f));
+        }).ToArray();
 
-    static void ParkBikes((float x, float y, float yaw)[] spots, string prefix, int paintOffset)
+        // Motorbikes ONLY belong in the garage room at the end of the alley (Issue #76)
+        var garage = Spots(bikes.Where(r => r.name.StartsWith("Garage_Bike_")));
+
+        // Disable ALL blockout bikes in blockout gym/gym fbx (garage, alley, shallow alley)
+        foreach (var r in bikes)
+        {
+            r.enabled = false;
+            foreach (var collider in r.GetComponents<Collider>()) collider.enabled = false;
+        }
+
+        // Spawn detailed Cub motorbikes in the garage at the end of the alley
+        ParkBikes(garage, "Garage Cub ", 6);
+
+        // Apply varied paint colors and BoxCollider to the 14 Street_Cub_00..Street_Cub_13 meshes on the main road sidewalk
+        var paints = new[] { new Color(.12f, .22f, .5f), new Color(.75f, .75f, .73f), new Color(.08f, .08f, .09f), new Color(.6f, .08f, .08f), new Color(.2f, .35f, .25f), new Color(.5f, .45f, .35f) };
+        int streetIdx = 0;
+        foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).Where(r => r.name.StartsWith("Street_Cub_")).OrderBy(r => r.name))
+        {
+            int bike = (streetIdx++ + 3) % paints.Length;
+            r.enabled = true;
+            r.sharedMaterials = r.sharedMaterials.Select(Convert).Select(m =>
+            {
+                if (m == null || !m.name.Contains("CubPaint")) return m;
+                var key = "M_CubPaint_" + bike; if (Cache.TryGetValue(key, out var v)) return v;
+                v = new Material(m) { name = key }; v.SetColor("_BaseColor", paints[bike]); Save(v); return Cache[key] = v;
+            }).ToArray();
+            var mb = r.GetComponent<MeshFilter>().sharedMesh.bounds;
+            var box = r.gameObject.GetComponent<BoxCollider>();
+            if (box == null) box = r.gameObject.AddComponent<BoxCollider>();
+            box.center = mb.center;
+            box.size = mb.size;
+        }
+    }
+
+    static void ParkBikes((float x, float z, float yaw)[] spots, string prefix, int paintOffset)
     {
         var cubAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/prop_motorbike_cub.fbx"); if (cubAsset == null) return;
         var paints = new[] { new Color(.12f, .22f, .5f), new Color(.75f, .75f, .73f), new Color(.08f, .08f, .09f), new Color(.6f, .08f, .08f), new Color(.2f, .35f, .25f), new Color(.5f, .45f, .35f) };
         for (int k = 0; k < spots.Length; k++)
         {
-            var (x, y, yaw) = spots[k];
+            var (x, z, yaw) = spots[k];
             int bike = (k + paintOffset) % paints.Length;
             var cub = (GameObject)PrefabUtility.InstantiatePrefab(cubAsset);
             PrefabUtility.UnpackPrefabInstance(cub, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
             cub.name = prefix + k;
-            cub.transform.SetPositionAndRotation(new Vector3(x, 0, -y), Quaternion.Euler(0, yaw + (k % 3 - 1) * 6, 0));
+            cub.transform.SetPositionAndRotation(new Vector3(x, 0, z), Quaternion.Euler(0, yaw + (k % 3 - 1) * 6, 0));
             foreach (var r in cub.GetComponentsInChildren<MeshRenderer>())
+            {
+                r.enabled = true;
                 r.sharedMaterials = r.sharedMaterials.Select(Convert).Select(m =>
                 {
-                    if (m == null || m.name != "M_CubRed") return m;
-                    var key = "M_CubRed_" + bike; if (Cache.TryGetValue(key, out var v)) return v;
+                    if (m == null || !m.name.Contains("CubPaint")) return m;
+                    var key = "M_CubPaint_" + bike; if (Cache.TryGetValue(key, out var v)) return v;
                     v = new Material(m) { name = key }; v.SetColor("_BaseColor", paints[bike]); Save(v); return Cache[key] = v;
                 }).ToArray();
+            }
             var b = RendererBounds(cub); var box = cub.AddComponent<BoxCollider>();
             box.center = cub.transform.InverseTransformPoint(b.center); box.size = new Vector3(.7f, b.size.y, 1.8f);
         }
@@ -547,9 +594,12 @@ public static class LocalRealisticPreview
         foreach (var env in envs)
             foreach (var r in env.GetComponentsInChildren<MeshRenderer>())
             {
-                BoxUV(r.GetComponent<MeshFilter>(), r, true);
+                if (!r.name.StartsWith("Street_Cub_") && !r.name.StartsWith("prop_motorbike_cub"))
+                    BoxUV(r.GetComponent<MeshFilter>(), r, true);
                 r.sharedMaterials = r.sharedMaterials.Select(Convert).ToArray();
             }
+
+        ParkBikes(blockout);
 
         var pastel = new[] { new Color(.86f, .8f, .62f), new Color(.7f, .78f, .74f), new Color(.82f, .7f, .64f), new Color(.78f, .8f, .86f), new Color(.9f, .88f, .82f) };
         var blockFloor = Convert(AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/Materials/M_ConcreteFloor.mat"));
@@ -565,10 +615,6 @@ public static class LocalRealisticPreview
         }
         envs.ForEach(Collide); Collide(blockout);
 
-        var slots = blockout.GetComponentsInChildren<Renderer>().Where(r => r.name.StartsWith("Garage_Bike_")).OrderBy(r => r.name)
-            .Select((r, k) => (r.name, r.bounds.center.x, -r.bounds.center.z, (r.bounds.center.x < 0 ? 90f : 270f) + (k % 4 == 2 ? 180 : 0) + (k % 3 - 1) * 5)).ToArray();
-        ParkBikes(slots.Select(s => (s.Item2, s.Item3, s.Item4)).ToArray(), "Garage Cub ", 6);
-        ParkBikes();
         DressAlley();
         DressGarage();
         TintShutters(alley);
