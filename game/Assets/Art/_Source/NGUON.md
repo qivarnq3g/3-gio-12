@@ -34,6 +34,8 @@ Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** c
 | `Decals/D_Poster*`, `D_Plate*`, `D_RoomForRent`, `D_ShopSign`, `Models/Environment/env_alley.fbx` (phần nhà) | Nhóm tự làm | Của nhóm | 03/11/2026 |
 | `Models/Environment/env_street_tree.fbx` (thân, cành), `Textures/T_StreetTreeBark*.png`, `T_StreetTreeBranch*.png`, `T_StreetTreeLeaves.png` | Model quét tree_small_02 của Poly Haven; nhóm rút gọn thân, cành và làm thẻ lá trong Blender 5.2 (5.400 tam giác) | CC0 1.0 | 06/11/2026 |
 | `Models/Environment/env_boarding_house.fbx`, `Models/Environment/env_street_details.fbx` | Nhóm tự dựng bằng script trong Blender 5.2 theo khối thô nhà trọ và số đo cảnh (13.366 và 16.060 tam giác) | Của nhóm | 06/11/2026 |
+| `TexturesPBR/rusty_metal_sheet` | Ảnh vân quét rusty_metal_sheet của Poly Haven (polyhaven.com), bản 2K, đổi định dạng ảnh mặt nạ cho URP Lit; dùng cho tôn và xà gồ nhà xe | CC0 1.0 | 08/11/2026 |
+| `Models/Environment/env_garage.fbx`, `Textures/T_NoteGarage.png`, `Textures/T_FireRules.png` | Nhóm tự dựng nhà xe bằng script trong Blender 5.2 (46.654 tam giác, có đồ vật Poly Haven ở dòng trên). Chữ trên tờ giấy viết bằng phông Patrick Hand (Google Fonts, giấy phép SIL Open Font License 1.1), chữ bảng tiêu lệnh bằng Arial, cả hai chỉ in thành ảnh, không kèm tệp phông | Của nhóm | 08/11/2026 |
 
 # Phông chữ
 

@@ -52,6 +52,10 @@ public static class RealisticSceneBuilder
         ["M_BrickExposed"] = new Surface { tex = "brick_wall_001", size = 1.6f, tintMix = 0 },
         ["M_TinRoof"] = new Surface { tex = "rusty_corrugated_iron", size = 2f, tintMix = 0 },
         ["M_TinRust"] = new Surface { tex = "rusty_corrugated_iron", size = 2f, tintMix = 0 },
+        ["M_TinSheet"] = new Surface { tex = "rusty_metal_sheet", size = 1.4f, tintMix = .15f },
+        ["M_TinSheetOld"] = new Surface { tex = "rusty_metal_sheet", size = 1.1f, tintMix = .55f },
+        ["M_SteelGalv"] = new Surface { tex = "rusty_metal_sheet", size = .9f, tintMix = .3f },
+        ["M_PlasterChip"] = new Surface { tex = "dirty_concrete", size = 1f, tintMix = .4f },
         ["M_ShutterGray"] = new Surface { tex = "painted_metal_shutter", size = 2f, tintMix = .5f },
         ["M_ShutterGreen"] = new Surface { tex = "painted_metal_shutter", size = 2f, tintMix = .7f },
         ["M_ShutterBlue"] = new Surface { tex = "painted_metal_shutter", size = 2f, tintMix = .7f },
@@ -175,7 +179,7 @@ public static class RealisticSceneBuilder
             else if (n.Contains("Rubber") || n.Contains("Wire") || n.Contains("Soil") || n.Contains("Cloth") || n.Contains("Canvas") || n.Contains("Cardboard") || n.Contains("Interior")) m.SetFloat("_Smoothness", .15f);
             else if (n.Contains("Leaf")) m.SetFloat("_Smoothness", .4f);
         }
-        if (n.Contains("Glow") || n.Contains("Lit") || n.Contains("Signal") && !n.Contains("Off") || n.Contains("LensAmber") || n.Contains("Gauge"))
+        if (n.Contains("Glow") || n.Contains("Lit") || n.Contains("Signal") && !n.Contains("Off"))
         {
             Color e = toon.HasProperty("_Emissive_Color") ? toon.GetColor("_Emissive_Color") : c;
             if (e.maxColorComponent < .05f) e = c;
@@ -213,7 +217,9 @@ public static class RealisticSceneBuilder
         }
         mesh.uv = outUv; mesh.RecalculateTangents();
         Directory.CreateDirectory("Assets/Art/MeshesPBR");
-        AssetDatabase.CreateAsset(mesh, $"Assets/Art/MeshesPBR/{f.gameObject.GetInstanceID()}_{Mathf.Abs(src.name.GetHashCode())}.asset");
+        var assetPath = $"Assets/Art/MeshesPBR/{f.gameObject.GetInstanceID()}_{Mathf.Abs(src.name.GetHashCode())}.asset";
+        AssetDatabase.DeleteAsset(assetPath);
+        AssetDatabase.CreateAsset(mesh, assetPath);
         f.sharedMesh = mesh;
         var mc = f.GetComponent<MeshCollider>(); if (mc) mc.sharedMesh = mesh;
     }
@@ -277,6 +283,7 @@ public static class RealisticSceneBuilder
     static Material DecalMat(string tex, string normal = null)
     {
         var key = "Decal_" + tex; if (Cache.TryGetValue(key, out var done)) return done;
+        var saved = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{key}.mat"); if (saved != null) return Cache[key] = saved;
         var m = new Material(Shader.Find("Shader Graphs/Decal")) { name = key, enableInstancing = true };
         var t = Tex($"{DecalRoot}/{tex}.png", max: 1024);
         var imp = (TextureImporter)AssetImporter.GetAtPath($"{DecalRoot}/{tex}.png");
@@ -350,6 +357,7 @@ public static class RealisticSceneBuilder
         var em = ps.emission; em.rateOverTime = 0; em.SetBursts(new[] { new ParticleSystem.Burst(0, 1) });
         var sh = ps.shape; sh.enabled = false;
         go.GetComponent<ParticleSystemRenderer>().sharedMaterial = Additive("P_Halo", c);
+        if (size < .4f) return;
         var dust = new GameObject("Dust"); dust.transform.position = at + Vector3.down * .8f;
         var dp = dust.AddComponent<ParticleSystem>(); dp.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         var dm = dp.main; dm.startLifetime = 9; dm.startSpeed = .02f; dm.startSize = new ParticleSystem.MinMaxCurve(.006f, .014f); dm.maxParticles = 60;
@@ -362,7 +370,8 @@ public static class RealisticSceneBuilder
     static void Puddle(Transform parent, int k, Vector3 at, Vector2 size, float yaw)
     {
         var key = "Puddle" + k;
-        if (!Cache.TryGetValue(key, out var m))
+        if (!Cache.TryGetValue(key, out var m) && (m = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{key}.mat")) != null) Cache[key] = m;
+        if (m == null)
         {
             m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = key };
             m.SetTexture("_BaseMap", Tex($"{DecalRoot}/P_Puddle{k}.png", max: 512)); m.SetColor("_BaseColor", new Color(.03f, .03f, .035f, .92f));
@@ -579,7 +588,7 @@ public static class RealisticSceneBuilder
         for (float y = -1; y <= 58; y += 2)
             foreach (var x in y > 48 ? new[] { -3.5f, 0f, 3.5f } : new[] { -.9f, 0f, .9f })
                 foreach (var h in new[] { .3f, 1.4f, 2.8f }) pts.Add(new Vector3(x, h, -y));
-        for (float y = 38.5f; y < 48; y += 2) for (float x = 2; x < 13; x += 2.5f) foreach (var h in new[] { 1.4f, 4.8f, 8.2f, 11.6f }) pts.Add(new Vector3(x, h, -y));
+        for (float y = 38.5f; y < 48; y += 2) for (float x = 2; x < 13; x += 2.5f) foreach (var h in new[] { 1.4f, 4.8f, 8.2f, 11.6f }) pts.Add(new Vector3(-x, h, -y));
         g.probePositions = pts.ToArray();
     }
 
@@ -760,13 +769,19 @@ public static class RealisticSceneBuilder
             ("bh_corridor_end", new Vector3(-4.6f, 11.8f, -40.95f), new Vector3(10, 262, 0)),
             ("bh_plate", new Vector3(-3.4f, 11.8f, -40.8f), new Vector3(14, 318, 0)),
             ("bh_landing", new Vector3(-4.1f, 6.9f, -39.7f), new Vector3(-8, 92, 0)),
-            ("bh_wc_sink", new Vector3(-11.8f, 11.8f, -39.5f), new Vector3(30, 118, 0)),
+            ("bh_wc_sink", new Vector3(-11.55f, 11.65f, -39.5f), new Vector3(18, 270, 0)),
             ("bh_room7", new Vector3(-2.3f, 11.8f, -42.4f), new Vector3(14, 165, 0)),
             ("bh_stairs_up", new Vector3(-2.7f, 7.4f, -38.7f), new Vector3(-20, 270, 0)),
             ("bh_wc", new Vector3(-11.6f, 11.8f, -39.8f), new Vector3(18, 250, 0)),
             ("bh_wc_stall", new Vector3(-11.65f, 11.9f, -39.95f), new Vector3(42, 340, 0)),
             ("bh_lien", new Vector3(-2.4f, 1.6f, -45.2f), new Vector3(12, 245, 0)),
-            ("bh_entry", new Vector3(-2f, 1.6f, -38.8f), new Vector3(6, 200, 0)),
+            ("bh_entry", new Vector3(-1.88f, 1.6f, -38.8f), new Vector3(6, 182, 0)),
+            ("shop_homeware", new Vector3(-154f, 1.7f, 13.5f), new Vector3(6, 0, 0)),
+            ("shop_homeware_in", new Vector3(-153.5f, 1.65f, 17.2f), new Vector3(10, 35, 0)),
+            ("shop_rice", new Vector3(57f, 1.7f, 3.2f), new Vector3(6, 180, 0)),
+            ("shop_rice_in", new Vector3(58.2f, 1.6f, -1.2f), new Vector3(12, 145, 0)),
+            ("shop_gas", new Vector3(-105f, 1.7f, 15.2f), new Vector3(6, 350, 0)),
+            ("shop_gas_kiosk", new Vector3(-112.8f, 1.65f, 21.6f), new Vector3(6, 325, 0)),
             ("d_traffic", new Vector3(-66.6f, 2.4f, 12.2f), new Vector3(-24, 260, 0)),
             ("d_pump", new Vector3(-103.2f, 1.5f, 18.6f), new Vector3(12, 300, 0)),
             ("d_pump2", new Vector3(-108.5f, 1.6f, 22.2f), new Vector3(12, 180, 0)),
@@ -787,6 +802,8 @@ public static class RealisticSceneBuilder
             ("garage_back", new Vector3(-.5f, 1.6f, -57.2f), new Vector3(8, 15, 0)),
             ("garage_wave", new Vector3(-.4f, 1.5f, -50.2f), new Vector3(22, 120, 0)),
             ("garage_left", new Vector3(1.2f, 1.6f, -55.5f), new Vector3(10, 315, 0)),
+            ("garage_note", new Vector3(3.55f, 1.6f, -51.0f), new Vector3(4, 100, 0)),
+            ("garage_fire", new Vector3(3.3f, 1.65f, -50.4f), new Vector3(6, 62, 0)),
             ("room7", new Vector3(-2.3f, 11.8f, -42.3f), new Vector3(15, 200, 0)) };
         var rt = new RenderTexture(1280, 720, 24, RenderTextureFormat.ARGB32); var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
         Directory.CreateDirectory(dir);
@@ -819,6 +836,7 @@ public static class RealisticSceneBuilder
     const string StreetDetailsRoot = "env_street_details";
     const string ShallowAlleyBike = "Shallow alley Cub ";
     const string BoardingHouseBulb = "Boarding ground bulb";
+    const string BoardingEntryBulb = "Boarding entry bulb";
 
     static Material ExistingPBR(Material toon)
     {
@@ -835,9 +853,13 @@ public static class RealisticSceneBuilder
         var bike = boxes.FirstOrDefault(r => r.name == "BH_G_Bike_Lien");
         if (bike != null) { var c = bike.bounds.center; ParkBikes(new[] { (c.x, -c.z, 90f) }, BoardingHouseBike, 3); var col = bike.GetComponent<Collider>(); if (col != null) col.enabled = false; }
         foreach (var r in boxes) r.enabled = false;
-        var previousBulb = GameObject.Find(BoardingHouseBulb); if (previousBulb != null) Object.DestroyImmediate(previousBulb);
+        foreach (var name in new[] { BoardingHouseBulb, BoardingEntryBulb })
+        {
+            var prev = GameObject.Find(name); if (prev != null) Object.DestroyImmediate(prev);
+        }
         var house = Place(BoardingHouseModel); house.name = BoardingHouseRoot;
-        Point(BoardingHouseBulb, new Vector3(-3.6f, 2.9f, -42.4f), new Color(1f, .74f, .46f), 7, 2.2f, false);
+        Point(BoardingHouseBulb, new Vector3(-3.6f, 2.75f, -42.4f), new Color(1f, .76f, .48f), 8.5f, 3.8f, false);
+        Point(BoardingEntryBulb, new Vector3(-3.8f, 2.7f, -39.6f), new Color(1f, .78f, .52f), 7f, 3.6f, false);
         foreach (var r in house.GetComponentsInChildren<MeshRenderer>()) r.sharedMaterials = r.sharedMaterials.Select(ExistingPBR).ToArray();
         return boxes.Count;
     }
@@ -893,10 +915,51 @@ public static class RealisticSceneBuilder
     const string BoardingDressModel = "Assets/Art/Models/Environment/env_boarding_dress.fbx";
     const string BoardingDressRoot = "env_boarding_dress";
     const string BoardingLandingLamp = "Boarding landing lamp ";
+    const string ShopDetailLight = "Shop detail light ";
+
+    public static int RoadShops()
+    {
+        var shopPaths = new[] {
+            "Assets/Art/Models/Environment/env_homeware_shop.fbx",
+            "Assets/Art/Models/Environment/env_rice_shop.fbx",
+            "Assets/Art/Models/Environment/env_gas_station.fbx" };
+        foreach (var old in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name.StartsWith(ShopDetailLight)).ToList())
+            if (old != null) Object.DestroyImmediate(old.gameObject);
+        int count = 0;
+        foreach (var path in shopPaths)
+        {
+            var imp = AssetImporter.GetAtPath(path) as ModelImporter;
+            if (imp != null) imp.SaveAndReimport();
+            var rootName = Path.GetFileNameWithoutExtension(path);
+            foreach (var old in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name == rootName).ToList())
+                if (old != null) Object.DestroyImmediate(old.gameObject);
+            var go = Place(path); go.name = rootName;
+            foreach (var r in go.GetComponentsInChildren<MeshRenderer>())
+            {
+                if (r.sharedMaterials.Any(m => m != null && Surfaces.ContainsKey(m.name)))
+                    BoxUV(r.GetComponent<MeshFilter>(), r, true);
+                r.sharedMaterials = r.sharedMaterials.Select(ExistingPBR).ToArray();
+                count++;
+            }
+            Collide(go);
+        }
+        int lk = 0;
+        foreach (var (pos, col, range, intensity) in new[] {
+            (new Vector3(-154f, 2.95f, 19.5f), new Color(.9f, .96f, 1f), 9f, 4.2f),
+            (new Vector3(-154f, 2.95f, 24.5f), new Color(.9f, .96f, 1f), 9f, 3.8f),
+            (new Vector3(57f, 2.85f, -3.2f), new Color(1f, .92f, .8f), 9f, 4.2f),
+            (new Vector3(57f, 2.85f, -7.8f), new Color(.92f, .96f, 1f), 9f, 3.8f),
+            (new Vector3(-116f, 2.65f, 25.8f), new Color(.92f, .96f, 1f), 7.5f, 4.2f),
+            (new Vector3(-113.5f, 3.2f, 23.0f), new Color(.95f, .97f, 1f), 9.5f, 4.5f) })
+            Point(ShopDetailLight + lk++, pos, col, range, intensity, false);
+        return count;
+    }
 
     public static int BoardingDress()
     {
-        foreach (var old in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name == BoardingDressRoot || t.name.StartsWith(BoardingLandingLamp)).ToList())
+        var imp = AssetImporter.GetAtPath(BoardingDressModel) as ModelImporter;
+        if (imp != null) imp.SaveAndReimport();
+        foreach (var old in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name == BoardingDressRoot || t.name.StartsWith(BoardingLandingLamp) || t.name == BoardingHouseBulb || t.name == BoardingEntryBulb || t.name == "Boarding lien bulb" || t.name == "Boarding wc bulb").ToList())
             if (old != null) Object.DestroyImmediate(old.gameObject);
         var dress = Place(BoardingDressModel); dress.name = BoardingDressRoot;
         foreach (var r in dress.GetComponentsInChildren<MeshRenderer>())
@@ -907,6 +970,12 @@ public static class RealisticSceneBuilder
         int k = 0;
         foreach (var z in new[] { 1.7f, 5.1f, 8.5f })
             Point(BoardingLandingLamp + k++, new Vector3(-5.95f, z + 1.36f, -39.2f), new Color(1f, .78f, .52f), 5f, 5.5f, false);
+        Point(BoardingHouseBulb, new Vector3(-3.6f, 2.75f, -42.4f), new Color(1f, .76f, .48f), 8.5f, 3.8f, false);
+        Point(BoardingEntryBulb, new Vector3(-3.8f, 2.7f, -39.6f), new Color(1f, .78f, .52f), 7f, 3.6f, false);
+        Point("Boarding lien bulb", new Vector3(-3.6f, 2.75f, -45.8f), new Color(1f, .76f, .48f), 6.5f, 2.8f, false);
+        Point("Boarding wc bulb", new Vector3(-11.8f, 12.6f, -39.6f), new Color(1f, .82f, .56f), 4.8f, 2.4f, false);
+        var frosted = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/M_GlassFrosted.mat");
+        if (frosted != null) { frosted.SetColor("_BaseColor", new Color(.22f, .26f, .30f)); frosted.SetFloat("_Smoothness", .38f); EditorUtility.SetDirty(frosted); }
         var stain = BoardingWall("M_BoardingWallStain", new Color(.78f, .7f, .52f));
         var mold = BoardingWall("M_BoardingWallMold", new Color(.5f, .5f, .4f));
         var house = new Bounds(new Vector3(-7.25f, 7f, -43f), new Vector3(12.2f, 15f, 10.2f));
@@ -923,20 +992,34 @@ public static class RealisticSceneBuilder
         mesh.GetVertices(verts); mesh.GetNormals(normals); mesh.GetTangents(tangents); mesh.GetUVs(0, uv0); mesh.GetUVs(1, uv1);
         var moved = new List<int>();
         var keep = new List<int>[mesh.subMeshCount];
+        int shiftedInPlace = 0;
         for (int s = 0; s < mesh.subMeshCount; s++)
         {
             var tris = mesh.GetTriangles(s); keep[s] = new List<int>(tris.Length);
+            bool isWallSubmesh = s < renderer.sharedMaterials.Length && renderer.sharedMaterials[s] != null && renderer.sharedMaterials[s].name == wall.name;
             for (int i = 0; i < tris.Length; i += 3)
             {
                 var a = tr.TransformPoint(verts[tris[i]]); var b = tr.TransformPoint(verts[tris[i + 1]]); var c = tr.TransformPoint(verts[tris[i + 2]]);
-                bool inner = Mathf.Abs(a.x + 1.45f) < .02f && Mathf.Abs(b.x + 1.45f) < .02f && Mathf.Abs(c.x + 1.45f) < .02f
+                bool inner = Mathf.Abs(a.x + 1.44f) < .03f && Mathf.Abs(b.x + 1.44f) < .03f && Mathf.Abs(c.x + 1.44f) < .03f
                     && Mathf.Min(a.z, Mathf.Min(b.z, c.z)) > -48.1f && Mathf.Max(a.z, Mathf.Max(b.z, c.z)) < -37.9f
                     && Vector3.Cross(b - a, c - a).x < 0;
                 if (!inner) { keep[s].Add(tris[i]); keep[s].Add(tris[i + 1]); keep[s].Add(tris[i + 2]); continue; }
+                if (isWallSubmesh)
+                {
+                    for (int k = 0; k < 3; k++)
+                    {
+                        int v = tris[i + k]; var wp = tr.TransformPoint(verts[v]); wp.x = -1.30f;
+                        verts[v] = tr.InverseTransformPoint(wp);
+                    }
+                    keep[s].Add(tris[i]); keep[s].Add(tris[i + 1]); keep[s].Add(tris[i + 2]);
+                    shiftedInPlace++;
+                    continue;
+                }
                 for (int k = 0; k < 3; k++)
                 {
                     int v = tris[i + k]; moved.Add(verts.Count);
-                    verts.Add(tr.InverseTransformPoint(tr.TransformPoint(verts[v]) + Vector3.right * .015f));
+                    var wp = tr.TransformPoint(verts[v]); wp.x = -1.30f;
+                    verts.Add(tr.InverseTransformPoint(wp));
                     normals.Add(normals[v]);
                     if (tangents.Count > 0) tangents.Add(tangents[v]);
                     if (uv0.Count > 0) uv0.Add(uv0[v]);
@@ -944,17 +1027,61 @@ public static class RealisticSceneBuilder
                 }
             }
         }
-        if (moved.Count == 0) return 0;
-        mesh.subMeshCount = keep.Length + 1;
+        for (int vi = 0; vi < verts.Count; vi++)
+        {
+            var wp = tr.TransformPoint(verts[vi]);
+            if (wp.x < -1.30f && wp.x > -1.48f && wp.y > 3.0f && wp.z > -48.1f && wp.z < -37.9f)
+            {
+                wp.x = -1.30f;
+                verts[vi] = tr.InverseTransformPoint(wp);
+                shiftedInPlace++;
+            }
+        }
+        var glassGo = GameObject.Find("Alley_Glass");
+        if (glassGo != null && glassGo.GetComponent<MeshFilter>() != null)
+        {
+            var gm = glassGo.GetComponent<MeshFilter>().sharedMesh;
+            var gt = glassGo.transform;
+            var gv = gm.vertices;
+            bool gChanged = false;
+            for (int vi = 0; vi < gv.Length; vi++)
+            {
+                var wp = gt.TransformPoint(gv[vi]);
+                if (wp.x < -1.30f && wp.x > -1.48f && wp.y > 3.0f && wp.z > -48.1f && wp.z < -37.9f)
+                {
+                    wp.x = -1.30f;
+                    gv[vi] = gt.InverseTransformPoint(wp);
+                    gChanged = true;
+                    shiftedInPlace++;
+                }
+            }
+            if (gChanged) { gm.vertices = gv; EditorUtility.SetDirty(gm); }
+        }
+        if (moved.Count == 0 && shiftedInPlace == 0) return 0;
+        if (moved.Count > 0) mesh.subMeshCount = keep.Length + 1;
         mesh.SetVertices(verts); mesh.SetNormals(normals);
         if (tangents.Count > 0) mesh.SetTangents(tangents);
         if (uv0.Count > 0) mesh.SetUVs(0, uv0);
         if (uv1.Count > 0) mesh.SetUVs(1, uv1);
         for (int s = 0; s < keep.Length; s++) mesh.SetTriangles(keep[s], s);
-        mesh.SetTriangles(moved, keep.Length);
-        renderer.sharedMaterials = renderer.sharedMaterials.Append(wall).ToArray();
+        if (moved.Count > 0)
+        {
+            mesh.SetTriangles(moved, keep.Length);
+            renderer.sharedMaterials = renderer.sharedMaterials.Append(wall).ToArray();
+        }
         EditorUtility.SetDirty(mesh); AssetDatabase.SaveAssets();
-        return moved.Count / 3;
+        return moved.Count / 3 + shiftedInPlace;
+    }
+
+    static int CleanRedDust()
+    {
+        int removed = 0;
+        foreach (var ps in Object.FindObjectsByType<ParticleSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(p => p != null && p.name == "Dust").ToList())
+        {
+            var c = ps.main.startColor.color;
+            if (c.r > .8f && c.g < .4f) { Object.DestroyImmediate(ps.gameObject); removed++; }
+        }
+        return removed;
     }
 
     static Material BoardingWall(string name, Color tint)
@@ -969,12 +1096,204 @@ public static class RealisticSceneBuilder
     public static void PatchBoardingDress()
     {
         var scene = EditorSceneManager.OpenScene(ScenePath);
+        var cam = Object.FindObjectsByType<Camera>(FindObjectsSortMode.None).First(c => c.CompareTag("MainCamera"));
+        int shops = RoadShops();
         int parts = BoardingDress();
-        Debug.Log("REAL_BOARDING_RECEDE tris=" + RecedeBoardingFacade(BoardingWall("M_BoardingWallStain", Color.white)));
+        var polish = PolishDetails();
+        int receded = RecedeBoardingFacade(BoardingWall("M_BoardingWallStain", Color.white));
+        int dust = CleanRedDust();
+        var bounds = PlayBoundsBuilder.Generate();
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene, ScenePath);
-        Debug.Log("REAL_BOARDING_DRESS parts=" + parts);
-        EditorApplication.Exit(parts > 0 ? 0 : 1);
+        AssetDatabase.SaveAssets();
+        Shots(cam, "Real", "Logs/details_after");
+        var clay = new Material(Shader.Find("Universal Render Pipeline/Lit")); clay.SetColor("_BaseColor", new Color(.55f, .55f, .55f)); clay.SetFloat("_Smoothness", .2f);
+        foreach (var d in Object.FindObjectsByType<DecalProjector>(FindObjectsSortMode.None)) d.enabled = false;
+        foreach (var rp in Object.FindObjectsByType<ReflectionProbe>(FindObjectsSortMode.None)) rp.enabled = false;
+        foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None)) r.sharedMaterials = r.sharedMaterials.Select(_ => clay).ToArray();
+        Shots(cam, "Clay", "Logs/details_after");
+        Debug.Log($"REAL_BOARDING_DRESS shops={shops} parts={parts} receded={receded} dust_removed={dust} walls={bounds.walls} leaks_after={bounds.after}");
+        Debug.Log($"REAL_POLISH glass_moved={polish.glass} room7_slots={polish.mold} room7_decals={polish.decals} garage_wet_tris={polish.wet} garage_puddles={polish.puddles}");
+        EditorApplication.Exit(parts > 0 && bounds.after == 0 && polish.glass >= 0 ? 0 : 1);
+    }
+
+    const string GarageModel = "Assets/Art/Models/Environment/env_garage.fbx";
+
+    public static void PatchGarage()
+    {
+        AssetDatabase.Refresh();
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var cam = Object.FindObjectsByType<Camera>(FindObjectsSortMode.None).First(c => c.CompareTag("MainCamera"));
+        var (parts, hidden, freed) = RebuildGarage();
+        var bounds = PlayBoundsBuilder.Generate();
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        AssetDatabase.SaveAssets();
+        if (ShotsOnly == null) ShotsOnly = "garage";
+        Shots(cam, "Real", "Logs/garage_after");
+        var clay = new Material(Shader.Find("Universal Render Pipeline/Lit")); clay.SetColor("_BaseColor", new Color(.55f, .55f, .55f)); clay.SetFloat("_Smoothness", .2f);
+        foreach (var d in Object.FindObjectsByType<DecalProjector>(FindObjectsSortMode.None)) d.enabled = false;
+        foreach (var rp in Object.FindObjectsByType<ReflectionProbe>(FindObjectsSortMode.None)) rp.enabled = false;
+        foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None)) r.sharedMaterials = r.sharedMaterials.Select(_ => clay).ToArray();
+        Shots(cam, "Clay", "Logs/garage_after");
+        Debug.Log($"REAL_GARAGE parts={parts} blockout_hidden={hidden} colliders_removed={freed} walls={bounds.walls} leaks_after={bounds.after}");
+        EditorApplication.Exit(parts > 0 && bounds.after == 0 ? 0 : 1);
+    }
+
+    static (int parts, int hidden, int freed) RebuildGarage()
+    {
+        var imp = AssetImporter.GetAtPath(GarageModel) as ModelImporter;
+        if (imp != null) imp.SaveAndReimport();
+        foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.parent == null && t.name == "env_garage").ToList())
+            Object.DestroyImmediate(t.gameObject);
+        int hidden = 0, freed = 0;
+        foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+            .Where(r => r.name.StartsWith("Garage_") && !r.name.StartsWith("Garage_Bike_") && r.name != "Garage_PlasticChair").ToList())
+        {
+            if (r.enabled) { r.enabled = false; hidden++; }
+            if (r.name.StartsWith("Garage_Post_") || r.name == "Garage_Bulb" || r.name == "Garage_Sign_Paper" || r.name == "Garage_Roof_Tin")
+                foreach (var c in r.GetComponents<Collider>()) { Object.DestroyImmediate(c); freed++; }
+        }
+        var go = Place(GarageModel); go.name = "env_garage";
+        var note = TexturedMat("M_NoteGarage", "Assets/Art/Textures/T_NoteGarage.png");
+        var rules = TexturedMat("M_FireRules", "Assets/Art/Textures/T_FireRules.png");
+        foreach (var r in go.GetComponentsInChildren<MeshRenderer>())
+        {
+            r.sharedMaterials = r.sharedMaterials.Select(m => m == null ? null : m.name == note.name ? note : m.name == rules.name ? rules : ExistingPBR(m)).ToArray();
+            if (r.sharedMaterials.Any(m => m != null && m.name.Contains("lightbulb"))) r.shadowCastingMode = ShadowCastingMode.Off;
+        }
+        Collide(go);
+        var bulb = GameObject.Find("Garage bulb");
+        if (bulb != null) { bulb.transform.position = new Vector3(0, 2.37f, -53.02f); var l = bulb.GetComponent<Light>(); l.range = 11; l.intensity = 6; }
+        foreach (var h in Object.FindObjectsByType<ParticleSystem>(FindObjectsSortMode.None).Where(p => p.name == "Halo" && (p.transform.position - new Vector3(0, 2.62f, -53)).sqrMagnitude < .1f))
+            h.transform.position = new Vector3(0, 2.4f, -53.02f);
+        var oldPuddles = GameObject.Find(GaragePuddles); if (oldPuddles != null) Object.DestroyImmediate(oldPuddles);
+        var puddles = new GameObject(GaragePuddles).transform;
+        Puddle(puddles, 0, new Vector3(2.1f, .009f, -53.15f), new Vector2(1.0f, .75f), 20);
+        Puddle(puddles, 1, new Vector3(-1.3f, .009f, -53.1f), new Vector2(.7f, .55f), 75);
+        Puddle(puddles, 2, new Vector3(0, .009f, -56.8f), new Vector2(1.4f, 1.05f), 140);
+        foreach (var n in new[] { "M_CubLensAmber", "M_CubGauge" })
+        {
+            var m = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{n}.mat"); if (m == null) continue;
+            m.SetColor("_EmissionColor", Color.black); m.DisableKeyword("_EMISSION"); m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.EmissiveIsBlack; EditorUtility.SetDirty(m);
+        }
+        Physics.SyncTransforms();
+        return (go.GetComponentsInChildren<MeshRenderer>().Length, hidden, freed);
+    }
+
+    static Material TexturedMat(string name, string tex)
+    {
+        var path = $"{MatRoot}/{name}.mat";
+        var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (m == null) { m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = name }; AssetDatabase.CreateAsset(m, path); }
+        m.SetTexture("_BaseMap", Tex(tex, max: 1024)); m.SetColor("_BaseColor", Color.white); m.SetFloat("_Smoothness", .12f);
+        EditorUtility.SetDirty(m);
+        return m;
+    }
+
+    const string Room7Stains = "Room7 stains";
+    const string GaragePuddles = "Garage puddles";
+
+    static (int glass, int mold, int decals, int wet, int puddles) PolishDetails()
+    {
+        Physics.SyncTransforms();
+        int relinked = 0;
+        foreach (var d in Object.FindObjectsByType<DecalProjector>(FindObjectsSortMode.None).Where(d => d.material == null && d.name.StartsWith("Decal ")))
+        { d.material = DecalMat(d.name.Substring(6)); relinked++; }
+        foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).Where(r => r.sharedMaterial == null && r.name.StartsWith("Puddle")))
+        {
+            var m = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{r.name}.mat"); if (m != null) { r.sharedMaterial = m; relinked++; }
+        }
+        if (relinked > 0) Debug.Log("REAL_DECALS_RELINKED " + relinked);
+        int glass = SyncAlleyGlass(), mold = Room7PlainWalls(), decals = Room7Decals();
+        int wet = GarageDryFloor(out var puddles);
+        return (glass, mold, decals, wet, puddles);
+    }
+
+    static int SyncAlleyGlass()
+    {
+        var go = GameObject.Find("Alley_Glass"); if (go == null) return -1;
+        var mesh = go.GetComponent<MeshFilter>().sharedMesh;
+        var src = AssetDatabase.LoadAllAssetsAtPath(AlleyModel).OfType<Mesh>().FirstOrDefault(m => m.name == "Alley_Glass");
+        if (src == null || src.vertexCount != mesh.vertexCount) { Debug.LogError("ALLEY_GLASS_MISMATCH"); return -1; }
+        var sv = src.vertices; var dv = mesh.vertices; var tr = go.transform;
+        int bad = 0, moved = 0;
+        for (int i = 0; i < sv.Length; i++)
+        {
+            var a = tr.TransformPoint(sv[i]); var b = tr.TransformPoint(dv[i]);
+            if (a.x < -1.30f && a.x > -1.48f && a.y > 3f && a.z > -48.1f && a.z < -37.9f) a.x = -1.30f;
+            if ((a - b).magnitude > .035f) bad++;
+            if ((a - b).sqrMagnitude > 1e-8f) moved++;
+            dv[i] = tr.InverseTransformPoint(a);
+        }
+        if (bad > 0) { Debug.LogError("ALLEY_GLASS_ORDER bad=" + bad); return -1; }
+        mesh.vertices = dv; mesh.RecalculateBounds(); EditorUtility.SetDirty(mesh);
+        return moved;
+    }
+
+    static int Room7PlainWalls()
+    {
+        var r = Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).FirstOrDefault(m => m.name == "env_room7");
+        if (r == null) return 0;
+        var plain = r.sharedMaterials.FirstOrDefault(m => m != null && m.name == "M_WallPaintOffWhite"); if (plain == null) return 0;
+        var mats = r.sharedMaterials; int n = 0;
+        for (int i = 0; i < mats.Length; i++)
+            if (mats[i] != null && (mats[i].name == "M_BoardingWallMold" || mats[i].name == "M_WallMoldStain")) { mats[i] = plain; n++; }
+        r.sharedMaterials = mats;
+        return n;
+    }
+
+    static int Room7Decals()
+    {
+        var old = GameObject.Find(Room7Stains); if (old != null) Object.DestroyImmediate(old);
+        var root = new GameObject(Room7Stains).transform;
+        int n = 0;
+        if (Decal(root, "D_Leak1", new Vector3(-2.05f, 12.62f, -47.4f), Vector3.back, new Vector2(1.05f, 1.6f))) n++;
+        if (Decal(root, "D_Leak4", new Vector3(-4.6f, 12.75f, -47.4f), Vector3.back, new Vector2(.8f, 1.3f))) n++;
+        if (Decal(root, "D_Leak3", new Vector3(-1.85f, 11.05f, -44.95f), Vector3.right, new Vector2(1.1f, 1.1f))) n++;
+        if (n == 0) Object.DestroyImmediate(root.gameObject);
+        return n;
+    }
+
+    static int GarageDryFloor(out int puddles)
+    {
+        puddles = GameObject.Find(GaragePuddles) is GameObject kept ? kept.transform.childCount : 0;
+        var r = Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).FirstOrDefault(m => m.name == "env_garage");
+        if (r == null) return 0;
+        var mats = r.sharedMaterials; var mesh = r.GetComponent<MeshFilter>().sharedMesh;
+        int wet = System.Array.FindIndex(mats, m => m != null && m.name == "M_ConcreteWet");
+        int dry = System.Array.FindIndex(mats, m => m != null && m.name == "M_ConcreteFloor");
+        if (wet < 0 || dry < 0 || wet >= mesh.subMeshCount || dry >= mesh.subMeshCount) return 0;
+        var wetTris = mesh.GetTriangles(wet);
+        var verts = mesh.vertices; var tr = r.transform;
+        var floorTris = new List<int>(); var keepWet = new List<int>(); var centers = new List<Vector3>();
+        for (int i = 0; i < wetTris.Length; i += 3)
+        {
+            var c = (tr.TransformPoint(verts[wetTris[i]]) + tr.TransformPoint(verts[wetTris[i + 1]]) + tr.TransformPoint(verts[wetTris[i + 2]])) / 3;
+            if (c.y > .05f) { keepWet.AddRange(new[] { wetTris[i], wetTris[i + 1], wetTris[i + 2] }); continue; }
+            floorTris.AddRange(new[] { wetTris[i], wetTris[i + 1], wetTris[i + 2] }); centers.Add(c);
+        }
+        if (floorTris.Count == 0) return 0;
+        var groups = new List<List<Vector3>>();
+        foreach (var c in centers)
+        {
+            var g = groups.FirstOrDefault(x => x.Any(p => (p - c).sqrMagnitude < .64f));
+            if (g == null) groups.Add(new List<Vector3> { c }); else g.Add(c);
+        }
+        mesh.SetTriangles(mesh.GetTriangles(dry).Concat(floorTris).ToArray(), dry);
+        mesh.SetTriangles(keepWet.ToArray(), wet);
+        EditorUtility.SetDirty(mesh);
+        var old = GameObject.Find(GaragePuddles); if (old != null) Object.DestroyImmediate(old);
+        var root = new GameObject(GaragePuddles).transform;
+        var rng = new System.Random(48); puddles = 0;
+        foreach (var g in groups)
+        {
+            var mn = g.Aggregate(Vector3.positiveInfinity, Vector3.Min); var mx = g.Aggregate(Vector3.negativeInfinity, Vector3.Max);
+            var size = new Vector2(Mathf.Max(.7f, (mx.x - mn.x) * 1.5f + .4f), Mathf.Max(.6f, (mx.z - mn.z) * 1.5f + .4f));
+            Puddle(root, puddles % 3, new Vector3((mn.x + mx.x) / 2, .009f, (mn.z + mx.z) / 2), size, (float)rng.NextDouble() * 180);
+            puddles++;
+        }
+        return floorTris.Count / 3;
     }
 
     public static void PatchBoardingHouse()
@@ -1012,6 +1331,7 @@ public static class RealisticSceneBuilder
         Shots(cam, "Real", dir);
         var clay = new Material(Shader.Find("Universal Render Pipeline/Lit")); clay.SetColor("_BaseColor", new Color(.55f, .55f, .55f)); clay.SetFloat("_Smoothness", .2f);
         foreach (var d in Object.FindObjectsByType<DecalProjector>(FindObjectsSortMode.None)) d.enabled = false;
+        foreach (var rp in Object.FindObjectsByType<ReflectionProbe>(FindObjectsSortMode.None)) rp.enabled = false;
         foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None)) r.sharedMaterials = r.sharedMaterials.Select(_ => clay).ToArray();
         Shots(cam, "Clay", dir);
         Debug.Log("REAL_PREVIEW_CAPTURE " + dir);

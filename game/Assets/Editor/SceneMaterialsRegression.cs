@@ -2,6 +2,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 public static class SceneMaterialsRegression
 {
@@ -15,8 +16,10 @@ public static class SceneMaterialsRegression
         int slots = broken.Sum(r => r.sharedMaterials.Count(m => m == null));
         foreach (var name in broken.Select(r => r.transform.root.name).Distinct().Take(20))
             Debug.LogError("SCENE_MATERIALS empty slot under " + name);
-        Debug.Log("SCENE_MATERIALS_REGRESSION renderers=" + broken.Count + " empty_slots=" + slots);
-        return slots;
+        int decals = Object.FindObjectsByType<DecalProjector>(FindObjectsInactive.Include, FindObjectsSortMode.None).Count(d => d.material == null);
+        if (decals > 0) Debug.LogError("SCENE_MATERIALS decal projectors without material: " + decals);
+        Debug.Log("SCENE_MATERIALS_REGRESSION renderers=" + broken.Count + " empty_slots=" + slots + " empty_decals=" + decals);
+        return slots + decals;
     }
 
     public static void Run() => EditorApplication.Exit(CountEmptySlots() == 0 ? 0 : 1);
