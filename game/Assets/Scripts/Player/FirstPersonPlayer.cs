@@ -49,6 +49,7 @@ namespace BaGio12.Gameplay
             if (!GetComponent<PauseMenu>()) gameObject.AddComponent<PauseMenu>();
 #if UNITY_EDITOR || PLAYTEST_BUILD
             if (!GetComponent<PlaytestReadout>()) gameObject.AddComponent<PlaytestReadout>();
+            if (!GetComponent<PlaytestFreeCam>()) gameObject.AddComponent<PlaytestFreeCam>();
 #endif
             inputs = Instantiate(inputTemplate);
             var map = inputs.FindActionMap("Player", true);
