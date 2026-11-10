@@ -165,11 +165,32 @@ def figure_lines(image, chapter, figure, title):
     return [LANDSCAPE_START, "", line, "", LANDSCAPE_END] if landscape else [line]
 
 
+def place_figure(out, lines, heading_at):
+    if lines[0] != LANDSCAPE_START or heading_at is None or any(item.strip() for item in out[heading_at + 1:]):
+        out.extend(lines)
+        return
+    start = heading_at
+    while True:
+        before = start
+        while before > 0 and not out[before - 1].strip():
+            before -= 1
+        if before > 0 and HEADING.match(out[before - 1]):
+            start = before - 1
+            continue
+        break
+    if before > 0 and out[before - 1] == LANDSCAPE_END:
+        del out[before - 1]
+    else:
+        out[start:start] = [LANDSCAPE_START, ""]
+    out.extend(lines[1:])
+
+
 def render_diagrams(text, chapter, work, cache):
-    out, block, figure, title = [], None, 0, ""
+    out, block, figure, title, heading_at = [], None, 0, "", None
     for line in text.splitlines():
         heading = HEADING.match(line)
         if block is None and heading:
+            heading_at = len(out)
             title = re.sub(r"^\d+(?:\.\d+)*\.\s*", "", line.lstrip("#").strip())
         if block is None and FENCE.match(line):
             block = []
@@ -190,7 +211,7 @@ def render_diagrams(text, chapter, work, cache):
                     cmd += ["-p", str(browser)]
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
             figure += 1
-            out.extend(figure_lines(image, chapter, figure, title))
+            place_figure(out, figure_lines(image, chapter, figure, title), heading_at)
             block = None
             continue
         picture = IMAGE.match(line) if block is None else None
@@ -199,7 +220,7 @@ def render_diagrams(text, chapter, work, cache):
             if not image.exists():
                 sys.exit(f"Thiếu ảnh {image}")
             figure += 1
-            out.extend(figure_lines(image, chapter, figure, title))
+            place_figure(out, figure_lines(image, chapter, figure, title), heading_at)
             continue
         if block is not None:
             block.append(line)
