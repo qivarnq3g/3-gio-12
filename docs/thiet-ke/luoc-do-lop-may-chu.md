@@ -4,7 +4,7 @@ Tài liệu cho task #12, một trong ba phần bắt buộc của thuyết minh
 
 Hợp đồng API (`docs/api/openapi.yaml`, `docs/api/README.md`) là nguồn đúng. Tên trường, mã lỗi và giới hạn ở đây phải khớp hợp đồng; lệch thì sửa tài liệu này.
 
-Các sơ đồ viết bằng Mermaid. Người vẽ bản nộp chép lại theo đúng tên lớp, thuộc tính và quan hệ ở đây.
+Lược đồ lớp vẽ bằng draw.io: bản vẽ gốc ở `lop-may-chu/luoc-do-lop-may-chu.drawio`, mỗi trang ứng với một hình bên dưới; sửa trong draw.io rồi xuất lại ảnh PNG cùng tên trong `lop-may-chu/` (Xuất thành, PNG, tỉ lệ 200%). Lược đồ quan hệ thực thể và cấu trúc trang quản trị vẫn viết bằng Mermaid ngay trong tệp này.
 
 ## 1. Tổ chức mã nguồn
 
@@ -30,134 +30,11 @@ Lớp thực thể chia hai nhóm không nối với nhau: sự kiện thống k
 
 ### 2.1. Sự kiện thống kê
 
-```mermaid
-classDiagram
-    direction TB
-
-    class TelemetryEvent {
-        +Guid EventId
-        +Guid InstallationId
-        +Guid SessionId
-        +int Sequence
-        +string Type
-        +DateTimeOffset OccurredAt
-        +DateTimeOffset ReceivedAt
-        +string GameVersion
-        +int? Night
-        +string? AreaId
-        +string? CheckpointId
-        +string? ChoiceId
-        +string? EndingId
-        +string? EndReason
-        +int? DurationSeconds
-        +bool? IsReplay
-        +double? PositionX
-        +double? PositionY
-        +double? PositionZ
-    }
-
-    class TelemetryEventType {
-        <<enumeration>>
-        session_started
-        session_ended
-        night_started
-        night_completed
-        player_caught
-        choice_made
-        ending_reached
-    }
-
-    class SessionEndReason {
-        <<enumeration>>
-        quit_to_menu
-        quit_app
-        not_closed
-    }
-
-    class EndingId {
-        <<enumeration>>
-        bystander
-        scapegoat
-        freezer
-        empty_room
-        deadline_passed
-        home
-        red_thread_sandal
-    }
-
-    TelemetryEvent ..> TelemetryEventType
-    TelemetryEvent ..> SessionEndReason
-    TelemetryEvent ..> EndingId
-```
+![Lược đồ lớp: Sự kiện thống kê](lop-may-chu/su-kien-thong-ke.png)
 
 ### 2.2. Câu đố và quản trị viên
 
-```mermaid
-classDiagram
-    direction TB
-
-    class Puzzle {
-        +string Id
-        +string Title
-        +string UnlockId
-        +bool IsEnabled
-        +int MaxFailedAttempts
-        +int AttemptWindowMinutes
-        +DateTimeOffset UpdatedAt
-        +Guid? UpdatedById
-        +List~PuzzleSolution~ Solutions
-    }
-
-    class PuzzleSolution {
-        +int Id
-        +string PuzzleId
-        +string Sha256
-        +string Note
-        +DateTimeOffset CreatedAt
-        +Guid? CreatedById
-    }
-
-    class PuzzleSubmission {
-        +long Id
-        +string PuzzleId
-        +Guid InstallationId
-        +string Sha256
-        +SubmissionResult Result
-        +string GameVersion
-        +DateTimeOffset SubmittedAt
-    }
-
-    class SubmissionResult {
-        <<enumeration>>
-        accepted
-        rejected
-        blocked
-    }
-
-    class IdentityUser~Guid~ {
-        +Guid Id
-        +string Email
-        +string UserName
-        +string PasswordHash
-        +string SecurityStamp
-        +DateTimeOffset? LockoutEnd
-        +int AccessFailedCount
-    }
-
-    class AdminUser {
-        +string DisplayName
-        +bool IsActive
-        +DateTimeOffset CreatedAt
-        +DateTimeOffset? LastLoginAt
-    }
-
-    IdentityUser~Guid~ <|-- AdminUser
-    Puzzle "1" *-- "0..*" PuzzleSolution : mã băm hợp lệ
-    Puzzle "1" --> "0..*" PuzzleSubmission : lượt gửi
-    AdminUser "0..1" <-- "0..*" Puzzle : sửa lần cuối
-    AdminUser "0..1" <-- "0..*" PuzzleSolution : người thêm
-    PuzzleSubmission ..> SubmissionResult
-```
+![Lược đồ lớp: Câu đố và quản trị viên](lop-may-chu/cau-do-va-quan-tri-vien.png)
 
 ### 2.3. Ý nghĩa các lớp
 
@@ -179,73 +56,11 @@ Các trường liệt kê (`Type`, `EndingId`, `EndReason`, `Result`) lưu dạn
 
 #### 3.1.1. Nhận thống kê
 
-```mermaid
-classDiagram
-    direction TB
-
-    class TelemetryController {
-        +PostBatch(TelemetryBatchRequest) TelemetryBatchResponse
-        +DeleteInstallation(Guid installationId) NoContentResult
-    }
-    class ITelemetryIngestService {
-        <<interface>>
-        +IngestAsync(installationId, gameVersion, events) Task~TelemetryBatchResponse~
-        +DeleteInstallationAsync(Guid installationId) Task~int~
-    }
-    class TelemetryIngestService {
-        -AppDbContext db
-        -TimeProvider clock
-    }
-    class TelemetryEventValidator {
-        +Check(JsonElement, gameVersion, installationId, receivedAt) TelemetryEventCheck$
-    }
-    class AppDbContext
-
-    TelemetryController --> ITelemetryIngestService
-    ITelemetryIngestService <|.. TelemetryIngestService
-    TelemetryIngestService --> TelemetryEventValidator
-    TelemetryIngestService --> AppDbContext
-```
+![Lược đồ lớp: Nhận thống kê](lop-may-chu/nhan-thong-ke.png)
 
 #### 3.1.2. Gửi bằng chứng câu đố
 
-```mermaid
-classDiagram
-    direction TB
-
-    class PuzzleSubmissionsController {
-        +Post(string puzzleId, PuzzleSubmissionRequest) PuzzleSubmissionResponse
-    }
-    class IPuzzleSubmissionService {
-        <<interface>>
-        +SubmitAsync(string puzzleId, PuzzleSubmissionRequest) Task~SubmissionOutcome~
-    }
-    class PuzzleSubmissionService {
-        -AppDbContext db
-        -TimeProvider clock
-    }
-    class SubmissionOutcome {
-        +SubmissionOutcomeKind Kind
-        +string? UnlockId
-        +int AttemptsRemaining
-        +DateTimeOffset WindowResetsAt
-        +TimeSpan? RetryAfter
-    }
-    class SubmissionOutcomeKind {
-        <<enumeration>>
-        Accepted
-        Rejected
-        Blocked
-        PuzzleNotFound
-    }
-    class AppDbContext
-
-    PuzzleSubmissionsController --> IPuzzleSubmissionService
-    IPuzzleSubmissionService <|.. PuzzleSubmissionService
-    PuzzleSubmissionService --> AppDbContext
-    PuzzleSubmissionService ..> SubmissionOutcome
-    SubmissionOutcome --> SubmissionOutcomeKind
-```
+![Lược đồ lớp: Gửi bằng chứng câu đố](lop-may-chu/gui-bang-chung-cau-do.png)
 
 | Controller, hành động | API | Dịch vụ | Mã HTTP |
 |---|---|---|---|
@@ -259,125 +74,19 @@ Giới hạn tần suất theo địa chỉ IP dùng bộ giới hạn tần su�
 
 #### 3.2.1. Đăng nhập
 
-```mermaid
-classDiagram
-    direction TB
-
-    class AdminAuthController {
-        +Login(AdminLoginRequest) AdminAccountResponse
-        +Logout() NoContentResult
-        +Me() AdminAccountResponse
-        +ChangePassword(ChangePasswordRequest) NoContentResult
-    }
-    class SignInManager~AdminUser~
-    class UserManager~AdminUser~
-    class AdminSeeder {
-        +StartAsync() Task
-    }
-
-    AdminAuthController --> SignInManager~AdminUser~
-    AdminAuthController --> UserManager~AdminUser~
-    AdminSeeder ..> UserManager~AdminUser~
-```
+![Lược đồ lớp: Đăng nhập](lop-may-chu/dang-nhap.png)
 
 #### 3.2.2. Tài khoản quản trị
 
-```mermaid
-classDiagram
-    direction TB
-
-    class AdminAccountsController {
-        +List() List~AdminAccountResponse~
-        +Create(CreateAdminAccountRequest) AdminAccountResponse
-        +Update(Guid accountId, UpdateAdminAccountRequest) AdminAccountResponse
-        +ResetPassword(Guid accountId, ResetPasswordRequest) NoContentResult
-        +Delete(Guid accountId) NoContentResult
-    }
-    class IAdminAccountService {
-        <<interface>>
-        +ListAsync() Task~List~AdminUser~~
-        +CreateAsync(CreateAdminAccountRequest) Task~AdminUser~
-        +UpdateAsync(Guid id, UpdateAdminAccountRequest, Guid actorId) Task~AdminUser~
-        +ResetPasswordAsync(Guid id, string newPassword) Task
-        +DeleteAsync(Guid id, Guid actorId) Task
-    }
-    class UserManager~AdminUser~
-
-    AdminAccountsController --> IAdminAccountService
-    IAdminAccountService ..> UserManager~AdminUser~
-```
+![Lược đồ lớp: Tài khoản quản trị](lop-may-chu/tai-khoan-quan-tri.png)
 
 #### 3.2.3. Dashboard và CSV
 
-```mermaid
-classDiagram
-    direction TB
-
-    class AdminDashboardController {
-        +Get(from, to) DashboardSummary
-        +Export(dataset, from, to) FileStreamResult
-    }
-    class IDashboardService {
-        <<interface>>
-        +GetSummaryAsync(DateRange) Task~DashboardSummary~
-    }
-    class ICsvExportService {
-        <<interface>>
-        +WriteSummaryAsync(DateRange, Stream) Task
-        +WriteEventsAsync(DateRange, Stream) Task
-    }
-    class DateRange {
-        +DateTimeOffset From
-        +DateTimeOffset To
-        +Resolve(DateTimeOffset? from, DateTimeOffset? to, TimeProvider) DateRange$
-    }
-
-    AdminDashboardController --> IDashboardService
-    AdminDashboardController --> ICsvExportService
-    ICsvExportService ..> IDashboardService
-    IDashboardService ..> DateRange
-```
+![Lược đồ lớp: Dashboard và CSV](lop-may-chu/dashboard-va-csv.png)
 
 #### 3.2.4. Quản lý câu đố
 
-```mermaid
-classDiagram
-    direction TB
-
-    class AdminPuzzlesController {
-        +List() List~PuzzleConfigResponse~
-        +Get(string puzzleId) PuzzleConfigResponse
-        +Update(string puzzleId, UpdatePuzzleRequest) PuzzleConfigResponse
-        +AddSolution(string puzzleId, AddPuzzleSolutionRequest) PuzzleSolutionResponse
-        +DeleteSolution(string puzzleId, int solutionId) NoContentResult
-        +ListSubmissions(string puzzleId, SubmissionQuery) PuzzleSubmissionPage
-    }
-    class IPuzzleAdminService {
-        <<interface>>
-        +ListAsync() Task~List~Puzzle~~
-        +GetAsync(string puzzleId) Task~Puzzle?~
-        +UpdateAsync(string puzzleId, UpdatePuzzleRequest, Guid actorId) Task~Puzzle~
-        +AddSolutionAsync(string puzzleId, AddPuzzleSolutionRequest, Guid actorId) Task~PuzzleSolution~
-        +RemoveSolutionAsync(string puzzleId, int solutionId) Task
-        +ListSubmissionsAsync(string puzzleId, SubmissionQuery) Task~Page~PuzzleSubmission~~
-    }
-    class SubmissionQuery {
-        +DateRange Range
-        +SubmissionResult? Result
-        +Guid? InstallationId
-        +int Page
-        +int PageSize
-    }
-    class DateRange {
-        +DateTimeOffset From
-        +DateTimeOffset To
-        +Resolve(DateTimeOffset? from, DateTimeOffset? to, TimeProvider) DateRange$
-    }
-
-    AdminPuzzlesController --> IPuzzleAdminService
-    IPuzzleAdminService ..> SubmissionQuery
-    SubmissionQuery --> DateRange
-```
+![Lược đồ lớp: Quản lý câu đố](lop-may-chu/quan-ly-cau-do.png)
 
 Mỗi giao diện (interface) có một lớp cài đặt cùng tên bỏ chữ `I` (`AdminAccountService`, `DashboardService`, `CsvExportService`, `PuzzleAdminService`), cùng dùng `AppDbContext`; sơ đồ bỏ các lớp đó cho gọn.
 
