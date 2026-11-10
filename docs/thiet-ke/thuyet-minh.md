@@ -78,7 +78,7 @@ Hệ thống:
 
 ## Quy ước trong tài liệu
 
-- Sơ đồ được vẽ bằng Mermaid từ mã nguồn tài liệu trong kho mã của nhóm, nên sơ đồ luôn khớp với văn bản.
+- Lược đồ use case và lược đồ lớp vẽ bằng draw.io theo ký hiệu UML (unified modeling language, ngôn ngữ mô hình hóa thống nhất). Các sơ đồ còn lại vẽ bằng Mermaid từ mã nguồn tài liệu trong kho mã của nhóm.
 - Tên lớp, thuộc tính, bảng dữ liệu và đường dẫn API giữ nguyên như trong mã nguồn (tiếng Anh).
 - Hợp đồng API (application programming interface, giao diện lập trình ứng dụng) giữa game và máy chủ được đặc tả bằng OpenAPI. Khi tài liệu này lệch với hợp đồng API, hợp đồng API là bản đúng.
 
