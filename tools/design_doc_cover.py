@@ -7,7 +7,7 @@ PAGE_WIDTH = 11906
 LOGO_TARGET = "media/cover-logo.png"
 LOGO_ID = "rIdCoverLogo"
 DEFAULT_SPACING = '<w:spacing w:after="160" w:line="259" w:lineRule="auto"/>'
-CELL_SPACING = '<w:spacing w:before="0" w:after="0" w:line="259" w:lineRule="auto"/>'
+CELL_SPACING = '<w:spacing w:before="60" w:after="60" w:line="259" w:lineRule="auto"/>'
 PARAGRAPH = re.compile(r"<w:p(?:\s[^>]*)?>.*?</w:p>", re.S)
 TEXT = re.compile(r"<w:t(?:\s[^>]*)?>[^<]")
 
@@ -85,11 +85,14 @@ def fit_table(table, available):
         table = table.replace("<w:tblLook", '<w:tblLayout w:type="fixed"/><w:tblLook', 1)
     table = re.sub(r"<w:tblGrid>.*?</w:tblGrid>", "<w:tblGrid>" + "".join(f'<w:gridCol w:w="{w}"/>' for w in widths) + "</w:tblGrid>", table, flags=re.S)
     table = re.sub(r'<w:tblStyle w:val="[^"]*"\s*/>', "", table)
-    none = "".join(f'<w:{side} w:val="nil"/>' for side in ("top", "left", "bottom", "right"))
+    line = '<w:{0} w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
+    table = re.sub(r"<w:tblBorders>.*?</w:tblBorders>", "<w:tblBorders>" + "".join(line.format(side) for side in ("top", "left", "bottom", "right", "insideH", "insideV")) + "</w:tblBorders>", table, count=1, flags=re.S)
+    edges = "".join(line.format(side) for side in ("top", "left", "bottom", "right"))
+    table = table.replace('<w:vAlign w:val="bottom"/>', '<w:vAlign w:val="center"/>').replace('<w:jc w:val="right"/>', '<w:jc w:val="center"/>')
     out = []
     for row in re.split(r"(?=<w:tr[ >])", table):
         column = iter(widths)
-        row = re.sub(r'<w:tcW [^>]*/>', lambda m: f'<w:tcW w:w="{next(column)}" w:type="dxa"/><w:tcBorders>{none}</w:tcBorders>', row)
+        row = re.sub(r'<w:tcW [^>]*/>', lambda m: f'<w:tcW w:w="{next(column)}" w:type="dxa"/><w:tcBorders>{edges}</w:tcBorders>', row)
         row = PARAGRAPH.sub(lambda m: insert_props(re.sub(r"<w:spacing[^>]*/>", "", m.group(0)), CELL_SPACING), row)
         out.append(row)
     return "".join(out)
