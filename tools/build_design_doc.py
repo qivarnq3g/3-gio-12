@@ -12,7 +12,7 @@ from pathlib import Path
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml import OxmlElement
+from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
@@ -38,8 +38,9 @@ BROWSERS = [
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
 ]
 SCALE = 2
-PORTRAIT = (16.0, 22.0)
-LANDSCAPE = (24.5, 14.5)
+PORTRAIT = (15.0, 16.0)
+LANDSCAPE = (23.0, 12.0)
+TABLE_BORDER = '<w:{0} w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
 MERMAID_CONFIG = {
     "fontFamily": "Arial",
     **{kind: {"useMaxWidth": False} for kind in ("flowchart", "sequence", "class", "er", "state")},
@@ -334,6 +335,19 @@ def make_reference(path):
     doc.save(str(path))
 
 
+def add_borders(tbl_pr):
+    for old in tbl_pr.findall(qn("w:tblBorders")):
+        tbl_pr.remove(old)
+    xml = f'<w:tblBorders xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">{"".join(TABLE_BORDER.format(side) for side in ("top", "left", "bottom", "right", "insideH", "insideV"))}</w:tblBorders>'
+    borders = parse_xml(xml)
+    after = [tbl_pr.find(qn(f"w:{name}")) for name in ("tblInd", "jc", "tblW", "tblStyle")]
+    anchor = next((node for node in after if node is not None), None)
+    if anchor is None:
+        tbl_pr.insert(0, borders)
+    else:
+        anchor.addnext(borders)
+
+
 def finish_docx(path, widths):
     doc = Document(str(path))
     shapes = doc.inline_shapes
@@ -352,6 +366,7 @@ def finish_docx(path, widths):
             trpr.append(OxmlElement("w:tblHeader"))
         for cell in table._tbl.iter(qn("w:shd")):
             cell.getparent().remove(cell)
+        add_borders(table._tbl.tblPr)
         for row_index, row in enumerate(rows):
             for cell in row.cells:
                 for paragraph in cell.paragraphs:

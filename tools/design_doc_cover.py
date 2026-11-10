@@ -24,9 +24,14 @@ def template_cover(template_doc):
     start = max(body.rfind("<w:p ", 0, stop), body.rfind("<w:p>", 0, stop))
     cover = body[:start]
     breaks = [m.start() for m in re.finditer(r'<w:br w:type="page"/>', cover)]
-    if len(breaks) != 2:
-        raise SystemExit(f"Mẫu bìa cần đúng hai ngắt trang, thấy {len(breaks)}")
-    cover = cover[:breaks[1]] + cover[breaks[1] + len('<w:br w:type="page"/>'):]
+    if not breaks:
+        raise SystemExit("Mẫu bìa không có ngắt trang sau bìa chính")
+    cut = breaks[0]
+    paragraph_end = cover.index("</w:p>", cut) + len("</w:p>")
+    tail = cover[cut + len('<w:br w:type="page"/>'):paragraph_end]
+    if TEXT.search(tail):
+        raise SystemExit("Mẫu bìa có chữ sau ngắt trang trong cùng đoạn")
+    cover = cover[:cut] + tail
     while True:
         blocks = list(PARAGRAPH.finditer(cover))
         tail = blocks[-1]
