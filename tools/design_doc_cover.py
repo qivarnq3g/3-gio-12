@@ -7,7 +7,8 @@ PAGE_WIDTH = 11906
 LOGO_TARGET = "media/cover-logo.png"
 LOGO_ID = "rIdCoverLogo"
 DEFAULT_SPACING = '<w:spacing w:after="160" w:line="259" w:lineRule="auto"/>'
-CELL_SPACING = '<w:spacing w:before="60" w:after="60" w:line="259" w:lineRule="auto"/>'
+TABLE_INSET = 284
+CELL_SPACING ='<w:spacing w:before="60" w:after="60" w:line="259" w:lineRule="auto"/>'
 PARAGRAPH = re.compile(r"<w:p(?:\s[^>]*)?>.*?</w:p>", re.S)
 TEXT = re.compile(r"<w:t(?:\s[^>]*)?>[^<]")
 
@@ -78,9 +79,10 @@ def student_rows(table, members):
 
 
 def fit_table(table, available):
+    available -= 2 * TABLE_INSET
     half = available // 2
     widths = (half, available - half)
-    table = re.sub(r'<w:tblW [^>]*/>', f'<w:tblW w:w="{available}" w:type="dxa"/>', table, count=1)
+    table = re.sub(r'<w:tblW [^>]*/>', f'<w:tblW w:w="{available}" w:type="dxa"/><w:jc w:val="center"/>', table, count=1)
     if "<w:tblLayout" not in table:
         table = table.replace("<w:tblLook", '<w:tblLayout w:type="fixed"/><w:tblLook', 1)
     table = re.sub(r"<w:tblGrid>.*?</w:tblGrid>", "<w:tblGrid>" + "".join(f'<w:gridCol w:w="{w}"/>' for w in widths) + "</w:tblGrid>", table, flags=re.S)
