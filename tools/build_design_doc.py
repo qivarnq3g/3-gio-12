@@ -19,6 +19,8 @@ from docx.shared import Cm, Pt, RGBColor
 ROOT = Path(__file__).resolve().parent.parent
 DESIGN_DIR = ROOT / "docs" / "thiet-ke"
 MASTER = "thuyet-minh.md"
+MEMBERS = DESIGN_DIR / "thanh-vien.local.txt"
+BLANK = re.compile(r"^\|\s*\.{4,}\s*\|\s*\.{4,}(.*?)\|(.*)$")
 PARTS = [
     ("kien-truc-he-thong.md", 10, "Kiến trúc hệ thống"),
     ("luoc-do-use-case.md", 9, "Lược đồ use case"),
@@ -65,6 +67,20 @@ def split_cover(text):
         if line.startswith("# "):
             return "\n".join(lines[:i]), "\n".join(lines[i:])
     return "", text
+
+
+def fill_cover(cover):
+    if not MEMBERS.exists():
+        return cover, False
+    members = [line.split(" - ", 1) for line in MEMBERS.read_text(encoding="utf-8").splitlines() if " - " in line]
+    out = []
+    for line in cover.splitlines():
+        blank = BLANK.match(line)
+        if blank and members:
+            student_id, name = (part.strip() for part in members.pop(0))
+            line = f"| {student_id} | {name}{blank.group(1).rstrip()} |{blank.group(2)}"
+        out.append(line)
+    return "\n".join(out), not any(BLANK.match(line) for line in out)
 
 
 def drop_intro(text):
@@ -236,6 +252,9 @@ def placeholder(title):
 def build_markdown(work, cache):
     cover, body = split_cover((DESIGN_DIR / MASTER).read_text(encoding="utf-8"))
     chapters, missing, next_chapter = {}, [], None
+    cover, filled = fill_cover(cover)
+    if not filled:
+        missing.append(f"MSSV và họ tên ở bìa ({MEMBERS.relative_to(ROOT).as_posix()}, mỗi dòng: MSSV - Họ và tên)")
     body_numbered, last = number_headings(body, 1)
     next_chapter = last + 1
     for name, _, _ in PARTS:
