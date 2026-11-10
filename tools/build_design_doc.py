@@ -20,7 +20,8 @@ ROOT = Path(__file__).resolve().parent.parent
 DESIGN_DIR = ROOT / "docs" / "thiet-ke"
 MASTER = "thuyet-minh.md"
 MEMBERS = DESIGN_DIR / "thanh-vien.local.txt"
-BLANK = re.compile(r"^\|\s*\.{4,}\s*\|\s*\.{4,}(.*?)\|(.*)$")
+COVER_TEMPLATE = DESIGN_DIR / "mau-bia.docx"
+COVER_BLOCK = re.compile(r'^::: \{custom-style="(Cover \w+)"\}\n(.*?)\n:::', re.M | re.S)
 PARTS = [
     ("kien-truc-he-thong.md", 10, "Kiến trúc hệ thống"),
     ("luoc-do-use-case.md", 9, "Lược đồ use case"),
@@ -69,18 +70,26 @@ def split_cover(text):
     return "", text
 
 
-def fill_cover(cover):
+def read_members():
     if not MEMBERS.exists():
-        return cover, False
-    members = [line.split(" - ", 1) for line in MEMBERS.read_text(encoding="utf-8").splitlines() if " - " in line]
-    out = []
-    for line in cover.splitlines():
-        blank = BLANK.match(line)
-        if blank and members:
-            student_id, name = (part.strip() for part in members.pop(0))
-            line = f"| {student_id} | {name}{blank.group(1).rstrip()} |{blank.group(2)}"
-        out.append(line)
-    return "\n".join(out), not any(BLANK.match(line) for line in out)
+        return [("....................", "....................")] * 4, False
+    members = [tuple(part.strip() for part in line.split(" - ", 1)) for line in MEMBERS.read_text(encoding="utf-8").splitlines() if " - " in line]
+    return members, bool(members)
+
+
+def cover_fields(cover):
+    values = dict((style, text.strip()) for style, text in COVER_BLOCK.findall(cover))
+    course = re.match(r"Học phần (.+) - lớp (\d+)$", values.get("Cover Course", ""))
+    date = re.match(r".*?(tháng \d+ năm \d+)$", values.get("Cover Date", ""))
+    if not (course and date and values.get("Cover Title") and values.get("Cover Subtitle")):
+        sys.exit(f"Bìa trong {MASTER} cần đủ Cover Course, Cover Title, Cover Subtitle, Cover Date")
+    return [
+        ("BÁO CÁO ĐỀ TÀI", values["Cover Title"].upper()),
+        ("&lt;Tên đề tài&gt;", values["Cover Subtitle"]),
+        ("Môn: tên môn", f"Môn: {course.group(1)}"),
+        ("Mã lớp học phần: mã lớp học phần", f"Mã lớp học phần: {course.group(2)}"),
+        ("tháng &lt;thang&gt; năm 2025", date.group(1)),
+    ]
 
 
 def drop_intro(text):
@@ -252,15 +261,13 @@ def placeholder(title):
 def build_markdown(work, cache):
     cover, body = split_cover((DESIGN_DIR / MASTER).read_text(encoding="utf-8"))
     chapters, missing, next_chapter = {}, [], None
-    cover, filled = fill_cover(cover)
-    if not filled:
-        missing.append(f"MSSV và họ tên ở bìa ({MEMBERS.relative_to(ROOT).as_posix()}, mỗi dòng: MSSV - Họ và tên)")
+    fields = cover_fields(cover)
     body_numbered, last = number_headings(body, 1)
     next_chapter = last + 1
     for name, _, _ in PARTS:
         chapters[name] = next_chapter
         next_chapter += 1
-    pieces = [cover, TOC_XML, body_numbered]
+    pieces = [TOC_XML, body_numbered]
     for name, task, title in PARTS:
         path = DESIGN_DIR / name
         if path.exists():
@@ -277,7 +284,7 @@ def build_markdown(work, cache):
     leftovers = sorted(set(re.findall(r"task #\d+", combined)) - {f"task #{t}" for n, t, _ in PARTS if f"{n} (task #{t})" in missing})
     prose = re.sub(r"^```.*?^```", "", combined, flags=re.M | re.S)
     leftovers += sorted(set(re.findall(r"(?<![\w&/#])#\d+\b", prose)) - set(leftovers))
-    return combined, missing, leftovers
+    return combined, missing, leftovers, fields
 
 
 def set_font(style, size=None, bold=None, color=True):
@@ -319,13 +326,6 @@ def make_reference(path):
     for name in ("Caption", "Image Caption"):
         if name in [s.name for s in styles]:
             styles[name].paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    for name, size, bold, space in (("Cover Org", 13, True, 6), ("Cover Title", 22, True, 24), ("Cover Subtitle", 14, False, 24), ("Cover Text", 13, False, 12)):
-        style = styles.add_style(name, 1)
-        style.base_style = styles["Normal"]
-        set_font(style, size, bold=bold)
-        style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        style.paragraph_format.space_after = Pt(space)
-        style.paragraph_format.space_before = Pt(space if name == "Cover Title" else 0)
     for section in doc.sections:
         section.page_width, section.page_height = Cm(21), Cm(29.7)
         section.top_margin = section.bottom_margin = Pt(56.7)
@@ -336,7 +336,6 @@ def make_reference(path):
 
 def finish_docx(path, widths):
     doc = Document(str(path))
-    doc.paragraphs[0].style = doc.styles["Cover Org"]
     shapes = doc.inline_shapes
     if len(shapes) != len(widths):
         sys.exit(f"Số hình trong bản Word ({len(shapes)}) khác số hình đã dựng ({len(widths)})")
@@ -360,7 +359,6 @@ def finish_docx(path, widths):
                     for run in paragraph.runs:
                         run.font.bold = row_index == 0
     first = doc.sections[0]
-    first.different_first_page_header_footer = True
     footer = first.footer.paragraphs[0]
     footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
     for kind, text in (("begin", None), (None, " PAGE "), ("end", None)):
@@ -394,7 +392,7 @@ def main():
     cache.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
-        combined, missing, leftovers = build_markdown(work, cache)
+        combined, missing, leftovers, fields = build_markdown(work, cache)
         source = work / "combined.md"
         source.write_text(combined, encoding="utf-8")
         if args.markdown:
@@ -403,6 +401,12 @@ def main():
         make_reference(reference)
         subprocess.run(["pandoc", str(source), "-f", "markdown-auto_identifiers", "-o", str(output), "--reference-doc", str(reference), "--resource-path", str(ROOT), "--columns", "10000"], check=True)
     finish_docx(output, [float(w) for w in re.findall(r"\{width=([\d.]+)cm\}", combined)])
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from design_doc_cover import apply_cover
+    members, named = read_members()
+    if not named:
+        missing.append(f"MSSV và họ tên ở bìa ({MEMBERS.relative_to(ROOT).as_posix()}, mỗi dòng: MSSV - Họ và tên)")
+    apply_cover(output, COVER_TEMPLATE, members, fields)
     print(f"Đã ghi {output}")
     for item in missing:
         print(f"Thiếu phần: {item}")

@@ -33,10 +33,10 @@ npm install -g @mermaid-js/mermaid-cli
 python tools/build_design_doc.py
 ```
 
-MSSV và họ tên ở bìa không nằm trong Git, vì repo công khai. Tạo tệp `docs/thiet-ke/thanh-vien.local.txt` (đã có trong `.gitignore`), mỗi dòng `MSSV - Họ và tên`, theo đúng thứ tự các dòng vai trò ở bìa trong `thuyet-minh.md`. Thiếu tệp thì bìa giữ dấu chấm và script báo thiếu.
+Hai trang bìa lấy từ mẫu của trường `docs/thiet-ke/mau-bia.docx` (bìa chính có khung viền và logo, bìa phụ). Tên học phần, mã lớp, tiêu đề, tên đề tài và tháng năm lấy từ bốn khối `Cover Course`, `Cover Title`, `Cover Subtitle`, `Cover Date` ở đầu `thuyet-minh.md`. MSSV và họ tên không nằm trong Git, vì repo công khai. Tạo tệp `docs/thiet-ke/thanh-vien.local.txt` (đã có trong `.gitignore`), mỗi dòng `MSSV - Họ và tên`, theo thứ tự muốn in trên bìa. Thiếu tệp thì bìa giữ dấu chấm và script báo thiếu.
 
 Kết quả ở `docs/thiet-ke/build/thuyet-minh-thiet-ke.docx` (thư mục `build/` không đưa lên Git). Script in ra các phần còn thiếu và các chỗ còn nhắc task cần sửa; còn chỗ cần sửa thì mã thoát là 1.
 
 Mermaid CLI cần một trình duyệt Chromium. Script tự dùng Edge hoặc Chrome đã cài trên máy; muốn chỉ định trình duyệt khác thì đặt biến môi trường `MERMAID_BROWSER` là đường dẫn tới tệp chạy của trình duyệt.
 
-Mở tệp Word lần đầu, Word hỏi cập nhật trường: chọn Yes để có mục lục và số trang. Trước khi nộp, điền MSSV và họ tên ở bìa, rồi xuất PDF từ Word.
+Mở tệp Word lần đầu, Word hỏi cập nhật trường: chọn Yes để có mục lục và số trang. Trước khi nộp, xuất PDF từ Word.

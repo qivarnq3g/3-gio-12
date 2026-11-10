@@ -1,8 +1,4 @@
-::: {custom-style="Cover Org"}
-Trường Đại học Giao thông vận tải Thành phố Hồ Chí Minh
-:::
-
-::: {custom-style="Cover Org"}
+::: {custom-style="Cover Course"}
 Học phần Đồ án thực tế công nghệ phần mềm - lớp 012012213905
 :::
 
@@ -14,18 +10,7 @@ Thuyết minh chi tiết thiết kế
 Phần mềm 3 GIỜ 12: game kinh dị hành động 3D góc nhìn thứ nhất, kèm trang quản trị thống kê người chơi
 :::
 
-::: {custom-style="Cover Text"}
-Nhóm 3 GIỜ 12
-:::
-
-| MSSV | Họ và tên | Vai trò chính |
-|---|---|---|
-| .................... | .................... (nhóm trưởng) | Quản lý dự án, máy chủ API, bối cảnh 3D, kịch bản |
-| .................... | .................... | Lập trình game |
-| .................... | .................... | Trang quản trị, giao diện điện thoại trong game, kiểm thử |
-| .................... | .................... | Model 3D, biên bản họp |
-
-::: {custom-style="Cover Text"}
+::: {custom-style="Cover Date"}
 Thành phố Hồ Chí Minh, tháng 11 năm 2026
 :::
 
