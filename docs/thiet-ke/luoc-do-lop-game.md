@@ -41,13 +41,21 @@ Nguồn: [FirstPersonPlayer.cs](../../game/Assets/Scripts/Player/FirstPersonPlay
 
 Nguồn: [NightOneDirector.cs](../../game/Assets/Scripts/Story/NightOneDirector.cs), [NightObserver.cs](../../game/Assets/Scripts/Stealth/NightObserver.cs), [NightOneHud.cs](../../game/Assets/Scripts/Story/NightOneHud.cs), [NightRoomDoor.cs](../../game/Assets/Scripts/Story/NightRoomDoor.cs).
 
-![Lược đồ lớp: Điều phối Đêm 1 và kẻ truy đuổi](lop-game/dieu-phoi-dem-1-va-ke-truy-duoi.png)
+Bốn lớp `NightOneDirector`, `NightObserver`, `NightOneHud`, `NightRoomDoor` đều kế thừa `MonoBehaviour` (lược bỏ các mũi tên Unity ở hai sơ đồ dưới cho dễ đọc).
 
-Bốn lớp `NightOneDirector`, `NightObserver`, `NightOneHud`, `NightRoomDoor` đều kế thừa `MonoBehaviour` (lược bỏ các mũi tên Unity ở sơ đồ này cho dễ đọc). `NightOneDirector` giữ trạng thái cốt truyện, điều kiện hành động, checkpoint và các observer được gán từ scene. Director đăng ký `FirstPersonPlayer.PhoneChanged` và `FellOutOfWorld`, đồng thời gán `CanOpenPhone`; nó gỡ đăng ký khi bị hủy.
+### 3.1. Điều phối Đêm 1
 
-`NightObserver` tính tầm nhìn bằng khoảng cách, góc nhìn và raycast, tăng/giảm `Attention`, rồi chuyển `ObserverMode`; `NavMeshAgent` đảm nhiệm đường đi khi observer có agent. Quan hệ `0..1` thể hiện tham chiếu có thể null; `Travel` bỏ qua di chuyển khi observer đứng yên hoặc agent null. Khi phát hiện hoặc bắt được người chơi, observer gọi director để xử lý tiếng hô và hậu quả. Director cũng gọi ngược observer để báo tiếng động hoặc reset. Đây là quan hệ hai chiều đang có, chưa tách thành hệ AI độc lập cho các đêm sau.
+![Lược đồ lớp: Điều phối Đêm 1](lop-game/dieu-phoi-dem-1.png)
+
+`NightOneDirector` giữ trạng thái cốt truyện, điều kiện hành động, checkpoint và các observer được gán từ scene. Director đăng ký `FirstPersonPlayer.PhoneChanged` và `FellOutOfWorld`, đồng thời gán `CanOpenPhone`; nó gỡ đăng ký khi bị hủy.
 
 `NightOneHud` vẽ UI qua IMGUI, đọc `story.State` và gọi hành động trên director. `NightRoomDoor` thay đổi `Collider.isTrigger` theo stage, không phải lớp con của `WorldInteractable`; component `NightInteraction` cùng GameObject mới xử lý E.
+
+### 3.2. Kẻ truy đuổi
+
+![Lược đồ lớp: Kẻ truy đuổi](lop-game/ke-truy-duoi.png)
+
+`NightObserver` tính tầm nhìn bằng khoảng cách, góc nhìn và raycast, tăng/giảm `Attention`, rồi chuyển `ObserverMode`; `NavMeshAgent` đảm nhiệm đường đi khi observer có agent. Quan hệ `0..1` thể hiện tham chiếu có thể null; `Travel` bỏ qua di chuyển khi observer đứng yên hoặc agent null. Khi phát hiện hoặc bắt được người chơi, observer gọi director để xử lý tiếng hô và hậu quả. Director cũng gọi ngược observer để báo tiếng động hoặc reset. Đây là quan hệ hai chiều đang có, chưa tách thành hệ AI độc lập cho các đêm sau.
 
 ## 4. Trạng thái, đồng hồ và checkpoint
 
@@ -61,13 +69,17 @@ Nguồn: [NightOneState.cs](../../game/Assets/Scripts/Story/NightOneState.cs), [
 
 `CheckpointService` chỉ giữ dữ liệu trong RAM và không đọc lại được sau khi thoát ứng dụng. Phần ghi xuống đĩa ở mục 4.1 chụp thêm snapshot này vào tệp lưu.
 
-### 4.1. Lưu tiến độ và cài đặt
+### 4.1. Lưu và nạp tệp
 
 Nguồn: [NightPersistence.cs](../../game/Assets/Scripts/Persistence/NightPersistence.cs), [LocalJsonStore.cs](../../game/Assets/Scripts/Persistence/LocalJsonStore.cs), [NightSaveData.cs](../../game/Assets/Scripts/Persistence/NightSaveData.cs), [GamePreferences.cs](../../game/Assets/Scripts/Persistence/GamePreferences.cs), [NightOnePersistence.cs](../../game/Assets/Scripts/Story/NightOnePersistence.cs), [NightObserverPersistence.cs](../../game/Assets/Scripts/Stealth/NightObserverPersistence.cs).
 
-![Lược đồ lớp: Lưu tiến độ và cài đặt](lop-game/luu-tien-do-va-cai-dat.png)
+![Lược đồ lớp: Lưu và nạp tệp](lop-game/luu-va-nap-tep.png)
 
 `NightPersistence` là `MonoBehaviour` gắn vào director. Lớp này tự lưu khoảng 2 giây một lần theo thời gian thực và lưu thêm khi mất focus, tạm dừng hoặc thoát ứng dụng; không lưu giữa lúc chuyển cảnh. `LocalJsonStore<T>` bọc dữ liệu bằng số phiên bản và mã băm SHA-256, ghi qua tệp tạm rồi mới thay tệp chính, giữ bản dự phòng `.bak` và kiểm tra hợp lệ trước khi trả dữ liệu cho game. Tiến độ nằm ở `night-one.json`, cài đặt nằm ở `preferences.json`, chỉ có một vị trí lưu và không gửi lên máy chủ.
+
+### 4.2. Dữ liệu tệp lưu
+
+![Lược đồ lớp: Dữ liệu tệp lưu](lop-game/du-lieu-tep-luu.png)
 
 `NightOneDirector` và `NightObserver` là lớp `partial`; các hàm chụp và khôi phục đặt trong `NightOnePersistence.cs` và `NightObserverPersistence.cs`. `FirstPersonPlayer` có thêm `ViewPitch` và `RestoreView` để khôi phục góc nhìn và tư thế cúi. Phần lưu hiện chỉ áp dụng cho Đêm 1 và chưa có cơ chế chuyển đổi tệp lưu giữa các phiên bản dữ liệu.
 
