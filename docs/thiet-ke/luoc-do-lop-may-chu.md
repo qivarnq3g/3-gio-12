@@ -188,7 +188,9 @@ So mã băm là so chuỗi hex chữ thường đã kiểm định dạng; hợp
 PostgreSQL 17. Tên bảng và cột viết snake_case bằng gói `EFCore.NamingConventions` (`UseSnakeCaseNamingConvention`), để viết SQL tay khi xem dữ liệu không phải đặt tên trong ngoặc kép. Thời gian dùng `timestamptz` và luôn lưu UTC.
 
 ```mermaid
+%%{init: {"er": {"nodeSpacing": 20, "rankSpacing": 80, "entityPadding": 8}}}%%
 erDiagram
+    direction LR
     admin_users {
         uuid id PK
         varchar email
@@ -237,6 +239,19 @@ erDiagram
         timestamptz submitted_at
     }
 
+
+    puzzles ||--o{ puzzle_solutions : "có"
+    puzzles ||--o{ puzzle_submissions : "nhận"
+    admin_users |o--o{ puzzles : "sửa lần cuối"
+    admin_users |o--o{ puzzle_solutions : "thêm"
+```
+
+`telemetry_events` không nối với bảng nào: sự kiện chỉ mang mã cài đặt, và máy chủ không có bảng người chơi. Bảng này vẽ riêng ở mục 5.1.
+
+### 5.1. `telemetry_events`
+
+```mermaid
+erDiagram
     telemetry_events {
         uuid event_id PK
         uuid installation_id
@@ -258,16 +273,7 @@ erDiagram
         double position_y
         double position_z
     }
-
-    puzzles ||--o{ puzzle_solutions : "có"
-    puzzles ||--o{ puzzle_submissions : "nhận"
-    admin_users |o--o{ puzzles : "sửa lần cuối"
-    admin_users |o--o{ puzzle_solutions : "thêm"
 ```
-
-`telemetry_events` không nối với bảng nào: sự kiện chỉ mang mã cài đặt, và máy chủ không có bảng người chơi.
-
-### 5.1. `telemetry_events`
 
 | Cột | Kiểu | Ràng buộc | Ghi chú |
 |---|---|---|---|
