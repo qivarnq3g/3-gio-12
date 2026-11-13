@@ -22,6 +22,7 @@ Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** c
 | `Models/Props/prop_potted_snake_plant.fbx` | Nhóm tự dựng trong Blender 5.2 (chậu đất nung trồng lưỡi hổ, 582 tam giác) | Của nhóm | 30/10/2026 |
 | `Models/Environment/env_garage.fbx` | Nhóm tự dựng trong Blender 5.2 theo khối thô nhà xe (3.617 tam giác) | Của nhóm | 30/10/2026 |
 | `Models/Environment/env_room7.fbx` | Nhóm tự dựng trong Blender 5.2 theo khối thô phòng 7 tầng 3, cửa là object riêng (1.210 tam giác) | Của nhóm | 30/10/2026 |
+| `Models/Props/prop_motorbike_cub.fbx` và vật liệu `Materials/M_Cub*.mat` | "Honda Super cub" của Aleksandr Sagidullin (https://sketchfab.com/3d-models/honda-super-cub-9ce554228fc746c89f6d02b995f43c41), tải bản GLB ngày 02/11/2026. Nhóm đã sửa: xóa chữ và logo hãng, đổi ảnh vân thành 11 vật liệu màu phẳng, đưa về dài 1,80 m, tách bánh trước, bánh sau, tay lái, yên thành object riêng, giảm từ 333.676 mặt còn 45.199 tam giác | CC Attribution (CC BY), ghi tên tác giả | 02/11/2026 |
 
 # Phông chữ
 
