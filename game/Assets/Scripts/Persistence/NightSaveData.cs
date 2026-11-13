@@ -12,7 +12,8 @@ namespace BaGio12.Persistence
         public NightOneState state, checkpointState;
         public string checkpointId, objective, modal;
         public Vector3 position, checkpointPosition;
-        public float yaw, pitch, checkpointYaw, roomSeconds, unseenSeconds, immuneRemaining, prologueElapsed, playedSeconds;
+        public float hidingSeconds;
+        public float yaw, pitch, checkpointYaw, roomSeconds, immuneRemaining, prologueElapsed, playedSeconds;
         public bool crouched, leftStart, prologueDeparted, isReplay, completedInSession;
         public int activePhone, shoutCount;
         public bool[] alertLights;
@@ -29,7 +30,7 @@ namespace BaGio12.Persistence
                 || string.IsNullOrEmpty(d.checkpointId) || !VectorValid(d.position) || !VectorValid(d.checkpointPosition)
                 || !GamePreferences.Finite(d.yaw) || !GamePreferences.Finite(d.pitch) || !GamePreferences.Finite(d.checkpointYaw)
                 || d.pitch < -80 || d.pitch > 80 || d.activePhone < 0 || d.activePhone > 2 || d.observers == null || d.alertLights == null) return false;
-            foreach (var n in new[] { d.roomSeconds, d.unseenSeconds, d.immuneRemaining, d.prologueElapsed, d.playedSeconds })
+            foreach (var n in new[] { d.hidingSeconds, d.roomSeconds, d.immuneRemaining, d.prologueElapsed, d.playedSeconds })
                 if (!GamePreferences.Finite(n) || n < 0) return false;
             foreach (var o in d.observers) if (o == null || !o.Valid()) return false;
             return true;
