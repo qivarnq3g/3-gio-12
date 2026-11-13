@@ -103,7 +103,7 @@ public static class NightOneReviewRegression
                     packets.Add(new NightStartedTelemetry(false));
                     packets.Add(new CaughtTelemetry("n1.alley","n1.alley_start",Vector3.zero));
                     packets.Add(new ChoiceTelemetry("1a"));packets.Add(new ChoiceTelemetry("1b"));packets.Add(new ChoiceTelemetry("1c"));packets.Add(new EndingTelemetry("bystander"));
-                    File.WriteAllLines("/private/tmp/3gio12-review-events.jsonl",packets.Select(x=>x.ToJson()));
+                    File.WriteAllLines(System.IO.Path.Combine(System.IO.Path.GetTempPath(),"3gio12-review-events.jsonl"),packets.Select(x=>x.ToJson()));
                     story.RestoreCheckpoint();story.State.timeJumped=false;story.State.hasNganPhone=false;story.State.stage=NightStage.Room;
                     story.State.bagMoved=false;story.State.bagDisplaced=false;story.State.bagOpen=false;story.bag.transform.position=story.bagAtDoor.position;
                     player.Teleport(story.roomSpawn.position,90);story.JumpTime();
