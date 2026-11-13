@@ -34,6 +34,12 @@ npm install -g @mermaid-js/mermaid-cli
 python tools/build_design_doc.py
 ```
 
+Trên Windows có Microsoft Word, thêm `--word` để Word cập nhật mục lục, danh mục hình, danh mục bảng rồi xuất thêm PDF cạnh tệp Word; bản dựng không có `--word` để Word tự hỏi cập nhật trường khi mở.
+
+- Chú thích bảng: viết một dòng `: Tên bảng` ngay sau bảng; script tự đánh số "Bảng <chương>.<số>." và đặt chú thích phía trên bảng. Bảng thiếu chú thích không vào danh mục bảng.
+- Trích dẫn: nguồn nằm trong `references.json` (CSL JSON, nhập được vào Zotero); trong văn bản viết `[@khóa]`, ví dụ `[@uml]`. Pandoc định dạng theo `ieee.csl` (lấy từ kho kiểu trích dẫn của Zotero, giấy phép CC BY-SA 3.0) và tạo mục "Tài liệu tham khảo" ở cuối.
+- Danh mục chữ viết tắt lấy từ `abbreviations.md`; thêm chữ viết tắt mới vào đó theo thứ tự chữ cái.
+
 Hai trang bìa lấy từ mẫu của trường `docs/thiet-ke/mau-bia.docx` (bìa chính có khung viền và logo, bìa phụ). Tên học phần, mã lớp, tiêu đề, tên đề tài và tháng năm lấy từ bốn khối `Cover Course`, `Cover Title`, `Cover Subtitle`, `Cover Date` ở đầu `thuyet-minh.md`. MSSV và họ tên không nằm trong Git, vì repo công khai. Tạo tệp `docs/thiet-ke/thanh-vien.local.txt` (đã có trong `.gitignore`), mỗi dòng `MSSV - Họ và tên`, theo thứ tự muốn in trên bìa. Thiếu tệp thì bìa giữ dấu chấm và script báo thiếu.
 
 Kết quả ở `docs/thiet-ke/build/thuyet-minh-thiet-ke.docx` (thư mục `build/` không đưa lên Git). Script in ra các phần còn thiếu và các chỗ còn nhắc task cần sửa; còn chỗ cần sửa thì mã thoát là 1.

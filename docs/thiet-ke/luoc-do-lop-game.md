@@ -19,9 +19,11 @@ Các sơ đồ dưới đây mô tả lớp đã có trong code. Chỉ liệt k�
 | Chữ gạch chân | Thành viên tĩnh (static) |
 | `0..1`, `0..*`, `1` | Số lượng ở đầu quan hệ; có thể thay đổi theo thời điểm chạy |
 
+: Ký hiệu dùng trong lược đồ lớp
+
 Trường/property trên sơ đồ giữ nguyên tên code. Sự kiện được ghi bằng kiểu `Action`, delegate kiểm tra điều kiện bằng `Func`; phần giải thích chỉ rõ chiều phát và chiều đăng ký. Setter private không làm property trở thành private. Riêng `CheckpointService.Save` và `Restore` lược bỏ kiểu tham số trên hình để tránh chồng chữ; chữ ký đầy đủ xem source được liên kết tại mục 4. Các quan hệ scene dùng association thay vì composition vì Unity quản lý vòng đời GameObject.
 
-### 1.1. Sơ đồ tổng quát
+### 1.1. Sơ đồ tổng quát các lớp game
 
 ![Lược đồ lớp: Sơ đồ tổng quát](lop-game/overview.png)
 
@@ -35,7 +37,7 @@ Nguồn: [FirstPersonPlayer.cs](../../game/Assets/Scripts/Player/FirstPersonPlay
 
 ![Lược đồ lớp: Nhân vật và camera](lop-game/nhan-vat-va-camera.png)
 
-`FirstPersonPlayer` đọc Unity Input System, điều khiển `CharacterController`, xoay camera và raycast tìm `WorldInteractable`. Không có lớp camera riêng: `eyes` là camera con, yaw ở transform nhân vật và pitch ở camera. `PlayerGeometry` tập trung kích thước capsule và layer mask; các chiều cao là hằng số, các mask là property tĩnh.
+`FirstPersonPlayer` đọc Unity Input System [@unity-input], điều khiển `CharacterController` [@unity-cc], xoay camera và raycast tìm `WorldInteractable`. Không có lớp camera riêng: `eyes` là camera con, yaw ở transform nhân vật và pitch ở camera. `PlayerGeometry` tập trung kích thước capsule và layer mask; các chiều cao là hằng số, các mask là property tĩnh.
 
 ### 2.2. Tương tác
 
@@ -61,7 +63,7 @@ Bốn lớp `NightOneDirector`, `NightObserver`, `NightOneHud`, `NightRoomDoor` 
 
 ![Lược đồ lớp: Kẻ truy đuổi](lop-game/ke-truy-duoi.png)
 
-`NightObserver` tính tầm nhìn bằng khoảng cách, góc nhìn và raycast, tăng/giảm `Attention`, rồi chuyển `ObserverMode`; `NavMeshAgent` đảm nhiệm đường đi khi observer có agent. Quan hệ `0..1` thể hiện tham chiếu có thể null; `Travel` bỏ qua di chuyển khi observer đứng yên hoặc agent null. Khi phát hiện hoặc bắt được người chơi, observer gọi director để xử lý tiếng hô và hậu quả. Director cũng gọi ngược observer để báo tiếng động hoặc reset. Đây là quan hệ hai chiều đang có, chưa tách thành hệ AI độc lập cho các đêm sau.
+`NightObserver` tính tầm nhìn bằng khoảng cách, góc nhìn và raycast, tăng/giảm `Attention`, rồi chuyển `ObserverMode`; `NavMeshAgent` [@unity-navmesh] đảm nhiệm đường đi khi observer có agent. Quan hệ `0..1` thể hiện tham chiếu có thể null; `Travel` bỏ qua di chuyển khi observer đứng yên hoặc agent null. Khi phát hiện hoặc bắt được người chơi, observer gọi director để xử lý tiếng hô và hậu quả. Director cũng gọi ngược observer để báo tiếng động hoặc reset. Đây là quan hệ hai chiều đang có, chưa tách thành hệ AI độc lập cho các đêm sau.
 
 ## 4. Trạng thái, đồng hồ và checkpoint
 
@@ -69,7 +71,7 @@ Nguồn: [NightOneState.cs](../../game/Assets/Scripts/Story/NightOneState.cs), [
 
 ![Lược đồ lớp: Trạng thái, đồng hồ và checkpoint](lop-game/trang-thai-dong-ho-va-checkpoint.png)
 
-`NightOneState` là DTO serializable chứa tiến độ Đêm 1; sơ đồ chỉ chọn một số field đại diện. `Copy()` dùng `JsonUtility` serialize/deserialize để tạo bản sao. `StoryClock` giữ đúng instance state hiện hành và từ chối mốc thời gian đi lùi; director tạo lại clock sau khi thay state.
+`NightOneState` là DTO serializable chứa tiến độ Đêm 1; sơ đồ chỉ chọn một số field đại diện. `Copy()` dùng `JsonUtility` serialize/deserialize để tạo bản sao [@unity-json]. `StoryClock` giữ đúng instance state hiện hành và từ chối mốc thời gian đi lùi; director tạo lại clock sau khi thay state.
 
 `CheckpointService` giữ một snapshot trong RAM, vị trí và hướng quay. `Save` sao chép state đầu vào; `Restore` trả một bản sao khác, không đưa instance snapshot ra ngoài. `NightOneDirector` áp dụng lại state, pose và trạng thái thế giới. Riêng hồi phục an toàn trong prologue giữ hình phạt bị bắt, không gọi restore snapshot để xóa hình phạt.
 
@@ -103,7 +105,7 @@ Nguồn: [PhonePrototype.cs](../../game/Assets/Prototype/Scripts/PhonePrototype.
 
 ![Lược đồ lớp: Prototype trong SampleScene](lop-game/prototype-trong-samplescene.png)
 
-`PhonePrototype` kế thừa `MonoBehaviour`; các DTO còn lại là lớp `[Serializable]` thông thường. `Boot()` là static private và chỉ tự khởi tạo trong `SampleScene`. Prototype dùng UI Toolkit/`UIDocument`, đọc `Resources/Prototype/chat-mau.json`, giữ lịch sử tin đã hiện trong RAM. Tin nhắn đã hiện được lưu trong `Dictionary<string, List<Message>> shown`; lựa chọn đã bấm nằm trong `HashSet<string> chose`.
+`PhonePrototype` kế thừa `MonoBehaviour`; các DTO còn lại là lớp `[Serializable]` thông thường. `Boot()` là static private và chỉ tự khởi tạo trong `SampleScene`. Prototype dùng UI Toolkit/`UIDocument` [@unity-uitk], đọc `Resources/Prototype/chat-mau.json`, giữ lịch sử tin đã hiện trong RAM. Tin nhắn đã hiện được lưu trong `Dictionary<string, List<Message>> shown`; lựa chọn đã bấm nằm trong `HashSet<string> chose`.
 
 Prototype này chưa nối với director hoặc HUD của Đêm 1; vì vậy không vẽ quan hệ giữa `PhonePrototype` và `FirstPersonPlayer`/`NightOneDirector`. Việc thay UI giữ chỗ bằng điện thoại hoàn chỉnh chưa làm; khi ghép cần chốt lại các lớp và luồng dữ liệu.
 
@@ -129,5 +131,7 @@ Khi làm adapter, cần chuyển đổi payload nội bộ sang DTO hợp đồn
 | Lưu game | `NightOneState`, `StoryClock`, `CheckpointService`, `NightPersistence`, `LocalJsonStore<T>`, `NightSaveData`, `GamePreferences` | Lưu cho đêm 2, đêm 3 và chuyển đổi phiên bản tệp lưu |
 | Điện thoại | HUD Đêm 1 và các DTO/prototype UI Toolkit | Ghép điện thoại hoàn chỉnh |
 | Gửi thống kê | Payload `NightTelemetry` và sự kiện phát từ director | Xin đồng ý, bộ đệm, gửi lại, phần gửi HTTP của game |
+
+: Phạm vi đã mô tả và phần còn lại của lược đồ lớp game
 
 Các lớp trình bày phụ (`NightBagPresentation`, `NightInjuryFeedback`, `NightPassingBike`, `TestWorldClock`) và script trong `Assets/Editor/` được lược bỏ để tập trung vào sáu nhóm trên. Lược bỏ khỏi sơ đồ không có nghĩa xóa hoặc đổi trách nhiệm trong code.

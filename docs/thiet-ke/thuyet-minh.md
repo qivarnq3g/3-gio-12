@@ -59,19 +59,21 @@ Quản trị viên (trang quản trị):
 Hệ thống:
 
 13. Máy chủ nhận sự kiện thống kê theo lô, chỉ khi người chơi đã đồng ý, không lưu thông tin định danh.
-14. Máy chủ kiểm tra bằng chứng bằng mã băm SHA-256 (secure hash algorithm 256-bit) và giới hạn số lần thử.
+14. Máy chủ kiểm tra bằng chứng bằng mã băm SHA-256 (secure hash algorithm 256-bit) và giới hạn số lần thử [@fips180].
 
 ## Quy ước trong tài liệu
 
-- Lược đồ use case và lược đồ lớp vẽ bằng draw.io theo ký hiệu UML (unified modeling language, ngôn ngữ mô hình hóa thống nhất). Các sơ đồ còn lại vẽ bằng Mermaid từ mã nguồn tài liệu trong kho mã của nhóm.
+- Lược đồ use case và lược đồ lớp vẽ bằng draw.io theo ký hiệu UML (unified modeling language, ngôn ngữ mô hình hóa thống nhất) [@uml]. Các sơ đồ còn lại vẽ bằng Mermaid từ mã nguồn tài liệu trong kho mã của nhóm.
 - Tên lớp, thuộc tính, bảng dữ liệu và đường dẫn API giữ nguyên như trong mã nguồn (tiếng Anh).
-- Hợp đồng API (application programming interface, giao diện lập trình ứng dụng) giữa game và máy chủ được đặc tả bằng OpenAPI. Khi tài liệu này lệch với hợp đồng API, hợp đồng API là bản đúng.
+- Hợp đồng API (application programming interface, giao diện lập trình ứng dụng) giữa game và máy chủ được đặc tả bằng OpenAPI [@openapi]. Khi tài liệu này lệch với hợp đồng API, hợp đồng API là bản đúng.
 
 # Thay đổi so với bản đăng ký
 
 | Nội dung | Bản đăng ký (23/10/2026) | Thiết kế hiện tại | Ngày quyết định |
 |---|---|---|---|
 | Góc nhìn của game | 3D góc nhìn thứ ba | 3D góc nhìn thứ nhất | 27/10/2026 |
+
+: Những thay đổi so với bản đăng ký đề tài
 
 Lý do đổi góc nhìn:
 

@@ -16,6 +16,8 @@ Hệ thống gồm năm thành phần:
 | Trang quản trị | React, TypeScript, Vite (trang tĩnh) | Trình duyệt của quản trị viên | 9 đến 12 | Thắng, Quang |
 | Website câu đố | Trang tĩnh HTML | Trình duyệt của người chơi | 7 | Thắng, Quang |
 
+: Các thành phần của hệ thống
+
 Ba nguyên tắc chi phối thiết kế:
 
 1. Game chơi được trọn vẹn khi không có mạng. Mạng chỉ cần cho hai việc tùy chọn: gửi thống kê (khi người chơi đồng ý) và gửi bằng chứng câu đố.
@@ -64,11 +66,13 @@ Các khối bên trong (chi tiết lớp ở task #11):
 | Màn chơi và kịch bản | Thứ tự màn, sự kiện theo mốc giờ, biến truyện, lựa chọn, kết thúc (yêu cầu 2, 3) |
 | Điện thoại | Giao diện hai chiếc điện thoại: tin nhắn, ảnh, ghi âm, cài đặt (yêu cầu 3) |
 | Ẩn nấp | Người quan sát, nón nhìn, thanh chú ý, điểm lưu (yêu cầu 4) |
-| Lưu game | Tệp JSON trong `Application.persistentDataPath`: tiến độ, biến, `installationId`, trạng thái đồng ý (yêu cầu 5) |
+| Lưu game | Tệp JSON trong `Application.persistentDataPath` [@unity-persistent]: tiến độ, biến, `installationId`, trạng thái đồng ý (yêu cầu 5) |
 | Cài đặt | Âm lượng, độ nhạy chuột, đồ họa, cảnh báo nội dung, đồng ý thống kê (yêu cầu 6, 8) |
 | Thống kê | Ghi sự kiện vào hàng đợi trên đĩa, gửi theo lô khi có mạng (yêu cầu 6) |
 | Gửi bằng chứng | Chọn tệp, tính SHA-256 trên máy, gửi mã băm (yêu cầu 7) |
 | Máy khách HTTP | Gọi API, thử lại khi lỗi theo bảng trong hợp đồng API |
+
+: Các khối bên trong game
 
 Địa chỉ máy chủ ghi trong cấu hình của bản build. Game không có khóa API.
 
@@ -78,16 +82,20 @@ Một ứng dụng ASP.NET Core, chia ba lớp:
 
 | Lớp | Việc |
 |---|---|
-| Controller | Nhận yêu cầu HTTP, kiểm dữ liệu vào, trả lỗi theo RFC 9457 |
+| Controller | Nhận yêu cầu HTTP, kiểm dữ liệu vào, trả lỗi theo RFC 9457 [@rfc9457] |
 | Dịch vụ | Quy tắc nghiệp vụ: bỏ trùng sự kiện theo `eventId`, so mã băm, đếm lượt gửi sai, tổng hợp số liệu dashboard, xuất CSV |
-| Truy cập dữ liệu | EF Core, `DbContext`, migration |
+| Truy cập dữ liệu | EF Core, `DbContext`, migration [@ms-efcore] |
+
+: Các lớp của máy chủ API
 
 Hai nhóm API:
 
-| Nhóm | Đường dẫn | Ai gọi | Xác thực |
+| Nhóm | Đường dẫn | Bên gọi | Xác thực |
 |---|---|---|---|
 | API công khai | `/api/v1/telemetry/...`, `/api/v1/puzzles/...`, `/health` | Game | Không; chống lạm dụng bằng giới hạn tần suất theo địa chỉ IP (trong bộ nhớ) và giới hạn lượt sai theo mã cài đặt (trong cơ sở dữ liệu) |
-| API quản trị | `/api/admin/...`: đăng nhập, tài khoản, dashboard, xuất CSV, cấu hình câu đố, lịch sử gửi | Trang quản trị | ASP.NET Core Identity, cookie phiên |
+| API quản trị | `/api/admin/...`: đăng nhập, tài khoản, dashboard, xuất CSV, cấu hình câu đố, lịch sử gửi | Trang quản trị | ASP.NET Core Identity, cookie phiên [@ms-identity] |
+
+: Hai nhóm API
 
 Đường dẫn chi tiết của API quản trị nằm trong `openapi.yaml`; lớp và dịch vụ bên trong máy chủ ở [`luoc-do-lop-may-chu.md`](luoc-do-lop-may-chu.md) (task #12).
 
@@ -101,6 +109,8 @@ Các nhóm dữ liệu chính (lược đồ chi tiết ở [`luoc-do-lop-may-ch
 | Câu đố | Trang quản trị | `puzzleId`, bật hay tắt, các mã băm hợp lệ, số lượt sai và cửa sổ thời gian |
 | Lượt gửi bằng chứng | API công khai | `installationId`, mã băm đã gửi, kết quả, thời điểm |
 | Tài khoản quản trị | Trang quản trị | Các bảng của ASP.NET Core Identity; mật khẩu lưu dạng băm |
+
+: Các nhóm dữ liệu chính
 
 Dashboard tính trực tiếp từ bảng sự kiện bằng truy vấn tổng hợp. Lượng dữ liệu của đồ án nhỏ nên chưa cần bảng tổng hợp sẵn.
 
@@ -203,9 +213,11 @@ flowchart TB
 
 | Dịch vụ Compose | Ảnh | Mở ra ngoài | Ghi chú |
 |---|---|---|---|
-| `caddy` | `caddy` | 80, 443 | Tự lấy chứng chỉ HTTPS; phục vụ tệp tĩnh của trang quản trị và website câu đố; chuyển `/api` sang `api` |
+| `caddy` | `caddy` | 80, 443 | Tự lấy chứng chỉ HTTPS [@caddy]; phục vụ tệp tĩnh của trang quản trị và website câu đố; chuyển `/api` sang `api` |
 | `api` | Build từ `server/` | Không | Chuỗi kết nối và mật khẩu đọc từ biến môi trường, không ghi trong repo |
 | `postgres` | `postgres` | Không | Dữ liệu nằm trong volume `pgdata`, sao lưu bằng `pg_dump` |
+
+: Các dịch vụ trong Docker Compose
 
 Môi trường:
 
@@ -244,12 +256,16 @@ Giới hạn đã chấp nhận: game chạy offline nên người sửa tệp l
 | 13. Nhận thống kê theo lô | API công khai; cơ sở dữ liệu |
 | 14. Kiểm bằng chứng bằng mã băm | API công khai; cơ sở dữ liệu |
 
+: Ánh xạ yêu cầu chức năng với thành phần
+
 ## 7. Tác nhân (dùng cho lược đồ use case, task #9)
 
 | Tác nhân | Tương tác với | Yêu cầu |
 |---|---|---|
 | Người chơi | Game, website câu đố; máy chủ API qua game | 1 đến 8, 13, 14 |
 | Quản trị viên | Trang quản trị | 9 đến 12 |
+
+: Các tác nhân của hệ thống
 
 Game là một phần của hệ thống nên không phải tác nhân; khi game gọi API, game làm thay người chơi.
 
@@ -263,3 +279,5 @@ Game là một phần của hệ thống nên không phải tác nhân; khi game
 | Website câu đố là trang tĩnh, tên miền riêng | Không cần máy chủ; trông như blog thật của nhân vật; lời giải không lộ qua API | Phục vụ câu đố từ máy chủ API |
 | Gửi mã băm thay vì tệp | Tệp không rời máy người chơi; máy chủ không phải lưu ảnh | Tải tệp lên máy chủ |
 | Docker Compose trên một máy ảo | Chạy giống nhau trên máy cá nhân và máy chủ; không phụ thuộc nhà cung cấp | Dịch vụ nền tảng của một nhà cung cấp đám mây |
+
+: Các quyết định kiến trúc và lý do

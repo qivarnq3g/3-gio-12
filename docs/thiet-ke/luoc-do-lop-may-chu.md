@@ -20,11 +20,13 @@ Máy chủ là một dự án ASP.NET Core (`server/src/ThreeTwelve.Api`), chia 
 | `Auth/` | Cấu hình cookie, tạo tài khoản quản trị đầu tiên | `Domain/`, `Data/` |
 | `Health/` | Định dạng phản hồi `/health` (đã có từ task #18) | Không |
 
+: Các thư mục mã nguồn máy chủ
+
 Controller không truy cập `AppDbContext` trực tiếp; mọi truy vấn đi qua dịch vụ. Lớp thực thể không bao giờ được trả thẳng ra API; controller luôn đổi sang DTO, để đổi bảng không làm đổi hợp đồng.
 
-Giờ hiện tại lấy từ `TimeProvider` của .NET, không gọi `DateTime.UtcNow`, để test đặt được giờ giả khi kiểm cửa sổ lượt gửi và khoảng thời gian dashboard.
+Giờ hiện tại lấy từ `TimeProvider` của .NET, không gọi `DateTime.UtcNow`, để test đặt được giờ giả khi kiểm cửa sổ lượt gửi và khoảng thời gian dashboard [@ms-timeprovider].
 
-### 1.1. Sơ đồ tổng quát
+### 1.1. Sơ đồ tổng quát các lớp máy chủ
 
 ![Lược đồ lớp: Sơ đồ tổng quát](lop-may-chu/overview.png)
 
@@ -52,6 +54,8 @@ Lớp thực thể chia hai nhóm không nối với nhau: sự kiện thống k
 | `PuzzleSubmission` | Một lần game gửi bằng chứng | Lưu cả lần đúng, sai và bị chặn để trang quản trị xem lịch sử |
 | `AdminUser` | Tài khoản quản trị viên | Kế thừa `IdentityUser<Guid>` của ASP.NET Core Identity; thêm tên hiển thị, trạng thái hoạt động và thời điểm đăng nhập cuối |
 
+: Ý nghĩa các lớp thực thể
+
 Không có lớp người chơi. Máy chủ chỉ biết `InstallationId`, một UUID ngẫu nhiên, nên `TelemetryEvent` và `PuzzleSubmission` chỉ giữ mã này như một giá trị, không trỏ tới bảng nào.
 
 Các trường liệt kê (`Type`, `EndingId`, `EndReason`, `Result`) lưu dạng chuỗi snake_case giống hợp đồng, không lưu số, để đọc thẳng được trong cơ sở dữ liệu và trong tệp CSV. Các khối enumeration trong sơ đồ là tập giá trị hợp lệ; với sự kiện thống kê, tập này nằm trong `TelemetryEventValidator`.
@@ -74,7 +78,9 @@ Các trường liệt kê (`Type`, `EndingId`, `EndReason`, `Result`) lưu dạn
 | `TelemetryController.DeleteInstallation` | `DELETE /api/v1/telemetry/installations/{installationId}` | `DeleteInstallationAsync` | 204, kể cả khi không có gì để xóa |
 | `PuzzleSubmissionsController.Post` | `POST /api/v1/puzzles/{puzzleId}/submissions` | `SubmitAsync` | `Accepted`, `Rejected`: 200; `Blocked`: 429 kèm `Retry-After`; `PuzzleNotFound`: 404 |
 
-Giới hạn tần suất theo địa chỉ IP dùng bộ giới hạn tần suất có sẵn của ASP.NET Core (`AddRateLimiter`), khai báo bằng thuộc tính `[EnableRateLimiting]` trên controller; giữ trong bộ nhớ, không ghi IP vào cơ sở dữ liệu. Ba chính sách: `telemetry`, `puzzle-submit` (20 lần mỗi phút), `admin-login` (10 lần mỗi phút). `telemetry` cho 60 yêu cầu mỗi phút cho mỗi IP (chốt ở task #25, đổi bằng cấu hình `RateLimits:Telemetry:PermitLimit`).
+: Hành động, API và dịch vụ của phần công khai
+
+Giới hạn tần suất theo địa chỉ IP dùng bộ giới hạn tần suất có sẵn của ASP.NET Core (`AddRateLimiter`) [@ms-ratelimit], khai báo bằng thuộc tính `[EnableRateLimiting]` trên controller; giữ trong bộ nhớ, không ghi IP vào cơ sở dữ liệu. Ba chính sách: `telemetry`, `puzzle-submit` (20 lần mỗi phút), `admin-login` (10 lần mỗi phút). `telemetry` cho 60 yêu cầu mỗi phút cho mỗi IP (chốt ở task #25, đổi bằng cấu hình `RateLimits:Telemetry:PermitLimit`).
 
 ### 3.2. Phần quản trị (trang quản trị gọi)
 
@@ -112,9 +118,11 @@ Mỗi giao diện (interface) có một lớp cài đặt cùng tên bỏ chữ 
 | `AdminPuzzlesController.AddSolution`, `DeleteSolution` | `POST`, `DELETE .../solutions` | `AddSolutionAsync`, `RemoveSolutionAsync` |
 | `AdminPuzzlesController.ListSubmissions` | `GET .../submissions` | `ListSubmissionsAsync` |
 
+: Hành động, API và dịch vụ của phần quản trị
+
 Cả bốn controller quản trị mang thuộc tính `[Authorize]`. `AdminAuthController.Login` mang `[AllowAnonymous]`.
 
-Dịch vụ báo lỗi nghiệp vụ bằng ba ngoại lệ riêng: `NotFoundException`, `ConflictException`, `ValidationException`. Một bộ xử lý ngoại lệ chung (`IExceptionHandler`) đổi chúng thành 404, 409, 400 dạng RFC 9457. Controller không tự bắt ngoại lệ.
+Dịch vụ báo lỗi nghiệp vụ bằng ba ngoại lệ riêng: `NotFoundException`, `ConflictException`, `ValidationException`. Một bộ xử lý ngoại lệ chung (`IExceptionHandler`) đổi chúng thành 404, 409, 400 dạng RFC 9457 [@ms-errors; @rfc9457]. Controller không tự bắt ngoại lệ.
 
 ## 4. Quy tắc trong dịch vụ
 
@@ -155,12 +163,14 @@ So mã băm là so chuỗi hex chữ thường đã kiểm định dạng; hợp
 | `endings` | Theo `ending_id`: đếm `installation_id` khác nhau của `ending_reached` |
 | `choices` | Theo `night`, `choice_id`: đếm `installation_id` khác nhau của `choice_made` |
 
+: Cách tính các số liệu trên dashboard
+
 `CsvExportService.WriteSummaryAsync` gọi `GetSummaryAsync` rồi trải mỗi số thành một dòng `metric,night,key,value`. `WriteEventsAsync` đọc sự kiện theo từng phần và ghi thẳng ra luồng phản hồi, không nạp hết vào bộ nhớ.
 
 ### 4.4. Tài khoản quản trị
 
-- Mật khẩu băm bằng `PasswordHasher` mặc định của Identity (PBKDF2). Tối thiểu 12 ký tự, không bắt buộc chữ hoa, số hay ký tự đặc biệt.
-- Sai mật khẩu 5 lần liên tiếp thì Identity tạm chặn đăng nhập 15 phút (`LockoutEnd`). Việc này khác với khóa tài khoản (`IsActive = false`), do quản trị viên làm và không tự hết.
+- Mật khẩu băm bằng `PasswordHasher` mặc định của Identity (PBKDF2) [@ms-identity-config]. Tối thiểu 12 ký tự, không bắt buộc chữ hoa, số hay ký tự đặc biệt.
+- Sai mật khẩu 5 lần liên tiếp thì Identity tạm chặn đăng nhập 15 phút (`LockoutEnd`) [@ms-identity-config]. Việc này khác với khóa tài khoản (`IsActive = false`), do quản trị viên làm và không tự hết.
 - Đăng nhập kiểm thêm `IsActive`; tài khoản đã khóa nhận cùng lỗi 401 như sai mật khẩu.
 - Khóa tài khoản, đặt lại hay đổi mật khẩu đều đổi `SecurityStamp`. Cookie kiểm lại dấu này mỗi phút, nên phiên cũ hết hiệu lực trong vòng một phút.
 - `UpdateAsync` và `DeleteAsync` nhận `actorId` để từ chối (409) khi người làm tự khóa hoặc tự xóa mình, và khi thao tác làm số tài khoản hoạt động về 0.
@@ -279,6 +289,8 @@ erDiagram
 | `is_replay` | `boolean` | null | `night_started`, `night_completed` |
 | `position_x`, `position_y`, `position_z` | `double precision` | null | Chỉ `player_caught`, tùy chọn |
 
+: Các cột của bảng `telemetry_events`
+
 Chỉ mục: `(installation_id)` cho việc xóa khi rút đồng ý; `(received_at, type)` cho dashboard và CSV.
 
 Không có cột địa chỉ IP, User-Agent hay `platform`. Hợp đồng chỉ có một giá trị `platform` là `windows`, nên chưa cần lưu; thêm nền tảng thì thêm cột bằng migration.
@@ -296,6 +308,8 @@ Không có cột địa chỉ IP, User-Agent hay `platform`. Hợp đồng chỉ
 | `updated_at` | `timestamptz` | not null | |
 | `updated_by_id` | `uuid` | null, khóa ngoại tới `admin_users.id`, `ON DELETE SET NULL` | |
 
+: Các cột của bảng `puzzles`
+
 Dữ liệu tạo sẵn trong migration: một dòng `red-thread-sandal`, tên "Đôi dép chỉ đỏ", `unlock_id` là `ending_red_thread_sandal`, đang tắt, chưa có mã băm. Mã băm của tệp bằng chứng thật không nằm trong repo; quản trị viên nhập trên trang quản trị khi dựng câu đố (task #29, #30).
 
 ### 5.3. `puzzle_solutions`
@@ -308,6 +322,8 @@ Dữ liệu tạo sẵn trong migration: một dòng `red-thread-sandal`, tên "
 | `note` | `varchar(200)` | not null, mặc định rỗng | |
 | `created_at` | `timestamptz` | not null | |
 | `created_by_id` | `uuid` | null, khóa ngoại tới `admin_users.id`, `ON DELETE SET NULL` | |
+
+: Các cột của bảng `puzzle_solutions`
 
 Duy nhất: `(puzzle_id, sha256)`.
 
@@ -323,11 +339,13 @@ Duy nhất: `(puzzle_id, sha256)`.
 | `game_version` | `varchar(16)` | not null | |
 | `submitted_at` | `timestamptz` | not null | |
 
+: Các cột của bảng `puzzle_submissions`
+
 Chỉ mục: `(puzzle_id, installation_id, submitted_at)` cho việc đếm lượt sai trong cửa sổ; `(puzzle_id, submitted_at)` cho trang lịch sử.
 
 ### 5.5. Bảng của ASP.NET Core Identity
 
-`AppDbContext` kế thừa `IdentityUserContext<AdminUser, Guid>`, nên chỉ có bảng người dùng và ba bảng phụ, không có bảng vai trò vì mọi quản trị viên cùng quyền. Tên bảng đổi cho rõ:
+`AppDbContext` kế thừa `IdentityUserContext<AdminUser, Guid>` [@ms-identity], nên chỉ có bảng người dùng và ba bảng phụ, không có bảng vai trò vì mọi quản trị viên cùng quyền. Tên bảng đổi cho rõ:
 
 | Bảng | Dùng | Ghi chú |
 |---|---|---|
@@ -335,6 +353,8 @@ Chỉ mục: `(puzzle_id, installation_id, submitted_at)` cho việc đếm lư�
 | `admin_user_claims` | Không | Identity tạo sẵn |
 | `admin_user_logins` | Không | Chỉ dùng khi đăng nhập qua dịch vụ ngoài |
 | `admin_user_tokens` | Không | |
+
+: Các bảng của ASP.NET Core Identity
 
 Tên đăng nhập (`user_name`) chính là email, nên chỉ mục duy nhất trên `normalized_user_name` của Identity bảo đảm mỗi email một tài khoản; cấu hình thêm `RequireUniqueEmail = true`.
 
@@ -353,6 +373,8 @@ Sơ đồ ở trên chỉ vẽ `admin_users`; các cột chuẩn còn lại củ
 | `DashboardSummary` và các schema con | `DashboardSummary` | Truy vấn tổng hợp trên `TelemetryEvent` |
 | `PuzzleConfig`, `PuzzleSolution` | `PuzzleConfigResponse`, `PuzzleSolutionResponse` | `Puzzle`, `PuzzleSolution` |
 | `PuzzleSubmissionRecord`, `PuzzleSubmissionPage` | `PuzzleSubmissionRecordResponse`, `PuzzleSubmissionPage` | `PuzzleSubmission` |
+
+: Ánh xạ schema OpenAPI với lớp và thực thể
 
 Mỗi sự kiện trong lô được đọc dưới dạng JSON thô (`JsonElement`), rồi kiểm theo `type` trong `TelemetryEventValidator` (đã làm ở task #25). Làm vậy vì hợp đồng yêu cầu một sự kiện sai chỉ bị loại riêng, không làm hỏng cả lô; nếu để bộ đọc JSON kiểm theo từng kiểu con, một sự kiện sai sẽ làm cả lô nhận 400.
 
@@ -407,6 +429,8 @@ flowchart TB
 | `PuzzlesPage` | `/admin/puzzles` | `GET /puzzles` | 12 |
 | `PuzzleDetailPage` | `/admin/puzzles/:puzzleId` | `GET`, `PATCH /puzzles/{puzzleId}`, `/solutions`, `/submissions` | 12 |
 
+: Các trang của trang quản trị
+
 - Kiểu dữ liệu TypeScript sinh bằng `openapi-typescript` từ `docs/api/openapi.yaml`; `apiClient` dùng `openapi-fetch` với các kiểu đó, nên đổi hợp đồng mà quên sửa trang quản trị thì build báo lỗi.
 - `apiClient` gặp 401 thì xóa tài khoản trong `AuthProvider`, và `RequireAuth` đưa về trang đăng nhập.
 - Nút xuất CSV là liên kết tới `/api/admin/exports/{dataset}?from=...&to=...`; trình duyệt tự gửi cookie và tải tệp, không cần đọc tệp bằng JavaScript.
@@ -427,4 +451,6 @@ Website câu đố (task #30) là trang tĩnh, không gọi API và không có d
 | Khóa tư vấn (advisory lock) theo cặp câu đố và mã cài đặt | Hai lần gửi cùng lúc không vượt được giới hạn lượt; không khóa cả bảng | Mức cô lập `SERIALIZABLE` (phải thử lại khi xung đột) |
 | `IdentityUserContext`, không có vai trò | Mọi quản trị viên cùng quyền; bớt bốn bảng không dùng | `IdentityDbContext` đầy đủ với vai trò |
 | Lỗi nghiệp vụ là ngoại lệ, đổi sang mã HTTP ở một chỗ | Controller ngắn; mã lỗi nhất quán theo RFC 9457 | Mỗi controller tự kiểm và tự trả lỗi |
-| Tên bảng và cột snake_case | Quy ước của PostgreSQL; viết SQL tay không cần ngoặc kép | Tên PascalCase mặc định của EF Core |
+| Tên bảng và cột snake_case | Quy ước của PostgreSQL [@pg-lexical]; viết SQL tay không cần ngoặc kép | Tên PascalCase mặc định của EF Core |
+
+: Các quyết định thiết kế máy chủ và lý do
