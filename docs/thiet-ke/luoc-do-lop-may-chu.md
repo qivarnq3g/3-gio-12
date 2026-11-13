@@ -24,6 +24,12 @@ Controller không truy cập `AppDbContext` trực tiếp; mọi truy vấn đi 
 
 Giờ hiện tại lấy từ `TimeProvider` của .NET, không gọi `DateTime.UtcNow`, để test đặt được giờ giả khi kiểm cửa sổ lượt gửi và khoảng thời gian dashboard.
 
+### 1.1. Sơ đồ tổng quát
+
+![Lược đồ lớp: Sơ đồ tổng quát](lop-may-chu/overview.png)
+
+Hình tổng quát xếp các lớp theo thư mục ở bảng trên và chỉ ghi tên lớp. Mỗi controller gọi một giao diện dịch vụ, riêng `AdminDashboardController` dùng cả `IDashboardService` và `ICsvExportService`. `AdminAuthController` không có dịch vụ riêng mà dùng thẳng `SignInManager` và `UserManager` của ASP.NET Core Identity, nên mũi tên nét đứt đi từ khung Controllers tới khung Auth; `IAdminAccountService` cũng dùng `UserManager`. Các lớp cài đặt dịch vụ (tên bỏ chữ `I`) đọc ghi dữ liệu qua `AppDbContext`, lớp này ánh xạ các lớp thực thể thành bảng. DTO trong `Contracts/`, kiểu liệt kê và các lớp phụ (`TelemetryEventValidator`, `SubmissionOutcome`, `DateRange`, `SubmissionQuery`) được lược bỏ; chi tiết ở mục 2 và 3.
+
 ## 2. Lớp thực thể
 
 Lớp thực thể chia hai nhóm không nối với nhau: sự kiện thống kê và câu đố cùng quản trị viên.

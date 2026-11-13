@@ -21,6 +21,12 @@ Các sơ đồ dưới đây mô tả lớp đã có trong code. Chỉ liệt k�
 
 Trường/property trên sơ đồ giữ nguyên tên code. Sự kiện được ghi bằng kiểu `Action`, delegate kiểm tra điều kiện bằng `Func`; phần giải thích chỉ rõ chiều phát và chiều đăng ký. Setter private không làm property trở thành private. Riêng `CheckpointService.Save` và `Restore` lược bỏ kiểu tham số trên hình để tránh chồng chữ; chữ ký đầy đủ xem source được liên kết tại mục 4. Các quan hệ scene dùng association thay vì composition vì Unity quản lý vòng đời GameObject.
 
+### 1.1. Sơ đồ tổng quát
+
+![Lược đồ lớp: Sơ đồ tổng quát](lop-game/overview.png)
+
+Hình tổng quát xếp mọi lớp tự viết của game vào sáu nhóm và chỉ ghi tên lớp. Quan hệ giữa hai lớp cùng nhóm được vẽ như ở các hình chi tiết. Quan hệ giữa hai nhóm được vẽ thành một mũi tên nét đứt nối hai khung, nghĩa là có lớp trong nhóm đầu dùng lớp trong nhóm sau. `NightOneDirector` là trung tâm: lớp này điều khiển nhân vật, tạo và giữ trạng thái Đêm 1, trao đổi dữ liệu với phần lưu tiến độ và phát sự kiện thống kê. Nhóm điện thoại là bản thử giao diện trong `SampleScene`, chưa nối với các nhóm khác. Kiểu của Unity và kiểu liệt kê được lược bỏ; thuộc tính, phương thức và nhãn quan hệ xem ở các mục sau.
+
 ## 2. Nhân vật, camera và tương tác
 
 Nguồn: [FirstPersonPlayer.cs](../../game/Assets/Scripts/Player/FirstPersonPlayer.cs), [WorldInteractable.cs](../../game/Assets/Scripts/Player/WorldInteractable.cs), [PlayerGeometry.cs](../../game/Assets/Scripts/Player/PlayerGeometry.cs), [TestDoor.cs](../../game/Assets/Scripts/Player/TestDoor.cs), [TestPickup.cs](../../game/Assets/Scripts/Player/TestPickup.cs), [NightInteraction.cs](../../game/Assets/Scripts/Story/NightInteraction.cs).
