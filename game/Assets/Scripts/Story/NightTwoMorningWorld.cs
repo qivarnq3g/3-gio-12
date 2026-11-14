@@ -13,6 +13,9 @@ namespace BaGio12.Story
         Light worldSun;
         Color originalSky;
         Transform lienFacing;
+        readonly List<GameObject> morningNodes = new List<GameObject>();
+        readonly List<GameObject> eveningNodes = new List<GameObject>();
+        GameObject bikeNode, teaNode;
         Material Material(Color color)
         {
             var material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
@@ -24,15 +27,17 @@ namespace BaGio12.Story
             o.transform.SetParent(world.transform); o.transform.position = position; o.transform.localScale = size;
             o.GetComponent<Renderer>().sharedMaterial = material; return o;
         }
-        void Node(string name, Vector3 position, string action, Material material, int index = 0)
+        GameObject Node(string name, Vector3 position, string action, Material material, int index = 0)
         {
-            var o = Box(name, position, new Vector3(.65f, .6f, .65f), material);
+            var holder = new GameObject(name + " node"); holder.transform.SetParent(world.transform);
+            var o = Box(name, position, new Vector3(.65f, .6f, .65f), material); o.transform.SetParent(holder.transform, true);
             var node = o.AddComponent<MorningInteraction>(); node.owner = this; node.action = action; node.index = index;
-            var label = new GameObject("Label").AddComponent<TextMesh>(); label.transform.SetParent(o.transform.parent);
+            var label = new GameObject("Label").AddComponent<TextMesh>(); label.transform.SetParent(holder.transform);
             label.transform.position = position + Vector3.up * .7f;
             label.text = name; label.fontSize = 48; label.characterSize = .045f; label.anchor = TextAnchor.MiddleCenter;
             label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             label.GetComponent<Renderer>().sharedMaterial = label.font.material;
+            return holder;
         }
         void EnsureWorld()
         {
@@ -54,17 +59,20 @@ namespace BaGio12.Story
             Box("Road", new Vector3(112,.012f,52), new Vector3(4,.02f,80), floor);
             Box("Stop line", new Vector3(112,.04f,47), new Vector3(4,.04f,.2f), wall);
             Box("Store facade", new Vector3(105,1.5f,95), new Vector3(6,3,.3f), wall);
-            Node("Bánh mì", new Vector3(96,.7f,7), "breakfast", action);
-            Node("Xe máy", Parking + Vector3.up * .6f, "bike", action);
+            morningNodes.Add(Node("Bánh mì", new Vector3(96,.7f,7), "breakfast", action));
+            bikeNode = Node("Xe máy", Parking + Vector3.up * .6f, "bike", action);
             Node("Xe máy / cửa hàng", Store + Vector3.up * .6f, "store", action);
-            Node("Lối vào phòng", new Vector3(100,.7f,7), "gate", action);
+            morningNodes.Add(Node("Lối vào phòng", new Vector3(100,.7f,7), "gate", action));
             Node("Nệm", new Vector3(102,.35f,-2), "bed", action);
-            Node("Đèn kẹp bàn", new Vector3(102,.8f,1), "lamp", action);
+            morningNodes.Add(Node("Đèn kẹp bàn", new Vector3(102,.8f,1), "lamp", action));
+            eveningNodes.Add(Node("Quán cơm", RiceShop + Vector3.up * .6f, "rice", action));
+            eveningNodes.Add(Node("Cô Liên", LienDesk + new Vector3(1.2f,.6f,0), "lien", action));
+            teaNode = Node("Ly trà sữa", LienDesk + Vector3.up * .6f, "tea", action);
             for (int i=0; i<4; i++)
             {
                 shelf.Add(Box("Shelf tier " + i, new Vector3(98,.25f+i*.35f,-2), new Vector3(1.5f,.1f,.6f), prop));
             }
-            Node("Ráp kệ", new Vector3(98,.5f,1.5f), "shelf", action, -1);
+            morningNodes.Add(Node("Ráp kệ", new Vector3(98,.5f,1.5f), "shelf", action, -1));
             var npc = Box("Cô Liên giữ chỗ", Lien + Vector3.up * .65f, new Vector3(.5f,1.3f,.5f), prop);
             // NPC body and facing marker must not occlude their own eye ray.
             Destroy(npc.GetComponent<Collider>());
@@ -80,13 +88,28 @@ namespace BaGio12.Story
         {
             if (world == null || State == null) return;
             for(int i=0;i<shelf.Count;i++) shelf[i].SetActive(i<State.assemblySteps);
-            deskLamp.enabled = State.lampTested && State.stage != MorningStage.Evening;
-            worldSun.intensity = State.stage == MorningStage.Evening ? .08f : 1.2f;
-            story.player.eyes.backgroundColor = State.stage == MorningStage.Evening ? originalSky : new Color(.42f,.62f,.78f);
+            bool evening = State.stage >= MorningStage.Evening;
+            deskLamp.enabled = State.lampTested && !evening;
+            worldSun.intensity = evening ? .08f : 1.2f;
+            story.player.eyes.backgroundColor = evening ? originalSky : new Color(.42f,.62f,.78f);
             lienFacing.localScale = new Vector3(.12f, .12f, State.gateElapsed >= 8 ? .5f : .1f);
+            foreach (var n in morningNodes) n.SetActive(!evening);
+            foreach (var n in eveningNodes) n.SetActive(evening);
+            teaNode.SetActive(evening && State.teaArrived && !State.teaTaken && !State.teaCallPending);
+            bikeNode.transform.position = evening ? EveningBike - Parking : Vector3.zero;
         }
         public string PromptFor(string action, int index)
         {
+            if (State.stage >= MorningStage.Evening)
+                switch(action)
+                {
+                    case "bike": return "Bật máy xe - đi mua cơm";
+                    case "store": return "Bật máy - về nhà trọ";
+                    case "rice": return "Mua cơm";
+                    case "lien": return "Hỏi cô Liên có ai gửi gì không";
+                    case "tea": return "Lấy ly trà sữa";
+                    case "bed": return "Đi ngủ hay thức canh";
+                }
             switch(action)
             {
                 case "breakfast": return "Ăn bánh mì";
@@ -95,7 +118,7 @@ namespace BaGio12.Story
                 case "gate": return "Lách qua cô Liên vào phòng";
                 case "shelf": return "Ráp tầng kệ " + (index<0 ? Mathf.Min(4,State.assemblySteps+1) : index+1);
                 case "lamp": return "Kẹp đèn và bật thử";
-                default: return "Nằm nghỉ một chút";
+                default: return State.stage >= MorningStage.Evening ? "Đi ngủ hay thức canh" : "Nằm nghỉ một chút";
             }
         }
         public void Interact(string action, int index)
@@ -110,9 +133,12 @@ namespace BaGio12.Story
                 case "gate": ok = PassGate(); break;
                 case "shelf": ok = Assemble(index<0 ? State.assemblySteps : index); break;
                 case "lamp": ok = TestLamp(); break;
-                default: ok = Vector3.Distance(story.player.transform.position, Room) < 4 && Rest(); break;
+                case "rice": ok = BuyRice(); break;
+                case "lien": ok = AskLien(); break;
+                case "tea": ok = TakeTea(); break;
+                default: ok = State.stage >= MorningStage.Evening ? OpenBed() : Vector3.Distance(story.player.transform.position, Room) < 4 && Rest(); break;
             }
-            if (!ok) story.Say(Objective);
+            if (!ok && !(action == "bed" && State.stage >= MorningStage.Evening && !State.hasRice)) story.Say(Objective);
             RefreshWorld();
         }
         void OnDestroy()

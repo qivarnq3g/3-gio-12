@@ -11,6 +11,7 @@ namespace BaGio12.Story
         {
             get
             {
+                if (State.stage >= MorningStage.Evening) return EveningObjective;
                 switch(State.stage)
                 {
                     case MorningStage.Alarm: return "Tắt báo thức 06:30.";
@@ -41,6 +42,7 @@ namespace BaGio12.Story
             GUI.matrix = Matrix4x4.Scale(new Vector3(Screen.width / 1280f, Screen.height / 720f, 1));
             if (Transitioning)
             { Background(new Rect(0,0,1280,720), Color.black); GUI.matrix=previous; return; }
+            if (DrawEveningOverlay()) { GUI.matrix = previous; return; }
             bool phone = story.player.ActivePhone != 0;
             if (phone || page != "")
             {
@@ -59,6 +61,7 @@ namespace BaGio12.Story
                     GUI.Label(new Rect(80,80,1080,120), "06:30 — Bống ơi, dậy đi con, muộn rồi.\nBay sang Nhật: còn 8 ngày.", titleStyle);
                     if(Choice(0,"Tắt báo thức")) StopAlarm();
                 }
+                else if(story.player.ActivePhone == 1 && State.stage >= MorningStage.Evening) DrawNganEvening();
                 else if(story.player.ActivePhone == 2)
                 {
                     GUI.Label(new Rect(80,70,1000,80), "Máy Sinh viên — Sức khỏe", titleStyle);
@@ -109,6 +112,7 @@ namespace BaGio12.Story
                 // during the final minute before the forced nap.
                 bool blink = !story.State.night1_slept && fatiguePulse < 24 && fatiguePulse%12 > 11.4f;
                 blink |= State.stage == MorningStage.Rest && State.restSeconds > 20 && State.restSeconds%8 > 7.3f;
+                blink |= State.stage == MorningStage.Vigil && State.vigilSeconds%5 > 4.1f;
                 if(blink) Background(new Rect(0,0,1280,720), Color.black);
             }
             GUI.matrix = previous;
