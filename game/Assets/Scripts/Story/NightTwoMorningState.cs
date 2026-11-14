@@ -4,7 +4,7 @@ using BaGio12.Persistence;
 
 namespace BaGio12.Story
 {
-    public enum MorningStage { Alarm, Breakfast, ToStore, Store, ReturnHome, Gate, Assembly, Lamp, Rest, Evening }
+    public enum MorningStage { Alarm, Breakfast, ToStore, Store, ReturnHome, Gate, Assembly, Lamp, Rest, Evening, ToRice, RiceShop, RiceReturn, Home, Vigil, Ended }
 
     [Serializable]
     public sealed class OdometerEntry
@@ -25,6 +25,12 @@ namespace BaGio12.Story
         public string roomReply = "unanswered";
         public int momSuspicion;
         public List<OdometerEntry> odoLog = new List<OdometerEntry>();
+        public bool hasRice, sawBikeMoved, teaArrived, teaCallPending, teaTaken, drankMilkTea, lienEveningSaid;
+        public bool readEveningBatch, sawPhotos, sawStorage, openedCalculator, sawVlog, sawLinhChat, setNganPasscode;
+        public bool night2Slept, vigilDozed;
+        public int vaultWrongAttempts, strangerDelivered;
+        public float vigilSeconds;
+        public List<string> eveningSent = new List<string>();
 
         public static NightTwoMorningState FromNightOne(NightOneState first)
         {
@@ -34,13 +40,17 @@ namespace BaGio12.Story
         public static bool Valid(NightTwoMorningState s)
         {
             if (s == null || !Enum.IsDefined(typeof(MorningStage), s.stage) || s.assemblySteps < 0 || s.assemblySteps > 4
-                || s.momSuspicion < 0 || s.momSuspicion > 1 || s.odoLog == null
+                || s.momSuspicion < 0 || s.momSuspicion > 1 || s.odoLog == null || s.eveningSent == null
+                || s.vaultWrongAttempts < 0 || s.strangerDelivered < 0 || s.strangerDelivered > NightTwoEvening.StrangerCount
                 || (s.roomReply != "unanswered" && s.roomReply != "given" && s.roomReply != "refused")) return false;
-            foreach (float n in new[] { s.routeMetres, s.speed, s.stoppedSeconds, s.gateElapsed, s.restSeconds, s.odometer })
+            foreach (float n in new[] { s.routeMetres, s.speed, s.stoppedSeconds, s.gateElapsed, s.restSeconds, s.odometer, s.vigilSeconds })
                 if (!GamePreferences.Finite(n) || n < 0) return false;
             if (s.speed > FixedRouteRide.MaxSpeed || s.routeMetres > FixedRouteRide.Length || s.stoppedSeconds > FixedRouteRide.RedSeconds
-                || s.gateElapsed >= 11 || (s.riding && s.stage != MorningStage.ToStore && s.stage != MorningStage.ReturnHome)
+                || s.gateElapsed >= 11 || s.vigilSeconds > NightTwoEvening.VigilLength
+                || (s.riding && s.stage != MorningStage.ToStore && s.stage != MorningStage.ReturnHome && s.stage != MorningStage.ToRice && s.stage != MorningStage.RiceReturn)
                 || (s.returning && s.stage != MorningStage.ReturnHome && s.stage < MorningStage.Gate)) return false;
+            foreach (string id in s.eveningSent)
+                if (Array.IndexOf(NightTwoEvening.QuestionIds, id) < 0) return false;
             foreach (var e in s.odoLog)
                 if (e == null || !GamePreferences.Finite(e.km) || e.km < 0
                     || !TimeSpan.TryParseExact(e.time, @"hh\:mm", System.Globalization.CultureInfo.InvariantCulture, out _)) return false;
