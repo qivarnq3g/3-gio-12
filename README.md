@@ -35,6 +35,58 @@ File gốc nặng (`.blend`, `.psd`, ảnh AI gốc) để trên Drive, không �
 - 16/11/2026 09:07: thuyết minh thiết kế (kiến trúc, use case, lược đồ lớp).
 - 03/12/2026 09:07: dự án hoàn chỉnh (đêm 1-3 chơi được, máy chủ, trang quản trị, báo cáo, thuyết trình).
 
+## Hướng dẫn chạy máy chủ & cơ sở dữ liệu
+
+Dự án sử dụng PostgreSQL 17 và ASP.NET Core API. Cơ sở dữ liệu và cấu trúc bảng được đồng bộ tự động giữa tất cả thành viên qua EF Core Migrations được lưu trong Git.
+
+### 1. Khởi động nhanh bằng Docker Compose
+
+Lần đầu mở dự án trên máy cá nhân, sao chép file cấu hình môi trường:
+
+```bash
+# Windows PowerShell
+Copy-Item .env.example .env
+
+# macOS / Linux
+cp .env.example .env
+```
+
+Khởi động cơ sở dữ liệu PostgreSQL và máy chủ API:
+
+```bash
+docker compose up -d --build
+```
+
+- **API máy chủ:** `http://localhost:8080` (kiểm tra `http://localhost:8080/health` trả về `{"status":"ok"}`).
+- **PostgreSQL:** Chạy ở cổng `5432` (`localhost:5432`, db: `threetwelve`, user/pass: `threetwelve` / `threetwelve-dev`).
+- Dữ liệu được lưu bền vững vào Docker volume `pgdata`.
+- Khi máy chủ khởi động, nó tự động chạy mọi Migration để đồng bộ cấu trúc bảng và tự động tạo tài khoản quản trị đầu tiên (`admin@example.test` / `mat-khau-thu-dai-12`).
+
+### 2. Nạp dữ liệu mẫu để kiểm thử Dashboard (#28)
+
+Vì hệ thống mới dựng và game chưa gửi sự kiện thực tế, cơ sở dữ liệu ban đầu hoàn toàn rỗng (0 người chơi, 0 phiên). Để nạp dữ liệu mẫu mô phỏng người chơi chơi qua các đêm để kiểm thử Dashboard:
+
+```bash
+python tools/seed_telemetry.py
+```
+
+Lệnh này sẽ gửi 15 lượt người chơi với 135 sự kiện thống kê mẫu (Đêm 1-3, vị trí bị bắt, nhánh lựa chọn, các kết thúc) qua API `POST /api/v1/telemetry/batches`.
+
+Khi muốn xóa sạch dữ liệu quay về trạng thái rỗng ban đầu:
+```bash
+python tools/seed_telemetry.py --clear
+```
+
+### 3. Chạy trang quản trị Admin (#27, #28)
+
+```bash
+cd admin
+npm install
+npm run dev
+```
+
+Mở trình duyệt: `http://localhost:5173/admin/` (đăng nhập bằng `admin@example.test` / `mat-khau-thu-dai-12`).
+
 ## Tài liệu thiết kế
 
 - [Kiến trúc hệ thống](docs/thiet-ke/kien-truc-he-thong.md)
