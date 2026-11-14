@@ -23,10 +23,13 @@ MEMBERS = DESIGN_DIR / "thanh-vien.local.txt"
 COVER_TEMPLATE = DESIGN_DIR / "mau-bia.docx"
 COVER_BLOCK = re.compile(r'^::: \{custom-style="(Cover \w+)"\}\n(.*?)\n:::', re.M | re.S)
 PARTS = [
-    ("kien-truc-he-thong.md", 10, "Kiến trúc hệ thống"),
     ("luoc-do-use-case.md", 9, "Lược đồ use case"),
+    ("kien-truc-he-thong.md", 10, "Kiến trúc hệ thống"),
     ("luoc-do-lop-game.md", 11, "Lược đồ lớp phần game"),
-    ("luoc-do-lop-may-chu.md", 12, "Lược đồ lớp phần máy chủ và web"),
+    ("luoc-do-lop-may-chu.md", 12, "Lược đồ lớp phần máy chủ"),
+    ("database-design.md", 12, "Thiết kế cơ sở dữ liệu"),
+    ("admin-ui-design.md", 27, "Thiết kế trang quản trị"),
+    ("conclusion.md", 13, "Kết luận"),
 ]
 FONT = "Times New Roman"
 BROWSERS = [
@@ -38,20 +41,13 @@ BROWSERS = [
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
 ]
 SCALE = 2
-PORTRAIT = (15.0, 16.0)
-LANDSCAPE = (23.0, 12.0)
+PORTRAIT = (15.0, 21.0)
 TABLE_BORDER = '<w:{0} w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
 MERMAID_CONFIG = {
     "fontFamily": "Arial",
     **{kind: {"useMaxWidth": False} for kind in ("flowchart", "sequence", "class", "er", "state")},
 }
 PAGE_MARGINS = '<w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1701" w:header="567" w:footer="567" w:gutter="0"/>'
-LANDSCAPE_START = f"""```{{=openxml}}
-<w:p><w:pPr><w:sectPr><w:pgSz w:w="11906" w:h="16838"/>{PAGE_MARGINS}</w:sectPr></w:pPr></w:p>
-```"""
-LANDSCAPE_END = f"""```{{=openxml}}
-<w:p><w:pPr><w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>{PAGE_MARGINS}</w:sectPr></w:pPr></w:p>
-```"""
 HEADING = re.compile(r"^(#{1,6})\s+(?:\d+(?:\.\d+)*\.?\s+)?(.*?)\s*$")
 FENCE = re.compile(r"^```\s*mermaid\s*$")
 IMAGE = re.compile(r"^!\[[^\]]*\]\((?!https?://)([^)\s]+\.png)\)\s*$")
@@ -196,12 +192,7 @@ def png_size(path):
 def figure_size(pixel_width, pixel_height):
     width = pixel_width / SCALE * 2.54 / 96
     height = pixel_height / SCALE * 2.54 / 96
-    portrait = min(1, PORTRAIT[0] / width, PORTRAIT[1] / height)
-    if portrait < 0.8 and width / height >= 1.5:
-        landscape = min(1, LANDSCAPE[0] / width, LANDSCAPE[1] / height)
-        if landscape > portrait:
-            return width * landscape, True
-    return width * portrait, False
+    return width * min(1, PORTRAIT[0] / width, PORTRAIT[1] / height)
 
 
 def browser_config(work):
@@ -224,37 +215,15 @@ def mermaid_command():
 
 
 def figure_lines(image, chapter, figure, title):
-    size, landscape = figure_size(*png_size(image))
-    line = f"![Hình {chapter}.{figure}. {title}]({image.as_posix()}){{width={size:.1f}cm}}"
-    return [LANDSCAPE_START, "", line, "", LANDSCAPE_END] if landscape else [line]
-
-
-def place_figure(out, lines, heading_at):
-    if lines[0] != LANDSCAPE_START or heading_at is None or any(item.strip() for item in out[heading_at + 1:]):
-        out.extend(lines)
-        return
-    start = heading_at
-    while True:
-        before = start
-        while before > 0 and not out[before - 1].strip():
-            before -= 1
-        if before > 0 and HEADING.match(out[before - 1]):
-            start = before - 1
-            continue
-        break
-    if before > 0 and out[before - 1] == LANDSCAPE_END:
-        del out[before - 1]
-    else:
-        out[start:start] = [LANDSCAPE_START, ""]
-    out.extend(lines[1:])
+    size = figure_size(*png_size(image))
+    return [f"![Hình {chapter}.{figure}. {title}]({image.as_posix()}){{width={size:.1f}cm}}"]
 
 
 def render_diagrams(text, chapter, work, cache):
-    out, block, figure, title, heading_at = [], None, 0, "", None
+    out, block, figure, title = [], None, 0, ""
     for line in text.splitlines():
         heading = HEADING.match(line)
         if block is None and heading:
-            heading_at = len(out)
             title = re.sub(r"^\d+(?:\.\d+)*\.\s*", "", line.lstrip("#").strip())
         if block is None and FENCE.match(line):
             block = []
@@ -275,7 +244,7 @@ def render_diagrams(text, chapter, work, cache):
                     cmd += ["-p", str(browser)]
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
             figure += 1
-            place_figure(out, figure_lines(image, chapter, figure, title), heading_at)
+            out.extend(figure_lines(image, chapter, figure, title))
             block = None
             continue
         picture = IMAGE.match(line) if block is None else None
@@ -284,7 +253,7 @@ def render_diagrams(text, chapter, work, cache):
             if not image.exists():
                 sys.exit(f"Thiếu ảnh {image}")
             figure += 1
-            place_figure(out, figure_lines(image, chapter, figure, title), heading_at)
+            out.extend(figure_lines(image, chapter, figure, title))
             continue
         if block is not None:
             block.append(line)

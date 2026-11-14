@@ -6,11 +6,14 @@ Thư mục này chứa nguồn của bản thuyết minh chi tiết thiết kế
 
 | Tệp | Chương trong bản nộp | Task | Phụ trách |
 |---|---|---|---|
-| `thuyet-minh.md` | Bìa, 1. Giới thiệu, 2. Thay đổi so với bản đăng ký | #13 | Quang |
+| `thuyet-minh.md` | Bìa, 1. Tổng quan (gồm thay đổi so với bản đăng ký) | #13 | Quang |
+| `luoc-do-use-case.md` | 2. Lược đồ use case | #9 | Thắng |
 | `kien-truc-he-thong.md` | 3. Kiến trúc hệ thống | #10 | Quang |
-| `luoc-do-use-case.md` | 4. Lược đồ use case | #9 | Thắng |
-| `luoc-do-lop-game.md` | 5. Lược đồ lớp phần game | #11 | Phúc |
-| `luoc-do-lop-may-chu.md` | 6. Lược đồ lớp phần máy chủ và web | #12 | Quang |
+| `luoc-do-lop-game.md` | 4. Lược đồ lớp phần game | #11 | Phúc |
+| `luoc-do-lop-may-chu.md` | 5. Lược đồ lớp phần máy chủ | #12 | Quang |
+| `database-design.md` | 6. Thiết kế cơ sở dữ liệu | #12 | Quang |
+| `admin-ui-design.md` | 7. Thiết kế trang quản trị | #27 | Quang |
+| `conclusion.md` | 8. Kết luận | #13 | Quang |
 
 Tệp chưa có thì bản Word hiện chương đó với dòng "Phần này đang được soạn".
 
@@ -18,8 +21,8 @@ Tệp chưa có thì bản Word hiện chương đó với dòng "Phần này đ
 
 - Dòng đầu là tiêu đề cấp 1 (`# Lược đồ use case`). Đoạn giữa tiêu đề cấp 1 và tiêu đề cấp 2 đầu tiên là ghi chú cho nhóm (task, người duyệt, nguồn); script bỏ đoạn này khỏi bản nộp.
 - Tiêu đề cấp 2, 3 đánh số trong phần (`## 1. Tác nhân`, `### 1.1. Người chơi`). Script tự thêm số chương phía trước, ví dụ `4.1.`, và đổi "mục 1.1" trong cùng tệp thành "mục 4.1.1".
-- Sơ đồ viết bằng khối ` ```mermaid `, hoặc là ảnh PNG xuất từ draw.io đặt trên một dòng riêng (`![...](lop-game/ten-hinh.png)`); bản vẽ `.drawio` để cạnh ảnh. Script vẽ khối Mermaid thành ảnh, đặt tên "Hình <chương>.<số>. <tên mục chứa sơ đồ>". Sơ đồ quá rộng được đặt trên trang ngang; sơ đồ rộng hơn khoảng ba lần chiều cao vẫn ra chữ nhỏ, nên vẽ theo chiều dọc (`flowchart TB`, `direction TB`) hoặc tách đôi.
-- Hình draw.io xuất ở tỉ lệ 200% với chữ 12 px chỉ in ra 9 pt khi script không phải co hình: bản vẽ (cả viền) tối đa khoảng 567 x 605 px cho hình dọc, 869 x 453 px cho hình ngang. Lớn hơn thì dàn gọn, ngắt chữ ký hàm dài xuống dòng hoặc tách thành hai hình ở hai mục con, rồi xem trang A4 ở 100% trước khi đẩy.
+- Sơ đồ viết bằng khối ` ```mermaid `, hoặc là ảnh PNG xuất từ draw.io đặt trên một dòng riêng (`![...](lop-game/ten-hinh.png)`); bản vẽ `.drawio` để cạnh ảnh. Script vẽ khối Mermaid thành ảnh, đặt tên "Hình <chương>.<số>. <tên mục chứa sơ đồ>". Mọi trang đều dọc; hình được co cho vừa khung 15 x 21 cm, nên sơ đồ rộng phải vẽ theo chiều dọc. Với Mermaid: sơ đồ có nhiều khung con dùng `%%{init: {"layout": "elk"}}%%` để các khung xếp chồng; sơ đồ tuần tự dùng `wrap`, `actorMargin`, `width` nhỏ trong khối `init` và ngắt dòng đường dẫn dài bằng `<br/>` (để tự ngắt thì đường dẫn bị chèn gạch nối).
+- Hình draw.io xuất ở tỉ lệ 200% với chữ 12 px chỉ in ra 9 pt khi script không phải co hình: bản vẽ (cả viền) tối đa khoảng 567 x 794 px; tới 640 px chiều ngang chữ vẫn còn khoảng 8 pt. Lớn hơn thì dàn gọn, ngắt chữ ký hàm dài xuống dòng hoặc tách thành hai hình ở hai mục con, rồi xem trang A4 ở 100% trước khi đẩy.
 - Nhắc tới phần khác thì ghi số task của phần đó (`task #11`); script đổi thành "chương 5". Nhắc tới task khác (#4, #18, #25...), hay ghi số issue trần như `#20` ngoài khối mã, thì script báo lỗi: viết lại câu cho người đọc ngoài nhóm hiểu. Số issue chỉ để trong đoạn ghi chú cho nhóm ở đầu tệp.
 - Liên kết tới tệp trong repo thành chữ thường trong bản Word, nên câu phải đọc được khi không bấm vào.
 - Chính tả và trình bày theo quy ước chung: tiêu đề chỉ viết hoa chữ đầu và tên riêng, không in đậm trong câu, không dùng `--` hay dấu gạch dài.
