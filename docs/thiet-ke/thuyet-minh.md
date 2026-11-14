@@ -38,6 +38,8 @@ Ngoài ra có website câu đố là trang tĩnh, nơi người chơi tìm bằn
 
 Bản nộp ngày 03/12/2026 gồm toàn bộ máy chủ, trang quản trị và website câu đố, cùng ba đêm đầu của game (đêm 1 đến đêm 3) chơi được từ đầu đến cuối. Các đêm sau được thiết kế ở mức kịch bản và làm tiếp sau học phần. Bản nộp dùng cho chơi thử kín theo lời mời, chưa phát hành công khai.
 
+Câu đố ngoài game cần nội dung của các đêm sau: chìa giải mã và địa chỉ trang tải nằm trong phần trong của két điện thoại, mở từ đêm 3 đến đêm 6, còn mục gửi bằng chứng chỉ mở sau kết thúc "Về nhà". Vì vậy, trong bản nộp, người chơi chưa đi tới câu đố theo mạch truyện. Bản nộp có thêm một lối mở thẳng mục gửi bằng chứng và các tệp trong két để trình diễn và kiểm thử trọn luồng câu đố.
+
 ## Yêu cầu chức năng
 
 Người chơi (game):

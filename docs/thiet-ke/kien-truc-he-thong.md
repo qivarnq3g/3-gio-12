@@ -20,9 +20,9 @@ Hệ thống gồm năm thành phần:
 
 Ba nguyên tắc chi phối thiết kế:
 
-1. Game chơi được trọn vẹn khi không có mạng. Mạng chỉ cần cho hai việc tùy chọn: gửi thống kê (khi người chơi đồng ý) và gửi bằng chứng câu đố.
+1. Game chơi được khi không có mạng, trừ kết thúc thật. Mạng chỉ cần cho hai việc: gửi thống kê (tùy chọn, khi người chơi đồng ý) và gửi bằng chứng câu đố để mở kết thúc thật.
 2. Người chơi không có tài khoản. Máy chủ chỉ biết một mã cài đặt ngẫu nhiên (`installationId`), không biết người chơi là ai.
-3. Game không chứa bí mật. Lời giải câu đố (mã băm của bằng chứng đúng) chỉ nằm trên máy chủ.
+3. Game không chứa bí mật: không có khóa API, không có mã băm của bằng chứng đúng. Bằng chứng được kiểm trên máy chủ để quản trị viên đổi bằng chứng hợp lệ và giới hạn lượt gửi mà không phải phát hành bản build mới, và để máy chủ ghi lịch sử gửi cho trang quản trị (yêu cầu 12).
 
 ## 2. Sơ đồ thành phần
 
@@ -242,7 +242,7 @@ Bản build game phát cho người chơi dưới dạng tệp nén cho Windows;
 - Cơ sở dữ liệu và API không mở cổng ra ngoài; chỉ proxy ngược mở 80 và 443.
 - Mật khẩu cơ sở dữ liệu và tài khoản quản trị đầu tiên lấy từ biến môi trường hoặc tệp `.env` không đưa vào repo.
 
-Giới hạn đã chấp nhận: game chạy offline nên người sửa tệp lưu vẫn tự mở được kết thúc thật. Thiết kế chỉ bảo đảm lời giải không nằm trong bản build.
+Giới hạn đã chấp nhận: mã mở khóa máy chủ trả về là một giá trị cố định, game lưu nó trong tệp lưu trên máy, nên người sửa tệp lưu vẫn tự mở được kết thúc thật. Việc kiểm trên máy chủ không nhằm chống gian lận phía máy. Nó cũng không nhằm giấu tấm ảnh: SHA-256 là hàm một chiều, nên kể cả khi mã băm nằm trong bản build thì cũng không suy ngược ra được tệp bằng chứng.
 
 ## 6. Ánh xạ yêu cầu chức năng với thành phần
 
@@ -274,6 +274,7 @@ Giới hạn đã chấp nhận: game chạy offline nên người sửa tệp l
 | Trang quản trị và API cùng tên miền sau proxy ngược | Cookie đăng nhập dùng thẳng, không cần CORS | Hai tên miền, xác thực bằng token |
 | Website câu đố là trang tĩnh, tên miền riêng | Không cần máy chủ; trông như blog thật của nhân vật; lời giải không lộ qua API | Phục vụ câu đố từ máy chủ API |
 | Gửi mã băm thay vì tệp | Tệp không rời máy người chơi; máy chủ không phải lưu ảnh | Tải tệp lên máy chủ |
+| Kiểm bằng chứng trên máy chủ | Đổi bằng chứng hợp lệ và giới hạn lượt mà không phát hành lại game; có lịch sử gửi cho quản trị viên | So mã băm ngay trong game |
 | Docker Compose trên một máy ảo | Chạy giống nhau trên máy cá nhân và máy chủ; không phụ thuộc nhà cung cấp | Dịch vụ nền tảng của một nhà cung cấp đám mây |
 
 : Các quyết định kiến trúc và lý do

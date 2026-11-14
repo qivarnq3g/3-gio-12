@@ -90,7 +90,7 @@ Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Cá
 |---|---|
 | Tác nhân | Người chơi |
 | Yêu cầu | 7, 14 |
-| Tiền điều kiện | Câu đố đang bật; người chơi đã giải mã tệp lấy từ website câu đố |
+| Tiền điều kiện | Người chơi đã đạt kết thúc "Về nhà", nhờ đó mục gửi bằng chứng trong game được mở; câu đố đang bật; người chơi đã giải mã tệp lấy từ website câu đố |
 | Luồng chính | 1. Người chơi chọn tệp bằng chứng trong game. 2. Game tính mã băm SHA-256 trên máy; tệp không rời máy. 3. Game gửi mã băm lên máy chủ. 4. Máy chủ so với các mã băm hợp lệ. 5. Đúng: game nhận mã mở khóa và mở kết thúc thật. |
 | Luồng khác | 4a. Sai: máy chủ trả số lượt còn lại. 4b. Sai quá 5 lần trong 60 phút: máy chủ tạm khóa và báo thời gian chờ. 3a. Mất mạng: game báo không gửi được, không trừ lượt. |
 
