@@ -11,7 +11,7 @@ namespace BaGio12.Story
         bool restoringSave;
         public NightSaveData CaptureSave()
         {
-            if (Busy || !Checkpoints.Restore(out var checkpoint, out var point, out var facing)) return null;
+            if (Busy || (Morning != null && Morning.Transitioning) || !Checkpoints.Restore(out var checkpoint, out var point, out var facing)) return null;
             return new NightSaveData {
                 scene = SceneManager.GetActiveScene().name, savedAt = DateTime.UtcNow.ToString("O"), state = State.Copy(),
                 checkpointState = checkpoint, checkpointId = Checkpoints.Id, checkpointPosition = point, checkpointYaw = facing,
@@ -34,6 +34,7 @@ namespace BaGio12.Story
             {
                 StopAllCoroutines(); Busy = false; HoldProgress = 0;
                 State = save.state.Copy(); Clock = new StoryClock(State);
+                Morning.SyncWorld();
                 Checkpoints.Save(save.checkpointId, save.checkpointState, save.checkpointPosition, save.checkpointYaw);
                 hidingSeconds = save.hidingSeconds; hideAnchor = save.position;
                 roomSeconds = save.roomSeconds; immuneUntil = Time.time + save.immuneRemaining;
@@ -48,6 +49,7 @@ namespace BaGio12.Story
                 Modal = save.modal ?? ""; NotebookOpen = Modal == "notebook";
                 BlackTitle = State.stage == NightStage.Ended ? State.ending == "bystander" ? "NGƯỜI QUA ĐƯỜNG" : "HẾT ĐÊM 1" : "";
                 player.SetPhone(save.activePhone); player.SetOverlay(Modal != "" || State.stage == NightStage.Ended);
+                if (InNightTwo) Morning.RestoreControl();
                 bag.transform.position = State.hasBagPosition ? State.bagPosition : bagAtDoor.position;
                 SyncWorld(); return true;
             }

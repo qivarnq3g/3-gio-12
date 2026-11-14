@@ -23,7 +23,8 @@ namespace BaGio12.Persistence
             && Mathf.Abs(v.x) < 1000 && v.y > -10 && v.y < 1000 && Mathf.Abs(v.z) < 1000;
         static bool StateValid(NightOneState s) => s != null && s.schemaVersion == 2 && Enum.IsDefined(typeof(NightStage), s.stage)
             && s.clockDay >= 0 && s.clockDay <= 30 && TimeSpan.TryParseExact(s.clock, @"hh\:mm", System.Globalization.CultureInfo.InvariantCulture, out _)
-            && s.prologue_beaten >= 0 && s.prologue_beaten < 3 && s.sent != null && s.messages != null && s.pendingMessages != null && s.notebook != null && s.afterJumpQuestions != null;
+            && s.prologue_beaten >= 0 && s.prologue_beaten < 3 && s.sent != null && s.messages != null && s.pendingMessages != null && s.notebook != null && s.afterJumpQuestions != null
+            && (!s.nightTwoStarted || NightTwoMorningState.Valid(s.nightTwo));
         public static bool Valid(NightSaveData d)
         {
             if (d.schemaVersion != 1 || d.scene != "NightOneGraybox" || !StateValid(d.state) || !StateValid(d.checkpointState)

@@ -10,6 +10,7 @@ namespace BaGio12.Story
         Vector2 messagesScroll, notebookScroll;
         void Update()
         {
+            if (story.InNightTwo) return;
             var keys=Keyboard.current;
             if(keys==null || story.player.IsPaused || story.player.PauseChangedThisFrame)return;
             if(keys.nKey.wasPressedThisFrame)story.ToggleNotebook();
@@ -28,6 +29,7 @@ namespace BaGio12.Story
         void OnGUI()
         {
             if(story.player.IsPaused)return;
+            if(story.InNightTwo) { story.Morning.Draw(); return; }
             Init();
             var original=GUI.matrix; GUI.matrix=Matrix4x4.TRS(Vector3.zero,Quaternion.identity,new Vector3(Screen.width/1280f,Screen.height/720f,1));
             var state=story.State;
@@ -39,6 +41,7 @@ namespace BaGio12.Story
                 if(ended)
                 {
                     GUI.Label(new Rect(280,355,730,70),state.ending=="bystander" ? "Bạn giao chiếc máy cho người khác. Câu chuyện của bạn dừng lại ở đây." : "Buổi sáng 25/11 thuộc đêm 2.",normal);
+                    if(state.ending=="night1_completed" && GUI.Button(new Rect(280,405,530,42),"Sáng 25/11 — Bắt đầu Đêm 2"))story.Morning.Begin();
                     if(GUI.Button(new Rect(280,455,260,50),"Chơi lại từ điểm lưu"))story.RestoreCheckpoint();
                     if(GUI.Button(new Rect(560,455,250,50),"Chơi lại đêm 1"))story.GetComponent<BaGio12.Persistence.NightPersistence>().RequestNewGame();
                 }

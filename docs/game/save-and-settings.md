@@ -2,7 +2,7 @@
 
 ## Phạm vi
 
-Áp dụng cho scene `Assets/Scenes/Night01/NightOneGraybox.unity`, Unity `6000.3.26f1`. Hệ lưu dành cho bản thô Đêm 1 đang có trên `main`; các scene Đêm 2/3 cần bổ sung adapter khi triển khai #22. Không ghi dữ liệu lên server và không dùng PlayerPrefs cho tiến độ.
+Áp dụng cho scene `Assets/Scenes/Night01/NightOneGraybox.unity`, Unity `6000.3.26f1`. Hệ lưu dành cho bản thô Đêm 1 và [lát cắt buổi sáng Đêm 2](night-two-morning.md) đang triển khai trong #22; buổi tối Đêm 2 và Đêm 3 chưa có adapter. Không ghi dữ liệu lên server và không dùng PlayerPrefs cho tiến độ.
 
 Khi mở scene, menu đầu game dừng thế giới và âm thanh. Chọn “Tiếp tục bản đã lưu” để khôi phục, hoặc “Chơi mới Đêm 1”. Esc trong khi chơi mở menu tạm dừng; có thể chỉnh cài đặt, tiếp tục, chơi lại, xóa tiến độ, lưu và thoát. Chơi mới/xóa bản lưu đều cần xác nhận. Xóa tiến độ giữ nguyên cài đặt và quay về menu đầu game, không tự tạo lại slot cho phiên đang bị xóa.
 
@@ -25,7 +25,7 @@ Mặc định: `Application.persistentDataPath/local-v1/` (đường dẫn thự
 
 | File | Nội dung |
 |---|---|
-| `night-one.json` | Một slot tiến độ Đêm 1 |
+| `night-one.json` | Một slot tiến độ Đêm 1 hoặc buổi sáng Đêm 2 |
 | `preferences.json` | Âm lượng, độ nhạy, mức chất lượng, tùy chọn hiện cảnh báo nội dung |
 | `*.bak` | Thế hệ hợp lệ trước đó |
 | `*.tmp` | File tạm trong lúc ghi |
