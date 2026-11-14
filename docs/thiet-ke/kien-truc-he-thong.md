@@ -16,16 +16,19 @@ Hệ thống gồm năm thành phần:
 | Trang quản trị | React, TypeScript, Vite (trang tĩnh) | Trình duyệt của quản trị viên | 9 đến 12 | Thắng, Quang |
 | Website câu đố | Trang tĩnh HTML | Trình duyệt của người chơi | 7 | Thắng, Quang |
 
+: Các thành phần của hệ thống
+
 Ba nguyên tắc chi phối thiết kế:
 
-1. Game chơi được trọn vẹn khi không có mạng. Mạng chỉ cần cho hai việc tùy chọn: gửi thống kê (khi người chơi đồng ý) và gửi bằng chứng câu đố.
+1. Game chơi được khi không có mạng, trừ kết thúc thật. Mạng chỉ cần cho hai việc: gửi thống kê (tùy chọn, khi người chơi đồng ý) và gửi bằng chứng câu đố để mở kết thúc thật.
 2. Người chơi không có tài khoản. Máy chủ chỉ biết một mã cài đặt ngẫu nhiên (`installationId`), không biết người chơi là ai.
-3. Game không chứa bí mật. Lời giải câu đố (mã băm của bằng chứng đúng) chỉ nằm trên máy chủ.
+3. Game không chứa bí mật: không có khóa API, không có mã băm của bằng chứng đúng. Bằng chứng được kiểm trên máy chủ để quản trị viên đổi bằng chứng hợp lệ và giới hạn lượt gửi mà không phải phát hành bản build mới, và để máy chủ ghi lịch sử gửi cho trang quản trị (yêu cầu 12).
 
 ## 2. Sơ đồ thành phần
 
 ```mermaid
-flowchart LR
+%%{init: {"layout": "elk"}}%%
+flowchart TB
     subgraph player["Máy người chơi"]
         game["Game Unity<br/>(offline)"]
         save[("Tệp lưu và<br/>hàng đợi thống kê<br/>(JSON trên đĩa)")]
@@ -45,9 +48,9 @@ flowchart LR
     end
 
     game -- "đọc, ghi" --> save
-    game -- "HTTPS: /api/v1/telemetry, /api/v1/puzzles" --> proxy
-    browser1 -- "HTTPS: tải tệp câu đố" --> proxy
-    browser2 -- "HTTPS: /admin, /api/admin" --> proxy
+    game -- "HTTPS:<br/>/api/v1/telemetry,<br/>/api/v1/puzzles" --> proxy
+    browser1 -- "HTTPS:<br/>tải tệp câu đố" --> proxy
+    browser2 -- "HTTPS:<br/>/admin, /api/admin" --> proxy
     proxy -- "/api" --> api
     proxy -- "/admin" --> admin
     proxy -- "tên miền blog" --> arg
@@ -64,11 +67,13 @@ Các khối bên trong (chi tiết lớp ở task #11):
 | Màn chơi và kịch bản | Thứ tự màn, sự kiện theo mốc giờ, biến truyện, lựa chọn, kết thúc (yêu cầu 2, 3) |
 | Điện thoại | Giao diện hai chiếc điện thoại: tin nhắn, ảnh, ghi âm, cài đặt (yêu cầu 3) |
 | Ẩn nấp | Người quan sát, nón nhìn, thanh chú ý, điểm lưu (yêu cầu 4) |
-| Lưu game | Tệp JSON trong `Application.persistentDataPath`: tiến độ, biến, `installationId`, trạng thái đồng ý (yêu cầu 5) |
+| Lưu game | Tệp JSON trong `Application.persistentDataPath` [@unity-persistent]: tiến độ, biến, `installationId`, trạng thái đồng ý (yêu cầu 5) |
 | Cài đặt | Âm lượng, độ nhạy chuột, đồ họa, cảnh báo nội dung, đồng ý thống kê (yêu cầu 6, 8) |
 | Thống kê | Ghi sự kiện vào hàng đợi trên đĩa, gửi theo lô khi có mạng (yêu cầu 6) |
 | Gửi bằng chứng | Chọn tệp, tính SHA-256 trên máy, gửi mã băm (yêu cầu 7) |
 | Máy khách HTTP | Gọi API, thử lại khi lỗi theo bảng trong hợp đồng API |
+
+: Các khối bên trong game
 
 Địa chỉ máy chủ ghi trong cấu hình của bản build. Game không có khóa API.
 
@@ -78,22 +83,26 @@ Một ứng dụng ASP.NET Core, chia ba lớp:
 
 | Lớp | Việc |
 |---|---|
-| Controller | Nhận yêu cầu HTTP, kiểm dữ liệu vào, trả lỗi theo RFC 9457 |
+| Controller | Nhận yêu cầu HTTP, kiểm dữ liệu vào, trả lỗi theo RFC 9457 [@rfc9457] |
 | Dịch vụ | Quy tắc nghiệp vụ: bỏ trùng sự kiện theo `eventId`, so mã băm, đếm lượt gửi sai, tổng hợp số liệu dashboard, xuất CSV |
-| Truy cập dữ liệu | EF Core, `DbContext`, migration |
+| Truy cập dữ liệu | EF Core, `DbContext`, migration [@ms-efcore] |
+
+: Các lớp của máy chủ API
 
 Hai nhóm API:
 
-| Nhóm | Đường dẫn | Ai gọi | Xác thực |
+| Nhóm | Đường dẫn | Bên gọi | Xác thực |
 |---|---|---|---|
 | API công khai | `/api/v1/telemetry/...`, `/api/v1/puzzles/...`, `/health` | Game | Không; chống lạm dụng bằng giới hạn tần suất theo địa chỉ IP (trong bộ nhớ) và giới hạn lượt sai theo mã cài đặt (trong cơ sở dữ liệu) |
-| API quản trị | `/api/admin/...`: đăng nhập, tài khoản, dashboard, xuất CSV, cấu hình câu đố, lịch sử gửi | Trang quản trị | ASP.NET Core Identity, cookie phiên |
+| API quản trị | `/api/admin/...`: đăng nhập, tài khoản, dashboard, xuất CSV, cấu hình câu đố, lịch sử gửi | Trang quản trị | ASP.NET Core Identity, cookie phiên [@ms-identity] |
 
-Đường dẫn chi tiết của API quản trị nằm trong `openapi.yaml`; lớp và dịch vụ bên trong máy chủ ở [`luoc-do-lop-may-chu.md`](luoc-do-lop-may-chu.md) (task #12).
+: Hai nhóm API
+
+Đường dẫn chi tiết của API quản trị nằm trong `openapi.yaml`; lớp và dịch vụ bên trong máy chủ ở [`luoc-do-lop-may-chu.md`](luoc-do-lop-may-chu.md).
 
 ### 2.3. Cơ sở dữ liệu
 
-Các nhóm dữ liệu chính (lược đồ chi tiết ở [`luoc-do-lop-may-chu.md`](luoc-do-lop-may-chu.md), task #12):
+Các nhóm dữ liệu chính (lược đồ chi tiết ở [`database-design.md`](database-design.md)):
 
 | Dữ liệu | Nguồn ghi | Ghi chú |
 |---|---|---|
@@ -101,6 +110,8 @@ Các nhóm dữ liệu chính (lược đồ chi tiết ở [`luoc-do-lop-may-ch
 | Câu đố | Trang quản trị | `puzzleId`, bật hay tắt, các mã băm hợp lệ, số lượt sai và cửa sổ thời gian |
 | Lượt gửi bằng chứng | API công khai | `installationId`, mã băm đã gửi, kết quả, thời điểm |
 | Tài khoản quản trị | Trang quản trị | Các bảng của ASP.NET Core Identity; mật khẩu lưu dạng băm |
+
+: Các nhóm dữ liệu chính
 
 Dashboard tính trực tiếp từ bảng sự kiện bằng truy vấn tổng hợp. Lượng dữ liệu của đồ án nhỏ nên chưa cần bảng tổng hợp sẵn.
 
@@ -110,19 +121,22 @@ Dashboard tính trực tiếp từ bảng sự kiện bằng truy vấn tổng h
 
 ### 2.5. Website câu đố
 
-Blog hư cấu của nhân vật Ngân, gồm trang `/drop` không có liên kết trỏ tới và tệp ảnh chứa dữ liệu đã mã hóa (kịch bản bản 5, mục 8). Toàn bộ là trang tĩnh, không gọi API, không thu dữ liệu người xem. Website đặt ở tên miền riêng, không ghi tên game, để trông như blog thật của nhân vật.
+Blog hư cấu của nhân vật Ngân, gồm trang `/drop` không có liên kết trỏ tới và tệp ảnh chứa dữ liệu đã mã hóa. Toàn bộ là trang tĩnh, không gọi API, không thu dữ liệu người xem. Website đặt ở tên miền riêng, không ghi tên game, để trông như blog thật của nhân vật.
 
 Website câu đố và máy chủ API không nói chuyện với nhau. Mối nối duy nhất là quản trị viên: khi dựng câu đố, tính SHA-256 của tệp bằng chứng gốc rồi nhập vào cấu hình câu đố trên trang quản trị.
 
 ## 3. Luồng dữ liệu
 
-### 3.1. Thống kê ẩn danh (yêu cầu 6, 10, 11, 13)
+### 3.1. Thống kê ẩn danh
+
+Luồng này phục vụ yêu cầu 6, 10, 11 và 13.
 
 ```mermaid
+%%{init: {"sequence": {"actorMargin": 24, "width": 110, "wrap": true, "messageMargin": 30}}}%%
 sequenceDiagram
     actor P as Người chơi
     participant G as Game
-    participant Q as Hàng đợi trên đĩa
+    participant Q as Hàng đợi<br/>trên đĩa
     participant A as Máy chủ API
     participant D as PostgreSQL
     actor M as Quản trị viên
@@ -131,7 +145,7 @@ sequenceDiagram
     loop Khi chơi
         G->>Q: Ghi sự kiện, gán eventId
     end
-    G->>A: POST /api/v1/telemetry/batches (tối đa 100 sự kiện)
+    G->>A: POST /api/v1/telemetry/batches<br/>(tối đa 100 sự kiện)
     A->>D: Lưu sự kiện, bỏ qua eventId đã có
     A-->>G: 200, danh sách sự kiện bị loại
     G->>Q: Xóa lô đã gửi
@@ -144,9 +158,12 @@ Khi người chơi rút đồng ý: game xóa hàng đợi trên máy và gọi 
 
 Khi mất mạng: lô nằm lại trong hàng đợi, game thử lại theo thời gian chờ tăng dần. Chơi game không bị ảnh hưởng.
 
-### 3.2. Bằng chứng câu đố (yêu cầu 7, 12, 14)
+### 3.2. Bằng chứng câu đố
+
+Luồng này phục vụ yêu cầu 7, 12 và 14.
 
 ```mermaid
+%%{init: {"sequence": {"actorMargin": 24, "width": 110, "wrap": true, "messageMargin": 30}}}%%
 sequenceDiagram
     actor P as Người chơi
     participant G as Game
@@ -162,7 +179,7 @@ sequenceDiagram
     P->>P: Tách và giải mã trên máy của mình
     P->>G: Chọn tệp ảnh đã giải mã
     G->>G: Tính SHA-256, tệp không rời máy
-    G->>A: POST /api/v1/puzzles/red-thread-sandal/submissions
+    G->>A: POST /api/v1/puzzles/<br/>red-thread-sandal/submissions
     A->>D: Kiểm lượt còn lại, so mã băm, lưu lượt gửi
     alt Đúng
         A-->>G: 200 accepted, unlockId
@@ -174,9 +191,9 @@ sequenceDiagram
     end
 ```
 
-### 3.3. Quản trị (yêu cầu 9 đến 12)
+### 3.3. Quản trị
 
-Quản trị viên đăng nhập trên trang quản trị; API kiểm tài khoản bằng ASP.NET Core Identity và cấp cookie phiên. Mọi yêu cầu tới `/api/admin/...` không có cookie hợp lệ nhận 401.
+Luồng này phục vụ yêu cầu 9 đến 12. Quản trị viên đăng nhập trên trang quản trị; API kiểm tài khoản bằng ASP.NET Core Identity và cấp cookie phiên. Mọi yêu cầu tới `/api/admin/...` không có cookie hợp lệ nhận 401.
 
 ## 4. Sơ đồ triển khai
 
@@ -203,16 +220,18 @@ flowchart TB
 
 | Dịch vụ Compose | Ảnh | Mở ra ngoài | Ghi chú |
 |---|---|---|---|
-| `caddy` | `caddy` | 80, 443 | Tự lấy chứng chỉ HTTPS; phục vụ tệp tĩnh của trang quản trị và website câu đố; chuyển `/api` sang `api` |
+| `caddy` | `caddy` | 80, 443 | Tự lấy chứng chỉ HTTPS [@caddy]; phục vụ tệp tĩnh của trang quản trị và website câu đố; chuyển `/api` sang `api` |
 | `api` | Build từ `server/` | Không | Chuỗi kết nối và mật khẩu đọc từ biến môi trường, không ghi trong repo |
 | `postgres` | `postgres` | Không | Dữ liệu nằm trong volume `pgdata`, sao lưu bằng `pg_dump` |
 
+: Các dịch vụ trong Docker Compose
+
 Môi trường:
 
-- Máy cá nhân khi phát triển: `docker compose up` chạy `api` và `postgres`; trang quản trị chạy bằng máy chủ phát triển của Vite; game trỏ tới `http://localhost:8080`. Khi máy chủ chưa xong, game dùng máy chủ giả sinh từ `openapi.yaml` (xem `docs/api/README.md`).
-- Bản nộp và chơi thử: cùng tệp Compose, chạy trên một máy ảo Linux. Nhà cung cấp chưa chọn, quyết ở task #32.
+- Máy cá nhân khi phát triển: `docker compose up` chạy `api` và `postgres`; trang quản trị chạy bằng máy chủ phát triển của Vite; game trỏ tới `http://localhost:8080`. Khi máy chủ chưa xong, game dùng máy chủ giả sinh từ hợp đồng API.
+- Bản nộp và chơi thử: cùng tệp Compose, chạy trên một máy ảo Linux; nhà cung cấp máy ảo chưa chọn.
 
-Bản build game phát cho người chơi dưới dạng tệp nén cho Windows; kênh phát chưa chọn, quyết ở task #32.
+Bản build game phát cho người chơi dưới dạng tệp nén cho Windows; kênh phát chưa chọn.
 
 ## 5. Bảo mật và quyền riêng tư
 
@@ -223,9 +242,9 @@ Bản build game phát cho người chơi dưới dạng tệp nén cho Windows;
 - Cơ sở dữ liệu và API không mở cổng ra ngoài; chỉ proxy ngược mở 80 và 443.
 - Mật khẩu cơ sở dữ liệu và tài khoản quản trị đầu tiên lấy từ biến môi trường hoặc tệp `.env` không đưa vào repo.
 
-Giới hạn đã chấp nhận: game chạy offline nên người sửa tệp lưu vẫn tự mở được kết thúc thật. Thiết kế chỉ bảo đảm lời giải không nằm trong bản build.
+Giới hạn đã chấp nhận: mã mở khóa máy chủ trả về là một giá trị cố định, game lưu nó trong tệp lưu trên máy, nên người sửa tệp lưu vẫn tự mở được kết thúc thật. Việc kiểm trên máy chủ không nhằm chống gian lận phía máy. Nó cũng không nhằm giấu tấm ảnh: SHA-256 là hàm một chiều, nên kể cả khi mã băm nằm trong bản build thì cũng không suy ngược ra được tệp bằng chứng.
 
-## 6. Ánh xạ yêu cầu chức năng
+## 6. Ánh xạ yêu cầu chức năng với thành phần
 
 | Yêu cầu | Thành phần |
 |---|---|
@@ -244,16 +263,9 @@ Giới hạn đã chấp nhận: game chạy offline nên người sửa tệp l
 | 13. Nhận thống kê theo lô | API công khai; cơ sở dữ liệu |
 | 14. Kiểm bằng chứng bằng mã băm | API công khai; cơ sở dữ liệu |
 
-## 7. Tác nhân (dùng cho lược đồ use case, task #9)
+: Ánh xạ yêu cầu chức năng với thành phần
 
-| Tác nhân | Tương tác với | Yêu cầu |
-|---|---|---|
-| Người chơi | Game, website câu đố; máy chủ API qua game | 1 đến 8, 13, 14 |
-| Quản trị viên | Trang quản trị | 9 đến 12 |
-
-Game là một phần của hệ thống nên không phải tác nhân; khi game gọi API, game làm thay người chơi.
-
-## 8. Quyết định và lý do
+## 7. Quyết định và lý do
 
 | Quyết định | Lý do | Phương án đã bỏ |
 |---|---|---|
@@ -262,4 +274,7 @@ Game là một phần của hệ thống nên không phải tác nhân; khi game
 | Trang quản trị và API cùng tên miền sau proxy ngược | Cookie đăng nhập dùng thẳng, không cần CORS | Hai tên miền, xác thực bằng token |
 | Website câu đố là trang tĩnh, tên miền riêng | Không cần máy chủ; trông như blog thật của nhân vật; lời giải không lộ qua API | Phục vụ câu đố từ máy chủ API |
 | Gửi mã băm thay vì tệp | Tệp không rời máy người chơi; máy chủ không phải lưu ảnh | Tải tệp lên máy chủ |
+| Kiểm bằng chứng trên máy chủ | Đổi bằng chứng hợp lệ và giới hạn lượt mà không phát hành lại game; có lịch sử gửi cho quản trị viên | So mã băm ngay trong game |
 | Docker Compose trên một máy ảo | Chạy giống nhau trên máy cá nhân và máy chủ; không phụ thuộc nhà cung cấp | Dịch vụ nền tảng của một nhà cung cấp đám mây |
+
+: Các quyết định kiến trúc và lý do

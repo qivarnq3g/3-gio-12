@@ -18,7 +18,9 @@ Thành phố Hồ Chí Minh, tháng 11 năm 2026
 
 ## Mục đích tài liệu
 
-Tài liệu mô tả thiết kế của phần mềm 3 GIỜ 12 ở mức đủ để lập trình và kiểm thử, gồm ba phần theo yêu cầu của học phần: kiến trúc hệ thống, lược đồ use case (ca sử dụng) và lược đồ lớp. Tài liệu bám theo bản đăng ký đề tài nộp ngày 23/10/2026; những điểm đã thay đổi từ đó được ghi ở chương 2.
+Tài liệu mô tả thiết kế của phần mềm 3 GIỜ 12 ở mức đủ để lập trình và kiểm thử, gồm ba phần theo yêu cầu của học phần: lược đồ use case (ca sử dụng), kiến trúc hệ thống và lược đồ lớp. Tài liệu bám theo bản đăng ký đề tài nộp ngày 23/10/2026; những điểm đã thay đổi từ đó được ghi ở mục 1.6.
+
+Chương 2 phân tích yêu cầu bằng lược đồ use case. Chương 3 trình bày kiến trúc hệ thống. Chương 4 và 5 là lược đồ lớp của game và của máy chủ. Chương 6 thiết kế cơ sở dữ liệu, chương 7 thiết kế trang quản trị. Chương 8 tóm tắt kết quả và những phần chưa làm.
 
 ## Giới thiệu phần mềm
 
@@ -32,9 +34,11 @@ Phần mềm gồm ba thành phần chính:
 
 Ngoài ra có website câu đố là trang tĩnh, nơi người chơi tìm bằng chứng để mở kết thúc thật.
 
-## Phạm vi bản nộp cuối kỳ
+## Phạm vi
 
 Bản nộp ngày 03/12/2026 gồm toàn bộ máy chủ, trang quản trị và website câu đố, cùng ba đêm đầu của game (đêm 1 đến đêm 3) chơi được từ đầu đến cuối. Các đêm sau được thiết kế ở mức kịch bản và làm tiếp sau học phần. Bản nộp dùng cho chơi thử kín theo lời mời, chưa phát hành công khai.
+
+Câu đố ngoài game cần nội dung của các đêm sau: chìa giải mã và địa chỉ trang tải nằm trong phần trong của két điện thoại, mở từ đêm 3 đến đêm 6, còn mục gửi bằng chứng chỉ mở sau kết thúc "Về nhà". Vì vậy, trong bản nộp, người chơi chưa đi tới câu đố theo mạch truyện. Bản nộp có thêm một lối mở thẳng mục gửi bằng chứng và các tệp trong két để trình diễn và kiểm thử trọn luồng câu đố.
 
 ## Yêu cầu chức năng
 
@@ -59,19 +63,22 @@ Quản trị viên (trang quản trị):
 Hệ thống:
 
 13. Máy chủ nhận sự kiện thống kê theo lô, chỉ khi người chơi đã đồng ý, không lưu thông tin định danh.
-14. Máy chủ kiểm tra bằng chứng bằng mã băm SHA-256 (secure hash algorithm 256-bit) và giới hạn số lần thử.
+14. Máy chủ kiểm tra bằng chứng bằng mã băm SHA-256 (secure hash algorithm 256-bit) và giới hạn số lần thử [@fips180].
 
 ## Quy ước trong tài liệu
 
-- Lược đồ use case và lược đồ lớp vẽ bằng draw.io theo ký hiệu UML (unified modeling language, ngôn ngữ mô hình hóa thống nhất). Các sơ đồ còn lại vẽ bằng Mermaid từ mã nguồn tài liệu trong kho mã của nhóm.
+- Lược đồ use case và lược đồ lớp vẽ bằng draw.io theo ký hiệu UML (unified modeling language, ngôn ngữ mô hình hóa thống nhất) [@uml]. Các sơ đồ còn lại vẽ bằng Mermaid.
+- Số trong ngoặc sau tên use case là số yêu cầu chức năng ở mục 1.4.
 - Tên lớp, thuộc tính, bảng dữ liệu và đường dẫn API giữ nguyên như trong mã nguồn (tiếng Anh).
-- Hợp đồng API (application programming interface, giao diện lập trình ứng dụng) giữa game và máy chủ được đặc tả bằng OpenAPI. Khi tài liệu này lệch với hợp đồng API, hợp đồng API là bản đúng.
+- Hợp đồng API (application programming interface, giao diện lập trình ứng dụng) giữa game và máy chủ được đặc tả bằng OpenAPI [@openapi]. Khi tài liệu này lệch với hợp đồng API, hợp đồng API là bản đúng.
 
-# Thay đổi so với bản đăng ký
+## Thay đổi so với bản đăng ký
 
 | Nội dung | Bản đăng ký (23/10/2026) | Thiết kế hiện tại | Ngày quyết định |
 |---|---|---|---|
 | Góc nhìn của game | 3D góc nhìn thứ ba | 3D góc nhìn thứ nhất | 27/10/2026 |
+
+: Những thay đổi so với bản đăng ký đề tài
 
 Lý do đổi góc nhìn:
 
