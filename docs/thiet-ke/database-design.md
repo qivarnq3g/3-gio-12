@@ -7,7 +7,7 @@ Tách từ `luoc-do-lop-may-chu.md`: lược đồ quan hệ thực thể và c�
 PostgreSQL 17. Tên bảng và cột viết snake_case bằng gói `EFCore.NamingConventions` (`UseSnakeCaseNamingConvention`), để viết SQL tay khi xem dữ liệu không phải đặt tên trong ngoặc kép. Thời gian dùng `timestamptz` và luôn lưu UTC.
 
 ```mermaid
-%%{init: {"er": {"nodeSpacing": 30, "rankSpacing": 30, "entityPadding": 8}}}%%
+%%{init: {"er": {"nodeSpacing": 30, "rankSpacing": 60, "entityPadding": 8}}}%%
 erDiagram
     admin_users {
         uuid id PK
