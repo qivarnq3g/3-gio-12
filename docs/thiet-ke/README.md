@@ -6,7 +6,7 @@ Thư mục này chứa nguồn của bản thuyết minh chi tiết thiết kế
 
 | Tệp | Chương trong bản nộp | Task | Phụ trách |
 |---|---|---|---|
-| `thuyet-minh.md` | Bìa, 1. Tổng quan (gồm thay đổi so với bản đăng ký) | #13 | Quang |
+| `thuyet-minh.md` | Bìa, 1. Giới thiệu (gồm thay đổi so với bản đăng ký) | #13 | Quang |
 | `luoc-do-use-case.md` | 2. Lược đồ use case | #9 | Thắng |
 | `kien-truc-he-thong.md` | 3. Kiến trúc hệ thống | #10 | Quang |
 | `luoc-do-lop-game.md` | 4. Lược đồ lớp phần game | #11 | Phúc |

@@ -14,7 +14,7 @@ Phần mềm 3 GIỜ 12: game kinh dị hành động 3D góc nhìn thứ nhất
 Thành phố Hồ Chí Minh, tháng 11 năm 2026
 :::
 
-# Tổng quan
+# Giới thiệu
 
 ## Mục đích tài liệu
 
