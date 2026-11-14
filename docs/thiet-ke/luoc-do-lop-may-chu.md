@@ -72,13 +72,19 @@ Các trường liệt kê (`Type`, `EndingId`, `EndReason`, `Result`) lưu dạn
 
 ![Lược đồ lớp: Gửi bằng chứng câu đố](lop-may-chu/gui-bang-chung-cau-do.png)
 
-| Controller, hành động | API | Dịch vụ | Mã HTTP |
-|---|---|---|---|
-| `TelemetryController.PostBatch` | `POST /api/v1/telemetry/batches` | `IngestAsync` | 200; 400 vỏ lô sai; 413 quá 256 KiB (giới hạn kích thước thân yêu cầu); 429 giới hạn IP |
-| `TelemetryController.DeleteInstallation` | `DELETE /api/v1/telemetry/installations/{installationId}` | `DeleteInstallationAsync` | 204, kể cả khi không có gì để xóa |
-| `PuzzleSubmissionsController.Post` | `POST /api/v1/puzzles/{puzzleId}/submissions` | `SubmitAsync` | `Accepted`, `Rejected`: 200; `Blocked`: 429 kèm `Retry-After`; `PuzzleNotFound`: 404 |
+| Controller, hành động | API | Dịch vụ |
+|----------------------------------------|------------------------|------------------------------------|
+| `TelemetryController.PostBatch` | `POST /api/v1/telemetry/batches` | `IngestAsync` |
+| `TelemetryController.DeleteInstallation` | `DELETE /api/v1/telemetry/installations/{installationId}` | `DeleteInstallationAsync` |
+| `PuzzleSubmissionsController.Post` | `POST /api/v1/puzzles/{puzzleId}/submissions` | `SubmitAsync` |
 
 : Hành động, API và dịch vụ của phần công khai
+
+Mã trạng thái HTTP mỗi hành động trả về:
+
+- `PostBatch`: 200; 400 vỏ lô sai; 413 quá 256 KiB (giới hạn kích thước thân yêu cầu); 429 giới hạn IP.
+- `DeleteInstallation`: 204, kể cả khi không có gì để xóa.
+- `PuzzleSubmissionsController.Post`: `Accepted`, `Rejected`: 200; `Blocked`: 429 kèm `Retry-After`; `PuzzleNotFound`: 404.
 
 Giới hạn tần suất theo địa chỉ IP dùng bộ giới hạn tần suất có sẵn của ASP.NET Core (`AddRateLimiter`) [@ms-ratelimit], khai báo bằng thuộc tính `[EnableRateLimiting]` trên controller; giữ trong bộ nhớ, không ghi IP vào cơ sở dữ liệu. Ba chính sách: `telemetry`, `puzzle-submit` (20 lần mỗi phút), `admin-login` (10 lần mỗi phút). `telemetry` cho 60 yêu cầu mỗi phút cho mỗi IP (chốt ở task #25, đổi bằng cấu hình `RateLimits:Telemetry:PermitLimit`).
 
@@ -103,7 +109,7 @@ Giới hạn tần suất theo địa chỉ IP dùng bộ giới hạn tần su�
 Mỗi giao diện (interface) có một lớp cài đặt cùng tên bỏ chữ `I` (`AdminAccountService`, `DashboardService`, `CsvExportService`, `PuzzleAdminService`), cùng dùng `AppDbContext`; sơ đồ bỏ các lớp đó cho gọn.
 
 | Controller, hành động | API | Dịch vụ |
-|---|---|---|
+|------------------------------------|------------------------------|----------------------------------|
 | `AdminAuthController.Login` | `POST /api/admin/auth/login` | `SignInManager.PasswordSignInAsync`, rồi ghi `LastLoginAt` |
 | `AdminAuthController.Logout` | `POST /api/admin/auth/logout` | `SignInManager.SignOutAsync` |
 | `AdminAuthController.Me` | `GET /api/admin/auth/me` | `UserManager.GetUserAsync` |

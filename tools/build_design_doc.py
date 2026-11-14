@@ -42,6 +42,8 @@ BROWSERS = [
 ]
 SCALE = 2
 PORTRAIT = (15.0, 21.0)
+TEXT_WIDTH = 16.0
+TABLE_RULE = re.compile(r"^\|(\s*:?-+:?\s*\|)+\s*$")
 TABLE_BORDER = '<w:{0} w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
 MERMAID_CONFIG = {
     "fontFamily": "Arial",
@@ -389,7 +391,43 @@ def space_after_tables(doc):
         spacing.set(qn("w:before"), "160")
 
 
-def finish_docx(path, widths, update_on_open=True):
+def table_ratios(text):
+    ratios = []
+    for line in text.split("\n"):
+        if TABLE_RULE.match(line):
+            ratios.append([len(cell.strip(" :")) for cell in line.strip().strip("|").split("|")])
+    return ratios
+
+
+def fix_columns(table, ratio):
+    total = TEXT_WIDTH * 567
+    widths = [round(total * part / sum(ratio)) for part in ratio]
+    tbl = table._tbl
+    tbl_pr = tbl.tblPr
+    for name in ("w:tblW", "w:tblLayout"):
+        for old in tbl_pr.findall(qn(name)):
+            tbl_pr.remove(old)
+    tbl_w = OxmlElement("w:tblW")
+    tbl_w.set(qn("w:w"), str(total))
+    tbl_w.set(qn("w:type"), "dxa")
+    layout = OxmlElement("w:tblLayout")
+    layout.set(qn("w:type"), "fixed")
+    tbl_pr.append(tbl_w)
+    tbl_pr.append(layout)
+    for col, width in zip(tbl.tblGrid.findall(qn("w:gridCol")), widths):
+        col.set(qn("w:w"), str(width))
+    for row in tbl.findall(qn("w:tr")):
+        for tc, width in zip(row.findall(qn("w:tc")), widths):
+            tc_pr = tc.get_or_add_tcPr()
+            for old in tc_pr.findall(qn("w:tcW")):
+                tc_pr.remove(old)
+            tc_w = OxmlElement("w:tcW")
+            tc_w.set(qn("w:w"), str(width))
+            tc_w.set(qn("w:type"), "dxa")
+            tc_pr.insert(0, tc_w)
+
+
+def finish_docx(path, widths, ratios, update_on_open=True):
     doc = Document(str(path))
     shapes = doc.inline_shapes
     if len(shapes) != len(widths):
@@ -398,6 +436,11 @@ def finish_docx(path, widths, update_on_open=True):
         target = Cm(width)
         shape.height = int(shape.height * target / shape.width)
         shape.width = target
+    if len(doc.tables) != len(ratios):
+        sys.exit(f"Số bảng trong bản Word ({len(doc.tables)}) khác số bảng Markdown ({len(ratios)})")
+    for table, ratio in zip(doc.tables, ratios):
+        if len(set(ratio)) > 1 and len(ratio) == len(table.columns):
+            fix_columns(table, ratio)
     for table in doc.tables:
         rows = table.rows
         if not rows:
@@ -405,6 +448,10 @@ def finish_docx(path, widths, update_on_open=True):
         trpr = rows[0]._tr.get_or_add_trPr()
         if trpr.find(qn("w:tblHeader")) is None:
             trpr.append(OxmlElement("w:tblHeader"))
+        for row in rows:
+            row_pr = row._tr.get_or_add_trPr()
+            if row_pr.find(qn("w:cantSplit")) is None:
+                row_pr.insert(0, OxmlElement("w:cantSplit"))
         for cell in table._tbl.iter(qn("w:shd")):
             cell.getparent().remove(cell)
         add_borders(table._tbl.tblPr)
@@ -437,6 +484,12 @@ def finish_docx(path, widths, update_on_open=True):
     doc.save(str(path))
 
 
+def table_breaks(text):
+    def code(match):
+        return "`" + re.sub(r"([./,])(?=\S)", "\\1\u200b", match.group(1)) + "`"
+    return "\n".join(re.sub(r"`([^`\n]+)`", code, line) if line.startswith("|") else line for line in text.split("\n"))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Ghép các phần thiết kế thành bản thuyết minh .docx")
     parser.add_argument("-o", "--output", default=str(DESIGN_DIR / "build" / "thuyet-minh-thiet-ke.docx"))
@@ -452,14 +505,14 @@ def main():
         work = Path(tmp)
         combined, missing, leftovers, fields = build_markdown(work, cache)
         source = work / "combined.md"
-        source.write_text(combined, encoding="utf-8")
+        source.write_text(table_breaks(combined), encoding="utf-8")
         if args.markdown:
             Path(args.markdown).write_text(combined, encoding="utf-8")
         reference = work / "reference.docx"
         make_reference(reference)
         citations = ["--citeproc", "--bibliography", str(BIBLIOGRAPHY), "--csl", str(CSL), "-M", f"reference-section-title={REFERENCES_TITLE}"]
         subprocess.run(["pandoc", str(source), "-f", "markdown-auto_identifiers", "-o", str(output), "--reference-doc", str(reference), "--resource-path", str(ROOT), "--columns", "10000", *citations], check=True)
-    finish_docx(output, [float(w) for w in re.findall(r"\{width=([\d.]+)cm\}", combined)], update_on_open=not args.word)
+    finish_docx(output, [float(w) for w in re.findall(r"\{width=([\d.]+)cm\}", combined)], table_ratios(combined), update_on_open=not args.word)
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from design_doc_cover import apply_cover
     members, named = read_members()

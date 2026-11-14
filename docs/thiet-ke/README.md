@@ -40,6 +40,7 @@ python tools/build_design_doc.py
 Trên Windows có Microsoft Word, thêm `--word` để Word cập nhật mục lục, danh mục hình, danh mục bảng rồi xuất thêm PDF cạnh tệp Word; bản dựng không có `--word` để Word tự hỏi cập nhật trường khi mở.
 
 - Chú thích bảng: viết một dòng `: Tên bảng` ngay sau bảng; script tự đánh số "Bảng <chương>.<số>." và đặt chú thích phía trên bảng. Bảng thiếu chú thích không vào danh mục bảng.
+- Độ rộng cột: dòng phân cách có số gạch bằng nhau (`|---|---|`) thì Word tự co giãn cột. Bảng có chuỗi mã dài (tên lớp, đường dẫn API) thì ghi tỉ lệ bằng số gạch, ví dụ `|----------------------------------------|------------------------|------------------------------------|` cho 40, 24, 36 phần trăm; script đặt độ rộng cố định theo tỉ lệ đó trên khổ 16 cm. Trong bảng, script chèn chỗ ngắt dòng vô hình sau `.`, `/` và `,` trong đoạn mã, và không để một hàng bị tách qua hai trang.
 - Trích dẫn: nguồn nằm trong `references.json` (CSL JSON, nhập được vào Zotero); trong văn bản viết `[@khóa]`, ví dụ `[@uml]`. Pandoc định dạng theo `ieee.csl` (lấy từ kho kiểu trích dẫn của Zotero, giấy phép CC BY-SA 3.0) và tạo mục "Tài liệu tham khảo" ở cuối.
 - Danh mục chữ viết tắt lấy từ `abbreviations.md`; thêm chữ viết tắt mới vào đó theo thứ tự chữ cái.
 
