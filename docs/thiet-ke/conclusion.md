@@ -22,7 +22,7 @@ Ba nguyên tắc của kiến trúc được giữ ở mọi phần: game chơi 
 | Gửi bằng chứng | Chưa có | Màn hình chọn tệp, tính SHA-256, gửi lên máy chủ, lưu mã mở khóa; lối mở thẳng câu đố cho bản trình diễn |
 | Máy chủ API | Khung dự án, kết nối PostgreSQL, đường kiểm tra `/health` | API nhận thống kê, API kiểm bằng chứng, đăng nhập và tài khoản quản trị, dashboard và xuất CSV đã viết, đang chờ duyệt để gộp |
 | Trang quản trị | Chưa có trên nhánh chính | Đăng nhập, tài khoản, dashboard đã viết, đang chờ duyệt; trang quản lý câu đố chưa làm |
-| Website câu đố | Chưa có trên nhánh chính | Bản đầu đã viết, đang sửa theo góp ý: chỉ trang `/drop` được chứa gói bằng chứng, nén bằng AES-256, chìa mới không đưa vào repo, gói đủ nội dung theo kịch bản |
+| Website câu đố | Chưa có trên nhánh chính | Bản đầu đã viết, đang sửa theo góp ý: chỉ trang `/drop` được chứa gói bằng chứng, nén bằng AES-256 [@fips197], chìa mới không đưa vào repo, gói đủ nội dung theo kịch bản |
 | Triển khai | Tệp Docker Compose | Chọn nhà cung cấp máy ảo và kênh phát bản build |
 
 : Những phần đã có và chưa làm

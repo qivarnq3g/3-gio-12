@@ -1,178 +1,1637 @@
 [
   {
-    "id": "uml",
-    "type": "report",
-    "author": [{"literal": "Object Management Group"}],
-    "title": "OMG Unified Modeling Language (OMG UML), version 2.5.1",
-    "number": "formal/17-12-05",
-    "publisher": "Object Management Group",
-    "issued": {"date-parts": [[2017, 12]]},
-    "URL": "https://www.omg.org/spec/UML/2.5.1/PDF",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
-  },
-  {
-    "id": "openapi",
-    "type": "webpage",
-    "author": [{"literal": "OpenAPI Initiative"}],
-    "title": "OpenAPI Specification v3.1.0",
-    "issued": {"date-parts": [[2021, 2, 15]]},
-    "URL": "https://spec.openapis.org/oas/v3.1.0.html",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
-  },
-  {
-    "id": "rfc9457",
-    "type": "report",
-    "author": [{"family": "Nottingham", "given": "M."}, {"family": "Wilde", "given": "E."}, {"family": "Dalal", "given": "S."}],
-    "title": "Problem details for HTTP APIs",
-    "genre": "RFC",
-    "number": "9457",
-    "publisher": "RFC Editor",
-    "issued": {"date-parts": [[2023, 7]]},
-    "DOI": "10.17487/RFC9457",
-    "URL": "https://www.rfc-editor.org/rfc/rfc9457"
-  },
-  {
-    "id": "fips180",
-    "type": "report",
-    "author": [{"literal": "National Institute of Standards and Technology"}],
-    "title": "Secure Hash Standard (SHS)",
-    "genre": "FIPS PUB",
-    "number": "180-4",
-    "publisher": "U.S. Department of Commerce",
-    "publisher-place": "Gaithersburg, MD",
-    "issued": {"date-parts": [[2015, 8]]},
-    "DOI": "10.6028/NIST.FIPS.180-4"
-  },
-  {
-    "id": "ms-identity",
-    "type": "webpage",
-    "author": [{"literal": "Microsoft"}],
-    "title": "Introduction to Identity on ASP.NET Core",
-    "container-title": "Microsoft Learn",
-    "issued": {"date-parts": [[2026, 9, 18]]},
-    "URL": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
-  },
-  {
-    "id": "ms-identity-config",
-    "type": "webpage",
-    "author": [{"literal": "Microsoft"}],
-    "title": "Configure ASP.NET Core Identity",
-    "container-title": "Microsoft Learn",
-    "issued": {"date-parts": [[2026, 9, 18]]},
-    "URL": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-configuration",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
-  },
-  {
-    "id": "ms-ratelimit",
-    "type": "webpage",
-    "author": [{"literal": "Microsoft"}],
-    "title": "Rate limiting middleware in ASP.NET Core",
-    "container-title": "Microsoft Learn",
-    "issued": {"date-parts": [[2026, 10, 27]]},
-    "URL": "https://learn.microsoft.com/en-us/aspnet/core/performance/rate-limit",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
-  },
-  {
-    "id": "ms-errors",
-    "type": "webpage",
-    "author": [{"literal": "Microsoft"}],
-    "title": "Handle errors in ASP.NET Core APIs",
-    "container-title": "Microsoft Learn",
-    "issued": {"date-parts": [[2026, 10, 27]]},
-    "URL": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling-api",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
-  },
-  {
-    "id": "ms-timeprovider",
-    "type": "webpage",
-    "author": [{"literal": "Microsoft"}],
-    "title": "TimeProvider class",
-    "container-title": ".NET API reference, Microsoft Learn",
-    "issued": {"date-parts": [[2025, 7, 1]]},
-    "URL": "https://learn.microsoft.com/en-us/dotnet/api/system.timeprovider",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
-  },
-  {
-    "id": "ms-efcore",
-    "type": "webpage",
-    "author": [{"literal": "Microsoft"}],
-    "title": "Overview of Entity Framework Core",
-    "container-title": "Microsoft Learn",
-    "issued": {"date-parts": [[2020, 9, 20]]},
-    "URL": "https://learn.microsoft.com/en-us/ef/core/",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
-  },
-  {
-    "id": "unity-persistent",
-    "type": "webpage",
-    "author": [{"literal": "Unity Technologies"}],
-    "title": "Application.persistentDataPath",
-    "container-title": "Unity scripting API, version 6000.3",
-    "URL": "https://docs.unity3d.com/6000.3/Documentation/ScriptReference/Application-persistentDataPath.html",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
-  },
-  {
-    "id": "unity-cc",
-    "type": "webpage",
-    "author": [{"literal": "Unity Technologies"}],
-    "title": "CharacterController",
-    "container-title": "Unity scripting API, version 6000.3",
-    "URL": "https://docs.unity3d.com/6000.3/Documentation/ScriptReference/CharacterController.html",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
-  },
-  {
-    "id": "unity-navmesh",
-    "type": "webpage",
-    "author": [{"literal": "Unity Technologies"}],
-    "title": "NavMeshAgent",
-    "container-title": "Unity scripting API, version 6000.3",
-    "URL": "https://docs.unity3d.com/6000.3/Documentation/ScriptReference/AI.NavMeshAgent.html",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
-  },
-  {
-    "id": "unity-json",
-    "type": "webpage",
-    "author": [{"literal": "Unity Technologies"}],
-    "title": "JSON serialization",
-    "container-title": "Unity manual, version 6000.3",
-    "URL": "https://docs.unity3d.com/6000.3/Documentation/Manual/json-serialization.html",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
-  },
-  {
-    "id": "unity-input",
-    "type": "webpage",
-    "author": [{"literal": "Unity Technologies"}],
-    "title": "Input System 1.14 manual",
-    "container-title": "Unity package documentation",
-    "URL": "https://docs.unity3d.com/Packages/com.unity.inputsystem@1.14/manual/index.html",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
-  },
-  {
-    "id": "unity-uitk",
-    "type": "webpage",
-    "author": [{"literal": "Unity Technologies"}],
-    "title": "UI Toolkit",
-    "container-title": "Unity manual, version 6000.3",
-    "URL": "https://docs.unity3d.com/6000.3/Documentation/Manual/UIElements.html",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
-  },
-  {
-    "id": "pg-lexical",
-    "type": "webpage",
-    "author": [{"literal": "PostgreSQL Global Development Group"}],
-    "title": "4.1. Lexical structure",
-    "container-title": "PostgreSQL 17 documentation",
-    "URL": "https://www.postgresql.org/docs/17/sql-syntax-lexical.html",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
+    "id": "bass",
+    "type": "book",
+    "edition": "4",
+    "ISBN": "978-0-13-688609-9",
+    "publisher": "Addison-Wesley",
+    "publisher-place": "Boston",
+    "title": "Software Architecture in Practice",
+    "author": [
+      {
+        "family": "Bass",
+        "given": "Len"
+      },
+      {
+        "family": "Clements",
+        "given": "Paul"
+      },
+      {
+        "family": "Kazman",
+        "given": "Rick"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2022"
+        ]
+      ]
+    }
   },
   {
     "id": "caddy",
     "type": "webpage",
-    "author": [{"literal": "Caddy"}],
-    "title": "Automatic HTTPS",
     "container-title": "Caddy documentation",
+    "title": "Automatic HTTPS",
     "URL": "https://caddyserver.com/docs/automatic-https",
-    "accessed": {"date-parts": [[2026, 11, 13]]}
+    "author": [
+      {
+        "literal": "Caddy"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    }
+  },
+  {
+    "id": "caddy-proxy",
+    "type": "webpage",
+    "container-title": "Caddy documentation",
+    "title": "reverse_proxy (Caddyfile directive)",
+    "URL": "https://caddyserver.com/docs/caddyfile/directives/reverse_proxy",
+    "author": [
+      {
+        "literal": "Caddy"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "chen",
+    "type": "article-journal",
+    "container-title": "ACM Transactions on Database Systems",
+    "DOI": "10.1145/320434.320440",
+    "issue": "1",
+    "journalAbbreviation": "ACM Trans. Database Syst.",
+    "page": "9-36",
+    "title": "The Entity-Relationship Model - Toward a Unified View of Data",
+    "volume": "1",
+    "author": [
+      {
+        "family": "Chen",
+        "given": "Peter Pin-Shan"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "1976",
+          3
+        ]
+      ]
+    }
+  },
+  {
+    "id": "cockburn",
+    "type": "book",
+    "ISBN": "978-0-201-70225-5",
+    "publisher": "Addison-Wesley",
+    "publisher-place": "Boston",
+    "title": "Writing Effective Use Cases",
+    "author": [
+      {
+        "family": "Cockburn",
+        "given": "Alistair"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2001"
+        ]
+      ]
+    }
+  },
+  {
+    "id": "docker-compose",
+    "type": "webpage",
+    "container-title": "Docker documentation",
+    "title": "Docker Compose",
+    "URL": "https://docs.docker.com/compose/",
+    "author": [
+      {
+        "literal": "Docker Inc."
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "drawio",
+    "type": "webpage",
+    "container-title": "draw.io",
+    "title": "draw.io documentation",
+    "URL": "https://www.drawio.com/docs",
+    "author": [
+      {
+        "literal": "JGraph"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "efcore-naming",
+    "type": "webpage",
+    "container-title": "GitHub",
+    "title": "EFCore.NamingConventions",
+    "URL": "https://github.com/efcore/EFCore.NamingConventions",
+    "author": [
+      {
+        "literal": "EFCore.NamingConventions contributors"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "fips180",
+    "type": "report",
+    "DOI": "10.6028/NIST.FIPS.180-4",
+    "number": "180-4",
+    "publisher": "U.S. Department of Commerce",
+    "publisher-place": "Gaithersburg, MD",
+    "title": "Secure Hash Standard (SHS)",
+    "author": [
+      {
+        "literal": "National Institute of Standards and Technology"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2015"
+        ]
+      ]
+    },
+    "genre": "FIPS PUB"
+  },
+  {
+    "id": "fips197",
+    "type": "report",
+    "DOI": "10.6028/NIST.FIPS.197-upd1",
+    "number": "197-upd1",
+    "publisher": "U.S. Department of Commerce",
+    "publisher-place": "Gaithersburg, MD",
+    "title": "Advanced Encryption Standard (AES)",
+    "author": [
+      {
+        "literal": "National Institute of Standards and Technology"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2023",
+          5,
+          9
+        ]
+      ]
+    },
+    "genre": "FIPS PUB"
+  },
+  {
+    "id": "game-analytics",
+    "type": "book",
+    "DOI": "10.1007/978-1-4471-4769-5",
+    "ISBN": "978-1-4471-4768-8",
+    "license": "https://www.springernature.com/gp/researchers/text-and-data-mining",
+    "publisher": "Springer",
+    "publisher-place": "London",
+    "title": "Game Analytics: Maximizing the Value of Player Data",
+    "editor": [
+      {
+        "family": "Seif El-Nasr",
+        "given": "Magy"
+      },
+      {
+        "family": "Drachen",
+        "given": "Anders"
+      },
+      {
+        "family": "Canossa",
+        "given": "Alessandro"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2013"
+        ]
+      ]
+    }
+  },
+  {
+    "id": "gof",
+    "type": "book",
+    "ISBN": "978-0-201-63361-0",
+    "publisher": "Addison-Wesley",
+    "publisher-place": "Reading, MA",
+    "title": "Design Patterns: Elements of Reusable Object-Oriented Software",
+    "issued": {
+      "date-parts": [
+        [
+          "1995"
+        ]
+      ]
+    },
+    "author": [
+      {
+        "family": "Gamma",
+        "given": "Erich"
+      },
+      {
+        "family": "Helm",
+        "given": "Richard"
+      },
+      {
+        "family": "Johnson",
+        "given": "Ralph"
+      },
+      {
+        "family": "Vlissides",
+        "given": "John"
+      }
+    ]
+  },
+  {
+    "id": "kim-arg",
+    "type": "article-journal",
+    "container-title": "Communications of the ACM",
+    "DOI": "10.1145/1314215.1314222",
+    "issue": "2",
+    "journalAbbreviation": "Commun. ACM",
+    "page": "36-42",
+    "title": "Alternate Reality Gaming",
+    "volume": "51",
+    "author": [
+      {
+        "family": "Kim",
+        "given": "Jeffrey Y."
+      },
+      {
+        "family": "Allen",
+        "given": "Jonathan P."
+      },
+      {
+        "family": "Lee",
+        "given": "Elan"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2008",
+          2
+        ]
+      ]
+    }
+  },
+  {
+    "id": "kruchten",
+    "type": "article-journal",
+    "container-title": "IEEE Software",
+    "DOI": "10.1109/52.469759",
+    "issue": "6",
+    "journalAbbreviation": "IEEE Softw.",
+    "license": "https://ieeexplore.ieee.org/Xplorehelp/downloads/license-information/IEEE.html",
+    "page": "42-50",
+    "title": "The 4+1 View Model of Architecture",
+    "volume": "12",
+    "author": [
+      {
+        "family": "Kruchten",
+        "given": "P.B."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "1995",
+          11
+        ]
+      ]
+    }
+  },
+  {
+    "id": "law-pdp",
+    "type": "report",
+    "language": "vi",
+    "title": "Luật Bảo vệ dữ liệu cá nhân",
+    "genre": "Luật số",
+    "number": "91/2025/QH15",
+    "author": [
+      {
+        "literal": "Quốc hội nước Cộng hòa xã hội chủ nghĩa Việt Nam"
+      }
+    ],
+    "publisher-place": "Hà Nội",
+    "issued": {
+      "date-parts": [
+        [
+          2025,
+          6,
+          26
+        ]
+      ]
+    }
+  },
+  {
+    "id": "mdn-spa",
+    "type": "webpage",
+    "container-title": "MDN Web Docs glossary",
+    "title": "SPA (single-page application)",
+    "URL": "https://developer.mozilla.org/en-US/docs/Glossary/SPA",
+    "author": [
+      {
+        "literal": "MDN contributors"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "mermaid",
+    "type": "webpage",
+    "container-title": "Mermaid documentation",
+    "title": "About Mermaid",
+    "URL": "https://mermaid.js.org/intro/",
+    "author": [
+      {
+        "literal": "Mermaid"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "ms-aspnetcore",
+    "type": "webpage",
+    "container-title": "Microsoft Learn",
+    "title": "Overview of ASP.NET Core",
+    "URL": "https://learn.microsoft.com/en-us/aspnet/core/overview",
+    "author": [
+      {
+        "literal": "Microsoft"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "ms-dotnet10",
+    "type": "webpage",
+    "container-title": "Microsoft Learn",
+    "title": "What's new in .NET 10",
+    "URL": "https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-10/overview",
+    "author": [
+      {
+        "literal": "Microsoft"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "ms-ef-migrations",
+    "type": "webpage",
+    "container-title": "Microsoft Learn",
+    "title": "Migrations overview",
+    "URL": "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/",
+    "author": [
+      {
+        "literal": "Microsoft"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "ms-efcore",
+    "type": "webpage",
+    "container-title": "Microsoft Learn",
+    "title": "Overview of Entity Framework Core",
+    "URL": "https://learn.microsoft.com/en-us/ef/core/",
+    "author": [
+      {
+        "literal": "Microsoft"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    },
+    "issued": {
+      "date-parts": [
+        [
+          "2020",
+          9,
+          20
+        ]
+      ]
+    }
+  },
+  {
+    "id": "ms-errors",
+    "type": "webpage",
+    "container-title": "Microsoft Learn",
+    "title": "Handle errors in ASP.NET Core APIs",
+    "URL": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling-api",
+    "author": [
+      {
+        "literal": "Microsoft"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    },
+    "issued": {
+      "date-parts": [
+        [
+          "2026",
+          10,
+          27
+        ]
+      ]
+    }
+  },
+  {
+    "id": "ms-events",
+    "type": "webpage",
+    "container-title": "Microsoft Learn",
+    "title": "Events (C# programming guide)",
+    "URL": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/events/",
+    "author": [
+      {
+        "literal": "Microsoft"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "ms-identity",
+    "type": "webpage",
+    "container-title": "Microsoft Learn",
+    "title": "Introduction to Identity on ASP.NET Core",
+    "URL": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity",
+    "author": [
+      {
+        "literal": "Microsoft"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    },
+    "issued": {
+      "date-parts": [
+        [
+          "2026",
+          9,
+          18
+        ]
+      ]
+    }
+  },
+  {
+    "id": "ms-identity-config",
+    "type": "webpage",
+    "container-title": "Microsoft Learn",
+    "title": "Configure ASP.NET Core Identity",
+    "URL": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-configuration",
+    "author": [
+      {
+        "literal": "Microsoft"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    },
+    "issued": {
+      "date-parts": [
+        [
+          "2026",
+          9,
+          18
+        ]
+      ]
+    }
+  },
+  {
+    "id": "ms-jsonelement",
+    "type": "webpage",
+    "container-title": "Microsoft Learn",
+    "title": "JsonElement struct",
+    "URL": "https://learn.microsoft.com/en-us/dotnet/api/system.text.json.jsonelement",
+    "author": [
+      {
+        "literal": "Microsoft"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "ms-partial",
+    "type": "webpage",
+    "container-title": "Microsoft Learn",
+    "title": "Partial classes and members",
+    "URL": "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/partial-classes-and-methods",
+    "author": [
+      {
+        "literal": "Microsoft"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "ms-ratelimit",
+    "type": "webpage",
+    "container-title": "Microsoft Learn",
+    "title": "Rate limiting middleware in ASP.NET Core",
+    "URL": "https://learn.microsoft.com/en-us/aspnet/core/performance/rate-limit",
+    "author": [
+      {
+        "literal": "Microsoft"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    },
+    "issued": {
+      "date-parts": [
+        [
+          "2026",
+          10,
+          27
+        ]
+      ]
+    }
+  },
+  {
+    "id": "ms-timeprovider",
+    "type": "webpage",
+    "container-title": "Microsoft Learn",
+    "title": "TimeProvider class",
+    "URL": "https://learn.microsoft.com/en-us/dotnet/api/system.timeprovider",
+    "author": [
+      {
+        "literal": "Microsoft"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    },
+    "issued": {
+      "date-parts": [
+        [
+          "2025",
+          7,
+          1
+        ]
+      ]
+    }
+  },
+  {
+    "id": "openapi",
+    "type": "webpage",
+    "container-title": "OpenAPI Initiative",
+    "title": "OpenAPI Specification v3.1.0",
+    "URL": "https://spec.openapis.org/oas/v3.1.0.html",
+    "author": [
+      {
+        "literal": "OpenAPI Initiative"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    },
+    "issued": {
+      "date-parts": [
+        [
+          "2021",
+          2,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "openapi-fetch",
+    "type": "webpage",
+    "container-title": "openapi-ts documentation",
+    "title": "openapi-fetch",
+    "URL": "https://openapi-ts.dev/openapi-fetch/",
+    "author": [
+      {
+        "literal": "openapi-ts"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "openapi-ts",
+    "type": "webpage",
+    "container-title": "openapi-ts documentation",
+    "title": "openapi-typescript",
+    "URL": "https://openapi-ts.dev/",
+    "author": [
+      {
+        "literal": "openapi-ts"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "pg-datetime",
+    "type": "webpage",
+    "container-title": "PostgreSQL 17 documentation",
+    "title": "8.5. Date/time types",
+    "URL": "https://www.postgresql.org/docs/17/datatype-datetime.html",
+    "author": [
+      {
+        "literal": "PostgreSQL Global Development Group"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "pg-dump",
+    "type": "webpage",
+    "container-title": "PostgreSQL 17 documentation",
+    "title": "pg_dump",
+    "URL": "https://www.postgresql.org/docs/17/app-pgdump.html",
+    "author": [
+      {
+        "literal": "PostgreSQL Global Development Group"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "pg-insert",
+    "type": "webpage",
+    "container-title": "PostgreSQL 17 documentation",
+    "title": "INSERT",
+    "URL": "https://www.postgresql.org/docs/17/sql-insert.html",
+    "author": [
+      {
+        "literal": "PostgreSQL Global Development Group"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "pg-isolation",
+    "type": "webpage",
+    "container-title": "PostgreSQL 17 documentation",
+    "title": "13.2. Transaction isolation",
+    "URL": "https://www.postgresql.org/docs/17/transaction-iso.html",
+    "author": [
+      {
+        "literal": "PostgreSQL Global Development Group"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "pg-lexical",
+    "type": "webpage",
+    "container-title": "PostgreSQL 17 documentation",
+    "title": "4.1. Lexical structure",
+    "URL": "https://www.postgresql.org/docs/17/sql-syntax-lexical.html",
+    "author": [
+      {
+        "literal": "PostgreSQL Global Development Group"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    }
+  },
+  {
+    "id": "pg-locking",
+    "type": "webpage",
+    "container-title": "PostgreSQL 17 documentation",
+    "title": "13.3. Explicit locking",
+    "URL": "https://www.postgresql.org/docs/17/explicit-locking.html",
+    "author": [
+      {
+        "literal": "PostgreSQL Global Development Group"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "poeaa",
+    "type": "book",
+    "ISBN": "978-0-321-12742-6",
+    "publisher": "Addison-Wesley",
+    "publisher-place": "Boston",
+    "title": "Patterns of Enterprise Application Architecture",
+    "author": [
+      {
+        "family": "Fowler",
+        "given": "Martin"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2003"
+        ]
+      ]
+    }
+  },
+  {
+    "id": "react",
+    "type": "webpage",
+    "container-title": "React documentation",
+    "title": "Quick start",
+    "URL": "https://react.dev/learn",
+    "author": [
+      {
+        "literal": "Meta Open Source"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "rfc3339",
+    "type": "report",
+    "DOI": "10.17487/RFC3339",
+    "number": "3339",
+    "publisher": "RFC Editor",
+    "title": "Date and Time on the Internet: Timestamps",
+    "author": [
+      {
+        "family": "Klyne",
+        "given": "G."
+      },
+      {
+        "family": "Newman",
+        "given": "C."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2002",
+          7
+        ]
+      ]
+    },
+    "genre": "RFC"
+  },
+  {
+    "id": "rfc4180",
+    "type": "report",
+    "DOI": "10.17487/RFC4180",
+    "number": "4180",
+    "publisher": "RFC Editor",
+    "title": "Common Format and MIME Type for Comma-Separated Values (CSV) Files",
+    "author": [
+      {
+        "family": "Shafranovich",
+        "given": "Y."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2005",
+          10
+        ]
+      ]
+    },
+    "genre": "RFC"
+  },
+  {
+    "id": "rfc6265",
+    "type": "report",
+    "DOI": "10.17487/RFC6265",
+    "number": "6265",
+    "publisher": "RFC Editor",
+    "title": "HTTP State Management Mechanism",
+    "author": [
+      {
+        "family": "Barth",
+        "given": "A."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2011",
+          4
+        ]
+      ]
+    },
+    "genre": "RFC"
+  },
+  {
+    "id": "rfc6585",
+    "type": "report",
+    "DOI": "10.17487/RFC6585",
+    "number": "6585",
+    "publisher": "RFC Editor",
+    "title": "Additional HTTP Status Codes",
+    "author": [
+      {
+        "family": "Nottingham",
+        "given": "M."
+      },
+      {
+        "family": "Fielding",
+        "given": "R."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2012",
+          4
+        ]
+      ]
+    },
+    "genre": "RFC"
+  },
+  {
+    "id": "rfc8018",
+    "type": "report",
+    "DOI": "10.17487/RFC8018",
+    "number": "8018",
+    "publisher": "RFC Editor",
+    "title": "PKCS #5: Password-Based Cryptography Specification Version 2.1",
+    "editor": [
+      {
+        "family": "Moriarty",
+        "given": "K."
+      }
+    ],
+    "author": [
+      {
+        "family": "Kaliski",
+        "given": "B."
+      },
+      {
+        "family": "Rusch",
+        "given": "A."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2017",
+          1
+        ]
+      ]
+    },
+    "genre": "RFC"
+  },
+  {
+    "id": "rfc8259",
+    "type": "report",
+    "DOI": "10.17487/RFC8259",
+    "number": "8259",
+    "publisher": "RFC Editor",
+    "title": "The JavaScript Object Notation (JSON) Data Interchange Format",
+    "editor": [
+      {
+        "family": "Bray",
+        "given": "T."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2017",
+          12
+        ]
+      ]
+    },
+    "genre": "RFC"
+  },
+  {
+    "id": "rfc8446",
+    "type": "report",
+    "DOI": "10.17487/RFC8446",
+    "number": "8446",
+    "publisher": "RFC Editor",
+    "title": "The Transport Layer Security (TLS) Protocol Version 1.3",
+    "author": [
+      {
+        "family": "Rescorla",
+        "given": "E."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2018",
+          8
+        ]
+      ]
+    },
+    "genre": "RFC"
+  },
+  {
+    "id": "rfc9110",
+    "type": "report",
+    "DOI": "10.17487/RFC9110",
+    "number": "9110",
+    "publisher": "RFC Editor",
+    "title": "HTTP Semantics",
+    "editor": [
+      {
+        "family": "Fielding",
+        "given": "R."
+      },
+      {
+        "family": "Nottingham",
+        "given": "M."
+      },
+      {
+        "family": "Reschke",
+        "given": "J."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2022",
+          6
+        ]
+      ]
+    },
+    "genre": "RFC"
+  },
+  {
+    "id": "rfc9457",
+    "type": "report",
+    "DOI": "10.17487/RFC9457",
+    "number": "9457",
+    "publisher": "RFC Editor",
+    "title": "Problem Details for HTTP APIs",
+    "author": [
+      {
+        "family": "Nottingham",
+        "given": "M."
+      },
+      {
+        "family": "Wilde",
+        "given": "E."
+      },
+      {
+        "family": "Dalal",
+        "given": "S."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2023",
+          7
+        ]
+      ]
+    },
+    "genre": "RFC"
+  },
+  {
+    "id": "rfc9562",
+    "type": "report",
+    "DOI": "10.17487/RFC9562",
+    "number": "9562",
+    "publisher": "RFC Editor",
+    "title": "Universally Unique IDentifiers (UUIDs)",
+    "author": [
+      {
+        "family": "Davis",
+        "given": "K."
+      },
+      {
+        "family": "Peabody",
+        "given": "B."
+      },
+      {
+        "family": "Leach",
+        "given": "P."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2024",
+          5
+        ]
+      ]
+    },
+    "genre": "RFC"
+  },
+  {
+    "id": "sommerville",
+    "type": "book",
+    "edition": "10",
+    "ISBN": "978-0-13-394303-0",
+    "publisher": "Pearson",
+    "publisher-place": "Boston",
+    "title": "Software Engineering",
+    "author": [
+      {
+        "family": "Sommerville",
+        "given": "Ian"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2016"
+        ]
+      ]
+    }
+  },
+  {
+    "id": "sre",
+    "type": "book",
+    "ISBN": "978-1-4919-2912-4",
+    "publisher": "O'Reilly Media",
+    "publisher-place": "Sebastopol, CA",
+    "title": "Site Reliability Engineering: How Google Runs Production Systems",
+    "editor": [
+      {
+        "family": "Beyer",
+        "given": "Betsy"
+      },
+      {
+        "family": "Jones",
+        "given": "Chris"
+      },
+      {
+        "family": "Petoff",
+        "given": "Jennifer"
+      },
+      {
+        "family": "Murphy",
+        "given": "Niall Richard"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2016"
+        ]
+      ]
+    }
+  },
+  {
+    "id": "typescript",
+    "type": "webpage",
+    "container-title": "TypeScript documentation",
+    "title": "The TypeScript handbook",
+    "URL": "https://www.typescriptlang.org/docs/handbook/intro.html",
+    "author": [
+      {
+        "literal": "Microsoft"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "uml",
+    "type": "report",
+    "number": "formal/17-12-05",
+    "publisher": "Object Management Group",
+    "title": "OMG Unified Modeling Language (OMG UML), version 2.5.1",
+    "URL": "https://www.omg.org/spec/UML/2.5.1/PDF",
+    "author": [
+      {
+        "literal": "Object Management Group"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    },
+    "issued": {
+      "date-parts": [
+        [
+          "2017",
+          12
+        ]
+      ]
+    },
+    "genre": "OMG document"
+  },
+  {
+    "id": "uml-distilled",
+    "type": "book",
+    "edition": "3",
+    "ISBN": "978-0-321-19368-1",
+    "publisher": "Addison-Wesley",
+    "publisher-place": "Boston",
+    "title": "UML Distilled: A Brief Guide to the Standard Object Modeling Language",
+    "author": [
+      {
+        "family": "Fowler",
+        "given": "Martin"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          "2004"
+        ]
+      ]
+    }
+  },
+  {
+    "id": "unity-cc",
+    "type": "webpage",
+    "container-title": "Unity scripting API 6000.3",
+    "title": "CharacterController",
+    "URL": "https://docs.unity3d.com/6000.3/Documentation/ScriptReference/CharacterController.html",
+    "author": [
+      {
+        "literal": "Unity Technologies"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    }
+  },
+  {
+    "id": "unity-imgui",
+    "type": "webpage",
+    "container-title": "Unity manual 6000.3",
+    "title": "Immediate mode GUI (IMGUI)",
+    "URL": "https://docs.unity3d.com/6000.3/Documentation/Manual/GUIScriptingGuide.html",
+    "author": [
+      {
+        "literal": "Unity Technologies"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "unity-input",
+    "type": "webpage",
+    "container-title": "Unity package documentation",
+    "title": "Input System 1.14 manual",
+    "URL": "https://docs.unity3d.com/Packages/com.unity.inputsystem@1.14/manual/index.html",
+    "author": [
+      {
+        "literal": "Unity Technologies"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    }
+  },
+  {
+    "id": "unity-json",
+    "type": "webpage",
+    "container-title": "Unity manual 6000.3",
+    "title": "JSON serialization",
+    "URL": "https://docs.unity3d.com/6000.3/Documentation/Manual/json-serialization.html",
+    "author": [
+      {
+        "literal": "Unity Technologies"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    }
+  },
+  {
+    "id": "unity-manual",
+    "type": "webpage",
+    "container-title": "Unity documentation",
+    "title": "Unity 6.3 user manual",
+    "URL": "https://docs.unity3d.com/6000.3/Documentation/Manual/index.html",
+    "author": [
+      {
+        "literal": "Unity Technologies"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "unity-monobehaviour",
+    "type": "webpage",
+    "container-title": "Unity scripting API 6000.3",
+    "title": "MonoBehaviour",
+    "URL": "https://docs.unity3d.com/6000.3/Documentation/ScriptReference/MonoBehaviour.html",
+    "author": [
+      {
+        "literal": "Unity Technologies"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "unity-navmesh",
+    "type": "webpage",
+    "container-title": "Unity scripting API 6000.3",
+    "title": "NavMeshAgent",
+    "URL": "https://docs.unity3d.com/6000.3/Documentation/ScriptReference/AI.NavMeshAgent.html",
+    "author": [
+      {
+        "literal": "Unity Technologies"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    }
+  },
+  {
+    "id": "unity-order",
+    "type": "webpage",
+    "container-title": "Unity manual 6000.3",
+    "title": "Order of execution for event functions",
+    "URL": "https://docs.unity3d.com/6000.3/Documentation/Manual/execution-order.html",
+    "author": [
+      {
+        "literal": "Unity Technologies"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "unity-persistent",
+    "type": "webpage",
+    "container-title": "Unity scripting API 6000.3",
+    "title": "Application.persistentDataPath",
+    "URL": "https://docs.unity3d.com/6000.3/Documentation/ScriptReference/Application-persistentDataPath.html",
+    "author": [
+      {
+        "literal": "Unity Technologies"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    }
+  },
+  {
+    "id": "unity-raycast",
+    "type": "webpage",
+    "container-title": "Unity scripting API 6000.3",
+    "title": "Physics.Raycast",
+    "URL": "https://docs.unity3d.com/6000.3/Documentation/ScriptReference/Physics.Raycast.html",
+    "author": [
+      {
+        "literal": "Unity Technologies"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "unity-uitk",
+    "type": "webpage",
+    "container-title": "Unity manual 6000.3",
+    "title": "UI Toolkit",
+    "URL": "https://docs.unity3d.com/6000.3/Documentation/Manual/UIElements.html",
+    "author": [
+      {
+        "literal": "Unity Technologies"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          13
+        ]
+      ]
+    }
+  },
+  {
+    "id": "vite",
+    "type": "webpage",
+    "container-title": "Vite documentation",
+    "title": "Getting started",
+    "URL": "https://vite.dev/guide/",
+    "author": [
+      {
+        "literal": "Vite"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "whatwg-fetch",
+    "type": "webpage",
+    "container-title": "WHATWG",
+    "title": "Fetch standard",
+    "URL": "https://fetch.spec.whatwg.org/",
+    "author": [
+      {
+        "literal": "WHATWG"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          15
+        ]
+      ]
+    }
   }
 ]

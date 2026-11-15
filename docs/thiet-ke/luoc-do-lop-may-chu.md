@@ -13,7 +13,7 @@ Máy chủ là một dự án ASP.NET Core (`server/src/ThreeTwelve.Api`), chia 
 | Thư mục | Nội dung | Phụ thuộc vào |
 |---|---|---|
 | `Controllers/` | Nhận yêu cầu HTTP, kiểm dữ liệu vào, gọi dịch vụ, đổi kết quả thành mã HTTP | `Services/`, `Contracts/` |
-| `Contracts/` | Lớp dữ liệu vào ra (DTO, data transfer object) đúng theo schema trong `openapi.yaml` | Không |
+| `Contracts/` | Lớp dữ liệu vào ra (DTO, data transfer object) [@poeaa] đúng theo schema trong `openapi.yaml` | Không |
 | `Services/` | Quy tắc nghiệp vụ | `Domain/`, `Data/`, `Contracts/` |
 | `Domain/` | Lớp thực thể và kiểu liệt kê | Không |
 | `Data/` | `AppDbContext`, cấu hình bảng, migration | `Domain/` |
@@ -56,7 +56,7 @@ Lớp thực thể chia hai nhóm không nối với nhau: sự kiện thống k
 
 : Ý nghĩa các lớp thực thể
 
-Không có lớp người chơi. Máy chủ chỉ biết `InstallationId`, một UUID ngẫu nhiên, nên `TelemetryEvent` và `PuzzleSubmission` chỉ giữ mã này như một giá trị, không trỏ tới bảng nào.
+Không có lớp người chơi. Máy chủ chỉ biết `InstallationId`, một UUID ngẫu nhiên [@rfc9562], nên `TelemetryEvent` và `PuzzleSubmission` chỉ giữ mã này như một giá trị, không trỏ tới bảng nào.
 
 Các trường liệt kê (`Type`, `EndingId`, `EndReason`, `Result`) lưu dạng chuỗi snake_case giống hợp đồng, không lưu số, để đọc thẳng được trong cơ sở dữ liệu và trong tệp CSV. Các khối enumeration trong sơ đồ là tập giá trị hợp lệ; với sự kiện thống kê, tập này nằm trong `TelemetryEventValidator`.
 
@@ -80,7 +80,7 @@ Các trường liệt kê (`Type`, `EndingId`, `EndReason`, `Result`) lưu dạn
 
 : Hành động, API và dịch vụ của phần công khai
 
-Mã trạng thái HTTP mỗi hành động trả về:
+Mã trạng thái HTTP mỗi hành động trả về [@rfc9110; @rfc6585]:
 
 - `PostBatch`: 200; 400 vỏ lô sai; 413 quá 256 KiB (giới hạn kích thước thân yêu cầu); 429 giới hạn IP.
 - `DeleteInstallation`: 204, kể cả khi không có gì để xóa.
@@ -135,7 +135,7 @@ Dịch vụ báo lỗi nghiệp vụ bằng ba ngoại lệ riêng: `NotFoundExc
 ### 4.1. Nhận lô thống kê
 
 1. `TelemetryEventValidator.Check` kiểm từng sự kiện: loại có biết không, đủ trường bắt buộc của loại đó không, `occurredAt` có cũ hơn 30 ngày hay sau giờ máy chủ hơn 24 giờ không. Sai thì cho vào `rejected` với lý do `invalid`, `unknown_type`, `too_old` hoặc `in_future`.
-2. Các sự kiện hợp lệ được chèn trong một giao dịch bằng `INSERT ... ON CONFLICT (event_id) DO NOTHING`. Số dòng chèn được là `accepted`; phần còn lại là `duplicates`. Cách này đúng cả khi game gửi cùng một lô hai lần song song, điều mà kiểu "đọc trước xem đã có chưa rồi mới chèn" không bảo đảm.
+2. Các sự kiện hợp lệ được chèn trong một giao dịch bằng `INSERT ... ON CONFLICT (event_id) DO NOTHING` [@pg-insert]. Số dòng chèn được là `accepted`; phần còn lại là `duplicates`. Cách này đúng cả khi game gửi cùng một lô hai lần song song, điều mà kiểu "đọc trước xem đã có chưa rồi mới chèn" không bảo đảm.
 3. `eventId` trùng ngay trong một lô cũng tính là `duplicates`.
 
 `DeleteInstallationAsync` xóa mọi sự kiện có `installation_id` đó bằng một câu `DELETE`. Lượt gửi bằng chứng của mã cài đặt đó không bị xóa: đó không phải thống kê, và cần cho giới hạn lượt.
@@ -145,7 +145,7 @@ Dịch vụ báo lỗi nghiệp vụ bằng ba ngoại lệ riêng: `NotFoundExc
 `PuzzleSubmissionService.SubmitAsync` chạy trong một giao dịch:
 
 1. Đọc câu đố. Không có hoặc `IsEnabled = false` thì trả `PuzzleNotFound`, không ghi gì.
-2. Lấy khóa `pg_advisory_xact_lock` theo cặp `(puzzleId, installationId)`, để hai lần gửi cùng lúc của một mã cài đặt không cùng đọc thấy còn lượt.
+2. Lấy khóa tư vấn `pg_advisory_xact_lock` [@pg-locking] theo cặp `(puzzleId, installationId)`, để hai lần gửi cùng lúc của một mã cài đặt không cùng đọc thấy còn lượt.
 3. Đếm số lần `rejected` của cặp đó trong `AttemptWindowMinutes` phút gần nhất. Đủ `MaxFailedAttempts` thì ghi một dòng `blocked` và trả `Blocked`, kể cả khi mã băm đúng.
 4. So mã băm gửi lên với các `PuzzleSolution` của câu đố. Khớp thì ghi `accepted`, trả `UnlockId`; không khớp thì ghi `rejected`.
 5. Tính `AttemptsRemaining`, `WindowResetsAt` và `RetryAfter` theo cửa sổ trượt của hợp đồng API.
@@ -154,7 +154,7 @@ So mã băm là so chuỗi hex chữ thường đã kiểm định dạng; hợp
 
 ### 4.3. Dashboard và CSV
 
-`DateRange.Resolve` đổi `from`, `to` của yêu cầu thành khoảng nửa mở theo UTC: thiếu `to` thì lấy giờ hiện tại, thiếu `from` thì lấy 30 ngày trước `to`; `from` không trước `to` hoặc khoảng dài hơn 366 ngày thì báo lỗi 400.
+`DateRange.Resolve` đổi `from`, `to` của yêu cầu thành khoảng nửa mở theo UTC [@rfc3339]: thiếu `to` thì lấy giờ hiện tại, thiếu `from` thì lấy 30 ngày trước `to`; `from` không trước `to` hoặc khoảng dài hơn 366 ngày thì báo lỗi 400.
 
 `DashboardService.GetSummaryAsync` chạy các truy vấn tổng hợp trên `telemetry_events` lọc theo `received_at` (giờ máy chủ nhận), không theo giờ máy người chơi:
 
@@ -171,11 +171,11 @@ So mã băm là so chuỗi hex chữ thường đã kiểm định dạng; hợp
 
 : Cách tính các số liệu trên dashboard
 
-`CsvExportService.WriteSummaryAsync` gọi `GetSummaryAsync` rồi trải mỗi số thành một dòng `metric,night,key,value`. `WriteEventsAsync` đọc sự kiện theo từng phần và ghi thẳng ra luồng phản hồi, không nạp hết vào bộ nhớ.
+`CsvExportService.WriteSummaryAsync` gọi `GetSummaryAsync` rồi trải mỗi số thành một dòng CSV `metric,night,key,value` [@rfc4180]. `WriteEventsAsync` đọc sự kiện theo từng phần và ghi thẳng ra luồng phản hồi, không nạp hết vào bộ nhớ.
 
 ### 4.4. Tài khoản quản trị
 
-- Mật khẩu băm bằng `PasswordHasher` mặc định của Identity (PBKDF2) [@ms-identity-config]. Tối thiểu 12 ký tự, không bắt buộc chữ hoa, số hay ký tự đặc biệt.
+- Mật khẩu băm bằng `PasswordHasher` mặc định của Identity (PBKDF2) [@ms-identity-config; @rfc8018]. Tối thiểu 12 ký tự, không bắt buộc chữ hoa, số hay ký tự đặc biệt.
 - Sai mật khẩu 5 lần liên tiếp thì Identity tạm chặn đăng nhập 15 phút (`LockoutEnd`) [@ms-identity-config]. Việc này khác với khóa tài khoản (`IsActive = false`), do quản trị viên làm và không tự hết.
 - Đăng nhập kiểm thêm `IsActive`; tài khoản đã khóa nhận cùng lỗi 401 như sai mật khẩu.
 - Khóa tài khoản, đặt lại hay đổi mật khẩu đều đổi `SecurityStamp`. Cookie kiểm lại dấu này mỗi phút, nên phiên cũ hết hiệu lực trong vòng một phút.
@@ -205,7 +205,7 @@ So mã băm là so chuỗi hex chữ thường đã kiểm định dạng; hợp
 
 : Ánh xạ schema OpenAPI với lớp và thực thể
 
-Mỗi sự kiện trong lô được đọc dưới dạng JSON thô (`JsonElement`), rồi kiểm theo `type` trong `TelemetryEventValidator` (đã làm ở task #25). Làm vậy vì hợp đồng yêu cầu một sự kiện sai chỉ bị loại riêng, không làm hỏng cả lô; nếu để bộ đọc JSON kiểm theo từng kiểu con, một sự kiện sai sẽ làm cả lô nhận 400.
+Mỗi sự kiện trong lô được đọc dưới dạng JSON thô (`JsonElement`) [@ms-jsonelement], rồi kiểm theo `type` trong `TelemetryEventValidator` (đã làm ở task #25). Làm vậy vì hợp đồng yêu cầu một sự kiện sai chỉ bị loại riêng, không làm hỏng cả lô; nếu để bộ đọc JSON kiểm theo từng kiểu con, một sự kiện sai sẽ làm cả lô nhận 400.
 
 ## 6. Quyết định và lý do
 
@@ -216,7 +216,7 @@ Mỗi sự kiện trong lô được đọc dưới dạng JSON thô (`JsonEleme
 | Câu đố tạo bằng migration, không có API tạo hay xóa | Kịch bản chỉ có một câu đố; yêu cầu 12 chỉ đòi cấu hình | Trang quản trị tạo câu đố mới |
 | Nhiều mã băm hợp lệ cho một câu đố | Phát hành lại tệp bằng chứng mà không làm người đã giải bị sai | Một cột mã băm trong `puzzles` |
 | Lưu cả lần gửi bị chặn (`blocked`) | Trang quản trị thấy được ai đang dò lời giải | Chỉ lưu lần đúng và sai |
-| Khóa tư vấn (advisory lock) theo cặp câu đố và mã cài đặt | Hai lần gửi cùng lúc không vượt được giới hạn lượt; không khóa cả bảng | Mức cô lập `SERIALIZABLE` (phải thử lại khi xung đột) |
+| Khóa tư vấn (advisory lock) theo cặp câu đố và mã cài đặt | Hai lần gửi cùng lúc không vượt được giới hạn lượt; không khóa cả bảng | Mức cô lập `SERIALIZABLE` [@pg-isolation] (phải thử lại khi xung đột) |
 | `IdentityUserContext`, không có vai trò | Mọi quản trị viên cùng quyền; bớt bốn bảng không dùng | `IdentityDbContext` đầy đủ với vai trò |
 | Lỗi nghiệp vụ là ngoại lệ, đổi sang mã HTTP ở một chỗ | Controller ngắn; mã lỗi nhất quán theo RFC 9457 | Mỗi controller tự kiểm và tự trả lỗi |
 | Tên bảng và cột snake_case | Quy ước của PostgreSQL [@pg-lexical]; viết SQL tay không cần ngoặc kép | Tên PascalCase mặc định của EF Core |

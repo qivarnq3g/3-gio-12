@@ -476,6 +476,9 @@ def finish_docx(path, widths, ratios, update_on_open=True):
         run.append(node)
         footer._p.append(run)
     space_after_tables(doc)
+    for node in doc.element.body.iter(qn("w:t")):
+        if node.text and chr(0x2013) in node.text:
+            node.text = node.text.replace(chr(0x2013), "-")
     settings = doc.settings.element
     if update_on_open and settings.find(qn("w:updateFields")) is None:
         update = OxmlElement("w:updateFields")

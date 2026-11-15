@@ -6,7 +6,7 @@ Phụ trách: Phúc. Phục vụ #11 và phần lược đồ lớp trong thuy�
 
 Các sơ đồ mô tả lớp có trong mã nguồn game ngày 31/10/2026, khi đã có điều khiển góc nhìn thứ nhất và bản chơi thô Đêm 1; riêng phần lưu tiến độ và cài đặt ở mục 4.1 theo mã nguồn ngày 05/11/2026. Phần máy chủ ở task #12; ranh giới giữa các thành phần ở task #10.
 
-Các sơ đồ từ mục 1 tới mục 6 mô tả lớp đã có trong code; mục 7 là thiết kế lớp cho các phần chưa làm. Chỉ liệt kê thành viên liên quan đến trách nhiệm và quan hệ chính, không chép toàn bộ hàm dựng UI, hàm Unity lifecycle hay cấu hình màn chơi. Các kiểu `MonoBehaviour`, `Camera`, `CharacterController`, `NavMeshAgent`, `InputActionAsset`, `UIDocument` là kiểu của Unity/package, không phải lớp tự viết.
+Các sơ đồ từ mục 1 tới mục 6 mô tả lớp đã có trong code; mục 7 là thiết kế lớp cho các phần chưa làm. Chỉ liệt kê thành viên liên quan đến trách nhiệm và quan hệ chính, không chép toàn bộ hàm dựng UI, hàm Unity lifecycle [@unity-order] hay cấu hình màn chơi. Các kiểu `MonoBehaviour`, `Camera`, `CharacterController`, `NavMeshAgent`, `InputActionAsset`, `UIDocument` là kiểu của Unity/package, không phải lớp tự viết.
 
 | Ký hiệu | Ý nghĩa |
 |---|---|
@@ -15,13 +15,13 @@ Các sơ đồ từ mục 1 tới mục 6 mô tả lớp đã có trong code; m�
 | Nét đứt, đầu mũi tên mở từ A tới B | A sử dụng B qua lời gọi, tham số, kiểu dữ liệu hoặc sự kiện |
 | Nét liền, hình thoi đặc ở phía A | A tạo và giữ B như thành phần nội bộ |
 | `+`, `-`, `#` | Public, private, protected |
-| `tên: Kiểu`, `Hàm(tham số: Kiểu): Kiểu trả về` | Cách ghi thuộc tính và phương thức theo UML |
+| `tên: Kiểu`, `Hàm(tham số: Kiểu): Kiểu trả về` | Cách ghi thuộc tính và phương thức theo UML [@uml] |
 | Chữ gạch chân | Thành viên tĩnh (static) |
 | `0..1`, `0..*`, `1` | Số lượng ở đầu quan hệ; có thể thay đổi theo thời điểm chạy |
 
 : Ký hiệu dùng trong lược đồ lớp
 
-Trường/property trên sơ đồ giữ nguyên tên code. Sự kiện được ghi bằng kiểu `Action`, delegate kiểm tra điều kiện bằng `Func`; phần giải thích chỉ rõ chiều phát và chiều đăng ký. Setter private không làm property trở thành private. Riêng `CheckpointService.Save` và `Restore` lược bỏ kiểu tham số trên hình để tránh chồng chữ; chữ ký đầy đủ nằm trong mã nguồn của lớp. Các quan hệ scene dùng association thay vì composition vì Unity quản lý vòng đời GameObject.
+Trường/property trên sơ đồ giữ nguyên tên code. Sự kiện được ghi bằng kiểu `Action`, delegate kiểm tra điều kiện bằng `Func` [@ms-events]; phần giải thích chỉ rõ chiều phát và chiều đăng ký. Setter private không làm property trở thành private. Riêng `CheckpointService.Save` và `Restore` lược bỏ kiểu tham số trên hình để tránh chồng chữ; chữ ký đầy đủ nằm trong mã nguồn của lớp. Các quan hệ scene dùng association thay vì composition vì Unity quản lý vòng đời GameObject.
 
 Các lớp trình bày phụ (`NightBagPresentation`, `NightInjuryFeedback`, `NightPassingBike`, `TestWorldClock`) và script trong `Assets/Editor/` được lược bỏ để tập trung vào sáu nhóm lớp chính.
 
@@ -38,7 +38,7 @@ Hình tổng quát xếp mọi lớp tự viết của game vào sáu nhóm và 
 
 ![Lược đồ lớp: Nhân vật và camera](lop-game/nhan-vat-va-camera.png)
 
-`FirstPersonPlayer` đọc Unity Input System [@unity-input], điều khiển `CharacterController` [@unity-cc], xoay camera và raycast tìm `WorldInteractable`. Không có lớp camera riêng: `eyes` là camera con, yaw ở transform nhân vật và pitch ở camera. `PlayerGeometry` tập trung kích thước capsule và layer mask; các chiều cao là hằng số, các mask là property tĩnh.
+`FirstPersonPlayer` đọc Unity Input System [@unity-input], điều khiển `CharacterController` [@unity-cc], xoay camera và raycast [@unity-raycast] tìm `WorldInteractable`. Không có lớp camera riêng: `eyes` là camera con, yaw ở transform nhân vật và pitch ở camera. `PlayerGeometry` tập trung kích thước capsule và layer mask; các chiều cao là hằng số, các mask là property tĩnh.
 
 ### 2.2. Tương tác
 
@@ -49,7 +49,7 @@ Hình tổng quát xếp mọi lớp tự viết của game vào sáu nhóm và 
 ## 3. Điều phối Đêm 1 và kẻ truy đuổi
 
 
-Bốn lớp `NightOneDirector`, `NightObserver`, `NightOneHud`, `NightRoomDoor` đều kế thừa `MonoBehaviour` (lược bỏ các mũi tên Unity ở hai sơ đồ dưới cho dễ đọc).
+Bốn lớp `NightOneDirector`, `NightObserver`, `NightOneHud`, `NightRoomDoor` đều kế thừa `MonoBehaviour` [@unity-monobehaviour] (lược bỏ các mũi tên Unity ở hai sơ đồ dưới cho dễ đọc).
 
 ### 3.1. Điều phối Đêm 1
 
@@ -57,7 +57,7 @@ Bốn lớp `NightOneDirector`, `NightObserver`, `NightOneHud`, `NightRoomDoor` 
 
 `NightOneDirector` giữ trạng thái cốt truyện, điều kiện hành động, checkpoint và các observer được gán từ scene. Director đăng ký `FirstPersonPlayer.PhoneChanged` và `FellOutOfWorld`, đồng thời gán `CanOpenPhone`; nó gỡ đăng ký khi bị hủy.
 
-`NightOneHud` vẽ UI qua IMGUI, đọc `story.State` và gọi hành động trên director. `NightRoomDoor` thay đổi `Collider.isTrigger` theo stage, không phải lớp con của `WorldInteractable`; component `NightInteraction` cùng GameObject mới xử lý E.
+`NightOneHud` vẽ UI qua IMGUI [@unity-imgui], đọc `story.State` và gọi hành động trên director. `NightRoomDoor` thay đổi `Collider.isTrigger` theo stage, không phải lớp con của `WorldInteractable`; component `NightInteraction` cùng GameObject mới xử lý E.
 
 ### 3.2. Kẻ truy đuổi
 
@@ -70,7 +70,7 @@ Bốn lớp `NightOneDirector`, `NightObserver`, `NightOneHud`, `NightRoomDoor` 
 
 ![Lược đồ lớp: Trạng thái, đồng hồ và checkpoint](lop-game/trang-thai-dong-ho-va-checkpoint.png)
 
-`NightOneState` là DTO serializable chứa tiến độ Đêm 1; sơ đồ chỉ chọn một số field đại diện. `Copy()` dùng `JsonUtility` serialize/deserialize để tạo bản sao [@unity-json]. `StoryClock` giữ đúng instance state hiện hành và từ chối mốc thời gian đi lùi; director tạo lại clock sau khi thay state.
+`NightOneState` là DTO [@poeaa] serializable chứa tiến độ Đêm 1; sơ đồ chỉ chọn một số field đại diện. `Copy()` dùng `JsonUtility` serialize/deserialize để tạo bản sao [@unity-json]. `StoryClock` giữ đúng instance state hiện hành và từ chối mốc thời gian đi lùi; director tạo lại clock sau khi thay state.
 
 `CheckpointService` giữ một snapshot trong RAM, vị trí và hướng quay. `Save` sao chép state đầu vào; `Restore` trả một bản sao khác, không đưa instance snapshot ra ngoài. `NightOneDirector` áp dụng lại state, pose và trạng thái thế giới. Riêng hồi phục an toàn trong prologue giữ hình phạt bị bắt, không gọi restore snapshot để xóa hình phạt.
 
@@ -81,13 +81,13 @@ Bốn lớp `NightOneDirector`, `NightObserver`, `NightOneHud`, `NightRoomDoor` 
 
 ![Lược đồ lớp: Lưu và nạp tệp](lop-game/luu-va-nap-tep.png)
 
-`NightPersistence` là `MonoBehaviour` gắn vào director. Lớp này tự lưu khoảng 2 giây một lần theo thời gian thực và lưu thêm khi mất focus, tạm dừng hoặc thoát ứng dụng; không lưu giữa lúc chuyển cảnh. `LocalJsonStore<T>` bọc dữ liệu bằng số phiên bản và mã băm SHA-256, ghi qua tệp tạm rồi mới thay tệp chính, giữ bản dự phòng `.bak` và kiểm tra hợp lệ trước khi trả dữ liệu cho game. Tiến độ nằm ở `night-one.json`, cài đặt nằm ở `preferences.json`, chỉ có một vị trí lưu và không gửi lên máy chủ.
+`NightPersistence` là `MonoBehaviour` gắn vào director. Lớp này tự lưu khoảng 2 giây một lần theo thời gian thực và lưu thêm khi mất focus, tạm dừng hoặc thoát ứng dụng; không lưu giữa lúc chuyển cảnh. `LocalJsonStore<T>` bọc dữ liệu bằng số phiên bản và mã băm SHA-256 [@fips180], ghi qua tệp tạm rồi mới thay tệp chính, giữ bản dự phòng `.bak` và kiểm tra hợp lệ trước khi trả dữ liệu cho game. Tiến độ nằm ở `night-one.json`, cài đặt nằm ở `preferences.json`, chỉ có một vị trí lưu và không gửi lên máy chủ.
 
 ### 4.2. Dữ liệu tệp lưu
 
 ![Lược đồ lớp: Dữ liệu tệp lưu](lop-game/du-lieu-tep-luu.png)
 
-`NightOneDirector` và `NightObserver` là lớp `partial`; các hàm chụp và khôi phục đặt trong `NightOnePersistence.cs` và `NightObserverPersistence.cs`. `FirstPersonPlayer` có thêm `ViewPitch` và `RestoreView` để khôi phục góc nhìn và tư thế cúi. Phần lưu hiện chỉ áp dụng cho Đêm 1 và chưa có cơ chế chuyển đổi tệp lưu giữa các phiên bản dữ liệu.
+`NightOneDirector` và `NightObserver` là lớp `partial` [@ms-partial]; các hàm chụp và khôi phục đặt trong `NightOnePersistence.cs` và `NightObserverPersistence.cs`. `FirstPersonPlayer` có thêm `ViewPitch` và `RestoreView` để khôi phục góc nhìn và tư thế cúi. Phần lưu hiện chỉ áp dụng cho Đêm 1 và chưa có cơ chế chuyển đổi tệp lưu giữa các phiên bản dữ liệu.
 
 ## 5. Điện thoại trong game
 
@@ -111,7 +111,7 @@ Prototype này chưa nối với director hoặc HUD của Đêm 1; vì vậy kh
 
 ![Lược đồ lớp: Sự kiện thống kê và ranh giới gửi mạng](lop-game/su-kien-thong-ke-va-ranh-gioi-gui-mang.png)
 
-Director phát `TelemetryProduced` với payload có kiểu; `NightTelemetry` cung cấp UUID, session ID, sequence, thời điểm UTC và JSON. `InternalEvent` là kênh debug nội bộ `(string type, string detail)` riêng, không phải sự kiện HTTP theo OpenAPI. Các lớp payload không kế thừa `MonoBehaviour`.
+Director phát `TelemetryProduced` với payload có kiểu; `NightTelemetry` cung cấp UUID [@rfc9562], session ID, sequence, thời điểm UTC [@rfc3339] và JSON [@rfc8259]. `InternalEvent` là kênh debug nội bộ `(string type, string detail)` riêng, không phải sự kiện HTTP theo OpenAPI. Các lớp payload không kế thừa `MonoBehaviour`.
 
 Phần gửi thống kê của game (xin đồng ý, hàng đợi trên đĩa, gửi theo lô, gửi lại) chưa làm, nên sơ đồ chưa có các lớp này. Khi làm, payload nội bộ phải đổi sang đúng định dạng của hợp đồng API: `CaughtTelemetry.position` chỉ dùng trong game, không có trong sự kiện `player_caught`; `installationId`, `gameVersion`, `platform` nằm ở vỏ lô, không phải trường của `NightTelemetry`. Game chỉ gửi khi người chơi đã đồng ý.
 
@@ -123,7 +123,7 @@ Các mục trên mô tả lớp đã có trong mã nguồn. Mục này thiết k
 
 ![Lược đồ lớp: Lớp dự kiến cho các đêm](lop-game/planned-nights.png)
 
-Phần dùng chung của `NightOneDirector` (nhân vật, điểm lưu, điện thoại, phát sự kiện thống kê, xử lý khi bị bắt) được tách lên lớp trừu tượng `NightDirector`. Mỗi đêm là một lớp con và chỉ viết phần riêng của đêm đó: kịch bản, hành động và trạng thái riêng, mỗi trạng thái kế thừa `NightStateBase`. `NightObserver` trỏ tới `NightDirector` thay vì `NightOneDirector`, nên người quan sát dùng lại được ở mọi đêm. `NightLoader` nạp đêm theo số và giữ đêm đang chơi.
+Phần dùng chung của `NightOneDirector` (nhân vật, điểm lưu, điện thoại, phát sự kiện thống kê, xử lý khi bị bắt) được tách lên lớp trừu tượng `NightDirector`, theo mẫu Template Method: lớp cha giữ trình tự chung, lớp con điền các bước riêng [@gof]. Mỗi đêm là một lớp con và chỉ viết phần riêng của đêm đó: kịch bản, hành động và trạng thái riêng, mỗi trạng thái kế thừa `NightStateBase`. `NightObserver` trỏ tới `NightDirector` thay vì `NightOneDirector`, nên người quan sát dùng lại được ở mọi đêm. `NightLoader` nạp đêm theo số và giữ đêm đang chơi.
 
 ### 7.2. Điện thoại
 
@@ -135,6 +135,6 @@ Phần dùng chung của `NightOneDirector` (nhân vật, điểm lưu, điện 
 
 ![Lược đồ lớp: Lớp dự kiến cho gửi thống kê và bằng chứng](lop-game/planned-network.png)
 
-`ConsentService` giữ trạng thái đồng ý và mã cài đặt. `TelemetryQueue` chỉ nhận sự kiện khi người chơi đã đồng ý và ghi hàng đợi xuống đĩa bằng `LocalJsonStore` đã có. `TelemetryUploader` lấy tối đa 100 sự kiện mỗi lần, gửi qua `ApiClient`, xóa lô đã gửi khỏi hàng đợi và thử lại sau thời gian chờ tăng dần khi lỗi. Khi người chơi rút đồng ý, `ConsentService` xóa hàng đợi và gọi `ApiClient` xóa dữ liệu trên máy chủ.
+`ConsentService` giữ trạng thái đồng ý và mã cài đặt. `TelemetryQueue` chỉ nhận sự kiện khi người chơi đã đồng ý và ghi hàng đợi xuống đĩa bằng `LocalJsonStore` đã có. `TelemetryUploader` lấy tối đa 100 sự kiện mỗi lần, gửi qua `ApiClient`, xóa lô đã gửi khỏi hàng đợi và thử lại sau thời gian chờ tăng dần khi lỗi [@sre]. Khi người chơi rút đồng ý, `ConsentService` xóa hàng đợi và gọi `ApiClient` xóa dữ liệu trên máy chủ.
 
 `EvidencePanel` là màn hình chọn tệp bằng chứng. `EvidenceHasher` tính SHA-256 trên máy, từ chối tệp lớn hơn 20 MiB; `ApiClient` chỉ gửi mã băm. Khi máy chủ chấp nhận, `UnlockStore` lưu mã mở khóa để mở kết thúc thật. `ApiClient` là lớp duy nhất gọi mạng và không chứa khóa bí mật nào.

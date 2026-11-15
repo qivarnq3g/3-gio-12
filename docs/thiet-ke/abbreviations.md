@@ -23,6 +23,7 @@
 | RFC | Request for Comments | Tài liệu tiêu chuẩn của IETF (Internet Engineering Task Force) |
 | SHA-256 | Secure Hash Algorithm 256-bit | Thuật toán băm an toàn 256 bit |
 | SQL | Structured Query Language | Ngôn ngữ truy vấn có cấu trúc |
+| TLS | Transport Layer Security | Bảo mật tầng giao vận |
 | UI | User interface | Giao diện người dùng |
 | UK | Unique key | Khóa duy nhất |
 | UML | Unified Modeling Language | Ngôn ngữ mô hình hóa thống nhất |

@@ -4,7 +4,9 @@ Tách từ `luoc-do-lop-may-chu.md`: lược đồ quan hệ thực thể và c�
 
 ## 1. Lược đồ quan hệ thực thể
 
-PostgreSQL 17. Tên bảng và cột viết snake_case bằng gói `EFCore.NamingConventions` (`UseSnakeCaseNamingConvention`), để viết SQL tay khi xem dữ liệu không phải đặt tên trong ngoặc kép. Thời gian dùng `timestamptz` và luôn lưu UTC.
+Lược đồ dựa trên mô hình thực thể - quan hệ (entity-relationship) của Chen [@chen], vẽ bằng ký hiệu chân chim (crow's foot) của Mermaid [@mermaid].
+
+PostgreSQL 17. Tên bảng và cột viết snake_case bằng gói `EFCore.NamingConventions` [@efcore-naming] (`UseSnakeCaseNamingConvention`), để viết SQL tay khi xem dữ liệu không phải đặt tên trong ngoặc kép. Thời gian dùng `timestamptz` và luôn lưu UTC [@pg-datetime].
 
 ```mermaid
 %%{init: {"er": {"nodeSpacing": 30, "rankSpacing": 60, "entityPadding": 8}}}%%
@@ -117,7 +119,7 @@ erDiagram
 
 Chỉ mục: `(installation_id)` cho việc xóa khi rút đồng ý; `(received_at, type)` cho dashboard và CSV.
 
-Không có cột địa chỉ IP, User-Agent hay `platform`. Hợp đồng chỉ có một giá trị `platform` là `windows`, nên chưa cần lưu; thêm nền tảng thì thêm cột bằng migration.
+Không có cột địa chỉ IP, User-Agent hay `platform`. Hợp đồng chỉ có một giá trị `platform` là `windows`, nên chưa cần lưu; thêm nền tảng thì thêm cột bằng migration [@ms-ef-migrations].
 
 ## 3. Bảng `puzzles`
 

@@ -6,14 +6,16 @@ Hợp đồng API giữa game và máy chủ nằm ở `docs/api/openapi.yaml` v
 
 ## 1. Tổng quan
 
+Kiến trúc được trình bày theo hai góc nhìn: góc nhìn thành phần (mục 2) và góc nhìn triển khai (mục 4), kèm các luồng dữ liệu chính (mục 3) [@kruchten].
+
 Hệ thống gồm năm thành phần:
 
 | Thành phần | Công nghệ | Chạy ở đâu | Yêu cầu chức năng | Phụ trách |
 |---|---|---|---|---|
-| Game | Unity 6.3 LTS, C# | Máy tính Windows của người chơi, offline | 1 đến 8 | Phúc, Quang, Tiên, Thắng |
-| Máy chủ API | ASP.NET Core trên .NET 10, EF Core | Máy chủ, trong Docker | 9 đến 14 | Quang |
+| Game | Unity 6.3 LTS [@unity-manual], C# | Máy tính Windows của người chơi, offline | 1 đến 8 | Phúc, Quang, Tiên, Thắng |
+| Máy chủ API | ASP.NET Core trên .NET 10 [@ms-dotnet10], EF Core | Máy chủ, trong Docker | 9 đến 14 | Quang |
 | Cơ sở dữ liệu | PostgreSQL | Máy chủ, trong Docker | 9 đến 14 | Quang |
-| Trang quản trị | React, TypeScript, Vite (trang tĩnh) | Trình duyệt của quản trị viên | 9 đến 12 | Thắng, Quang |
+| Trang quản trị | React [@react], TypeScript [@typescript], Vite [@vite] (trang tĩnh) | Trình duyệt của quản trị viên | 9 đến 12 | Thắng, Quang |
 | Website câu đố | Trang tĩnh HTML | Trình duyệt của người chơi | 7 | Thắng, Quang |
 
 : Các thành phần của hệ thống
@@ -21,14 +23,14 @@ Hệ thống gồm năm thành phần:
 Ba nguyên tắc chi phối thiết kế:
 
 1. Game chơi được khi không có mạng, trừ kết thúc thật. Mạng chỉ cần cho hai việc: gửi thống kê (tùy chọn, khi người chơi đồng ý) và gửi bằng chứng câu đố để mở kết thúc thật.
-2. Người chơi không có tài khoản. Máy chủ chỉ biết một mã cài đặt ngẫu nhiên (`installationId`), không biết người chơi là ai.
+2. Người chơi không có tài khoản. Máy chủ chỉ biết một mã cài đặt ngẫu nhiên (`installationId`, dạng UUID [@rfc9562]), không biết người chơi là ai.
 3. Game không chứa bí mật: không có khóa API, không có mã băm của bằng chứng đúng. Bằng chứng được kiểm trên máy chủ để quản trị viên đổi bằng chứng hợp lệ và giới hạn lượt gửi mà không phải phát hành bản build mới, và để máy chủ ghi lịch sử gửi cho trang quản trị (yêu cầu 12).
 
 ## 2. Sơ đồ thành phần
 
 ![Sơ đồ thành phần](architecture/component.png)
 
-Sơ đồ vẽ theo ký hiệu thành phần (component) của UML. Máy chủ API cung cấp hai giao diện: API công khai cho game và API quản trị cho trang quản trị; máy chủ dùng giao diện SQL của PostgreSQL. Website câu đố không nối với thành phần nào: người chơi mở nó bằng trình duyệt, và mối nối duy nhất với máy chủ là quản trị viên nhập mã băm bằng chứng (mục 2.5). Proxy ngược Caddy là hạ tầng, nên vẽ ở sơ đồ triển khai (mục 4).
+Sơ đồ vẽ theo ký hiệu thành phần (component) của UML [@uml]. Máy chủ API cung cấp hai giao diện: API công khai cho game và API quản trị cho trang quản trị; máy chủ dùng giao diện SQL của PostgreSQL. Website câu đố không nối với thành phần nào: người chơi mở nó bằng trình duyệt, và mối nối duy nhất với máy chủ là quản trị viên nhập mã băm bằng chứng (mục 2.5). Proxy ngược Caddy là hạ tầng, nên vẽ ở sơ đồ triển khai (mục 4).
 
 ### 2.1. Game
 
@@ -40,11 +42,11 @@ Các khối bên trong (chi tiết lớp ở task #11):
 | Màn chơi và kịch bản | Thứ tự màn, sự kiện theo mốc giờ, biến truyện, lựa chọn, kết thúc (yêu cầu 2, 3) |
 | Điện thoại | Giao diện hai chiếc điện thoại: tin nhắn, ảnh, ghi âm, cài đặt (yêu cầu 3) |
 | Ẩn nấp | Người quan sát, nón nhìn, thanh chú ý, điểm lưu (yêu cầu 4) |
-| Lưu game | Tệp JSON trong `Application.persistentDataPath` [@unity-persistent]: tiến độ, biến, `installationId`, trạng thái đồng ý (yêu cầu 5) |
+| Lưu game | Tệp JSON [@rfc8259] trong `Application.persistentDataPath` [@unity-persistent]: tiến độ, biến, `installationId`, trạng thái đồng ý (yêu cầu 5) |
 | Cài đặt | Âm lượng, độ nhạy chuột, đồ họa, cảnh báo nội dung, đồng ý thống kê (yêu cầu 6, 8) |
 | Thống kê | Ghi sự kiện vào hàng đợi trên đĩa, gửi theo lô khi có mạng (yêu cầu 6) |
 | Gửi bằng chứng | Chọn tệp, tính SHA-256 trên máy, gửi mã băm (yêu cầu 7) |
-| Máy khách HTTP | Gọi API, thử lại khi lỗi theo bảng trong hợp đồng API |
+| Máy khách HTTP | Gọi API qua HTTP [@rfc9110], thử lại khi lỗi theo bảng trong hợp đồng API |
 
 : Các khối bên trong game
 
@@ -52,13 +54,13 @@ Các khối bên trong (chi tiết lớp ở task #11):
 
 ### 2.2. Máy chủ API
 
-Một ứng dụng ASP.NET Core, chia ba lớp:
+Một ứng dụng ASP.NET Core, chia ba lớp theo kiến trúc phân lớp (layered architecture); lớp dịch vụ (service layer) gom quy tắc nghiệp vụ [@poeaa]:
 
 | Lớp | Việc |
 |---|---|
 | Controller | Nhận yêu cầu HTTP, kiểm dữ liệu vào, trả lỗi theo RFC 9457 [@rfc9457] |
 | Dịch vụ | Quy tắc nghiệp vụ: bỏ trùng sự kiện theo `eventId`, so mã băm, đếm lượt gửi sai, tổng hợp số liệu dashboard, xuất CSV |
-| Truy cập dữ liệu | EF Core, `DbContext`, migration [@ms-efcore] |
+| Truy cập dữ liệu | EF Core, `DbContext`, migration [@ms-efcore; @ms-ef-migrations] |
 
 : Các lớp của máy chủ API
 
@@ -66,7 +68,7 @@ Hai nhóm API:
 
 | Nhóm | Đường dẫn | Bên gọi | Xác thực |
 |---|---|---|---|
-| API công khai | `/api/v1/telemetry/...`, `/api/v1/puzzles/...`, `/health` | Game | Không; chống lạm dụng bằng giới hạn tần suất theo địa chỉ IP (trong bộ nhớ) và giới hạn lượt sai theo mã cài đặt (trong cơ sở dữ liệu) |
+| API công khai | `/api/v1/telemetry/...`, `/api/v1/puzzles/...`, `/health` | Game | Không; chống lạm dụng bằng giới hạn tần suất theo địa chỉ IP (trong bộ nhớ) [@ms-ratelimit] và giới hạn lượt sai theo mã cài đặt (trong cơ sở dữ liệu) |
 | API quản trị | `/api/admin/...`: đăng nhập, tài khoản, dashboard, xuất CSV, cấu hình câu đố, lịch sử gửi | Trang quản trị | ASP.NET Core Identity, cookie phiên [@ms-identity] |
 
 : Hai nhóm API
@@ -90,7 +92,7 @@ Dashboard tính trực tiếp từ bảng sự kiện bằng truy vấn tổng h
 
 ### 2.4. Trang quản trị
 
-Ứng dụng một trang (single-page application) React, build ra tệp tĩnh, proxy ngược phục vụ ở `/admin`. Trang quản trị và API nằm cùng một tên miền nên cookie đăng nhập dùng thẳng, không cần cấu hình CORS. Kiểu dữ liệu TypeScript sinh từ `openapi.yaml`, không viết tay.
+Ứng dụng một trang (single-page application) [@mdn-spa] React, build ra tệp tĩnh, proxy ngược (reverse proxy) [@caddy-proxy] phục vụ ở `/admin`. Trang quản trị và API nằm cùng một tên miền nên cookie đăng nhập dùng thẳng, không cần cấu hình CORS [@whatwg-fetch]. Kiểu dữ liệu TypeScript sinh từ `openapi.yaml` bằng `openapi-typescript` [@openapi-ts], không viết tay.
 
 ### 2.5. Website câu đố
 
@@ -129,7 +131,7 @@ sequenceDiagram
 
 Khi người chơi rút đồng ý: game xóa hàng đợi trên máy và gọi `DELETE /api/v1/telemetry/installations/{installationId}`; máy chủ xóa mọi sự kiện của mã cài đặt đó.
 
-Khi mất mạng: lô nằm lại trong hàng đợi, game thử lại theo thời gian chờ tăng dần. Chơi game không bị ảnh hưởng.
+Khi mất mạng: lô nằm lại trong hàng đợi, game thử lại theo thời gian chờ tăng dần (exponential backoff) [@sre]. Chơi game không bị ảnh hưởng.
 
 ### 3.2. Bằng chứng câu đố
 
@@ -166,19 +168,19 @@ sequenceDiagram
 
 ### 3.3. Quản trị
 
-Luồng này phục vụ yêu cầu 9 đến 12. Quản trị viên đăng nhập trên trang quản trị; API kiểm tài khoản bằng ASP.NET Core Identity và cấp cookie phiên. Mọi yêu cầu tới `/api/admin/...` không có cookie hợp lệ nhận 401.
+Luồng này phục vụ yêu cầu 9 đến 12. Quản trị viên đăng nhập trên trang quản trị; API kiểm tài khoản bằng ASP.NET Core Identity và cấp cookie phiên. Mọi yêu cầu tới `/api/admin/...` không có cookie hợp lệ nhận 401 [@rfc9110].
 
 ## 4. Sơ đồ triển khai
 
 ![Sơ đồ triển khai](architecture/deployment.png)
 
-Sơ đồ vẽ theo ký hiệu triển khai (deployment) của UML: khối hộp là thiết bị (node), hình tờ giấy gấp góc là tệp được triển khai (artifact). Ba container chạy trong Docker Compose trên một máy ảo Linux. Chỉ `caddy` mở cổng ra ngoài; `api` và `postgres` chỉ nói chuyện với nhau trong mạng Docker.
+Sơ đồ vẽ theo ký hiệu triển khai (deployment) của UML [@uml]: khối hộp là thiết bị (node), hình tờ giấy gấp góc là tệp được triển khai (artifact). Ba container chạy trong Docker Compose [@docker-compose] trên một máy ảo Linux. Chỉ `caddy` mở cổng ra ngoài; `api` và `postgres` chỉ nói chuyện với nhau trong mạng Docker.
 
 | Dịch vụ Compose | Ảnh | Mở ra ngoài | Ghi chú |
 |---|---|---|---|
 | `caddy` | `caddy` | 80, 443 | Tự lấy chứng chỉ HTTPS [@caddy]; phục vụ tệp tĩnh của trang quản trị và website câu đố; chuyển `/api` sang `api` |
 | `api` | Build từ `server/` | Không | Chuỗi kết nối và mật khẩu đọc từ biến môi trường, không ghi trong repo |
-| `postgres` | `postgres` | Không | Dữ liệu nằm trong volume `pgdata`, sao lưu bằng `pg_dump` |
+| `postgres` | `postgres` | Không | Dữ liệu nằm trong volume `pgdata`, sao lưu bằng `pg_dump` [@pg-dump] |
 
 : Các dịch vụ trong Docker Compose
 
@@ -191,14 +193,14 @@ Bản build game phát cho người chơi dưới dạng tệp nén cho Windows;
 
 ## 5. Bảo mật và quyền riêng tư
 
-- Mọi kết nối ra ngoài máy chủ đi qua HTTPS.
+- Mọi kết nối ra ngoài máy chủ đi qua HTTPS, tức HTTP chạy trên TLS (transport layer security, bảo mật tầng giao vận) [@rfc9110; @rfc8446].
 - Game không gửi thông tin định danh; máy chủ không lưu địa chỉ IP hay User-Agent. Địa chỉ IP chỉ dùng trong bộ nhớ để giới hạn tần suất.
-- Thống kê chỉ gửi khi người chơi đồng ý; rút đồng ý thì dữ liệu trên máy chủ bị xóa.
+- Thống kê chỉ gửi khi người chơi đồng ý; rút đồng ý thì dữ liệu trên máy chủ bị xóa. Cách làm này bám nguyên tắc đồng ý và quyền rút lại sự đồng ý của chủ thể dữ liệu trong Luật Bảo vệ dữ liệu cá nhân [@law-pdp].
 - Bằng chứng câu đố không rời máy người chơi; chỉ mã băm được gửi.
 - Cơ sở dữ liệu và API không mở cổng ra ngoài; chỉ proxy ngược mở 80 và 443.
 - Mật khẩu cơ sở dữ liệu và tài khoản quản trị đầu tiên lấy từ biến môi trường hoặc tệp `.env` không đưa vào repo.
 
-Giới hạn đã chấp nhận: mã mở khóa máy chủ trả về là một giá trị cố định, game lưu nó trong tệp lưu trên máy, nên người sửa tệp lưu vẫn tự mở được kết thúc thật. Việc kiểm trên máy chủ không nhằm chống gian lận phía máy. Nó cũng không nhằm giấu tấm ảnh: SHA-256 là hàm một chiều, nên kể cả khi mã băm nằm trong bản build thì cũng không suy ngược ra được tệp bằng chứng.
+Giới hạn đã chấp nhận: mã mở khóa máy chủ trả về là một giá trị cố định, game lưu nó trong tệp lưu trên máy, nên người sửa tệp lưu vẫn tự mở được kết thúc thật. Việc kiểm trên máy chủ không nhằm chống gian lận phía máy. Nó cũng không nhằm giấu tấm ảnh: SHA-256 là hàm băm một chiều [@fips180], nên kể cả khi mã băm nằm trong bản build thì cũng không suy ngược ra được tệp bằng chứng.
 
 ## 6. Ánh xạ yêu cầu chức năng với thành phần
 
@@ -222,6 +224,8 @@ Giới hạn đã chấp nhận: mã mở khóa máy chủ trả về là một 
 : Ánh xạ yêu cầu chức năng với thành phần
 
 ## 7. Quyết định và lý do
+
+Mỗi quyết định kiến trúc được ghi kèm lý do và phương án đã bỏ, để người phát triển sau hiểu vì sao chọn và biết cái giá của lựa chọn [@bass].
 
 | Quyết định | Lý do | Phương án đã bỏ |
 |---|---|---|
