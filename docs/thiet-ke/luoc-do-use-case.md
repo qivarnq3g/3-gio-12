@@ -19,7 +19,7 @@ Website câu đố là trang tĩnh, không nói chuyện với máy chủ và kh
 
 ![Lược đồ use case tổng quát](use-case/tong-quat.png)
 
-Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Các use case con và use case mở rộng nằm ở hai lược đồ phân hệ.
+Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm, tức use case ở mức mục tiêu người dùng (user goal) [@cockburn]. Các use case con và use case mở rộng nằm ở hai lược đồ phân hệ.
 
 ## 3. Phân hệ game
 
@@ -40,6 +40,8 @@ Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Cá
 
 ## 5. Đặc tả use case
 
+Đặc tả viết theo mẫu của Cockburn: luồng chính đánh số từng bước; luồng khác mang số của bước nơi nó rẽ ra, ví dụ 3a là nhánh ở bước 3, còn *a là nhánh có thể xảy ra ở bất kỳ bước nào [@cockburn].
+
 ### 5.1. Chơi một đêm
 
 | Mục | Nội dung |
@@ -59,7 +61,7 @@ Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Cá
 |---|---|
 | Tác nhân | Người chơi |
 | Yêu cầu | 5 |
-| Luồng chính | 1. Khi tới điểm lưu, game ghi tiến độ và biến truyện vào tệp JSON trên máy. 2. Lần mở sau, người chơi chọn Tiếp tục. 3. Game đọc tệp và đưa người chơi về điểm lưu cuối. |
+| Luồng chính | 1. Khi tới điểm lưu, game ghi tiến độ và biến truyện vào tệp JSON [@rfc8259] trên máy. 2. Lần mở sau, người chơi chọn Tiếp tục. 3. Game đọc tệp và đưa người chơi về điểm lưu cuối. |
 | Luồng khác | 2a. Người chơi chọn "Trở về điểm lưu" trong Sổ tay: game nạp lại điểm lưu gần nhất. 3a. Tệp lưu hỏng hoặc không đọc được: game báo lỗi và cho bắt đầu lại. |
 
 : Đặc tả use case “Tiếp tục từ điểm lưu”
@@ -80,7 +82,7 @@ Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Cá
 |---|---|
 | Tác nhân | Người chơi |
 | Yêu cầu | 6 |
-| Luồng chính | 1. Lần chạy đầu, game hỏi người chơi có đồng ý gửi thống kê ẩn danh không. 2. Người chơi đồng ý. 3. Game tạo mã cài đặt (installationId), từ đó ghi sự kiện vào hàng đợi trên đĩa. |
+| Luồng chính | 1. Lần chạy đầu, game hỏi người chơi có đồng ý gửi thống kê ẩn danh không. 2. Người chơi đồng ý. 3. Game tạo mã cài đặt (installationId) là một UUID ngẫu nhiên [@rfc9562], từ đó ghi sự kiện vào hàng đợi trên đĩa. |
 | Luồng khác | 2a. Người chơi từ chối: game không ghi sự kiện nào. *a. Bất kỳ lúc nào sau đó, người chơi rút đồng ý trong Cài đặt: game xóa hàng đợi trên máy và gọi API xóa mọi sự kiện của mã cài đặt trên máy chủ. |
 
 : Đặc tả use case “Đồng ý hoặc rút đồng ý gửi thống kê”
@@ -92,7 +94,7 @@ Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Cá
 | Tác nhân | Người chơi |
 | Yêu cầu | 7, 14 |
 | Tiền điều kiện | Người chơi đã đạt kết thúc "Về nhà", nhờ đó mục gửi bằng chứng trong game được mở; câu đố đang bật; người chơi đã giải mã tệp lấy từ website câu đố |
-| Luồng chính | 1. Người chơi chọn tệp bằng chứng trong game. 2. Game tính mã băm SHA-256 trên máy; tệp không rời máy. 3. Game gửi mã băm lên máy chủ. 4. Máy chủ so với các mã băm hợp lệ. 5. Đúng: game nhận mã mở khóa và mở kết thúc thật. |
+| Luồng chính | 1. Người chơi chọn tệp bằng chứng trong game. 2. Game tính mã băm SHA-256 [@fips180] trên máy; tệp không rời máy. 3. Game gửi mã băm lên máy chủ. 4. Máy chủ so với các mã băm hợp lệ. 5. Đúng: game nhận mã mở khóa và mở kết thúc thật. |
 | Luồng khác | 3a. Mất mạng: game báo không gửi được, không trừ lượt. 4a. Sai: máy chủ trả số lượt còn lại. 4b. Đã sai đủ số lượt trong cửa sổ thời gian (mặc định 5 lần trong 60 phút, quản trị viên đổi được): máy chủ chặn lần gửi này, kể cả khi mã băm đúng, và báo thời gian chờ. |
 
 : Đặc tả use case “Gửi bằng chứng câu đố”
@@ -103,7 +105,7 @@ Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Cá
 |---|---|
 | Tác nhân | Quản trị viên |
 | Yêu cầu | 9 |
-| Luồng chính | 1. Quản trị viên nhập email và mật khẩu ở trang quản trị. 2. Máy chủ kiểm tài khoản và cấp cookie phiên. 3. Trang quản trị mở dashboard. |
+| Luồng chính | 1. Quản trị viên nhập email và mật khẩu ở trang quản trị. 2. Máy chủ kiểm tài khoản và cấp cookie phiên [@rfc6265]. 3. Trang quản trị mở dashboard. |
 | Luồng khác | 2a. Sai email, sai mật khẩu hoặc tài khoản bị khóa: cùng một thông báo lỗi, không lộ email nào có tài khoản. 2b. Sai mật khẩu 5 lần liên tiếp: tài khoản bị tạm chặn đăng nhập 15 phút. |
 
 : Đặc tả use case “Đăng nhập”
@@ -160,6 +162,6 @@ Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Cá
 | Yêu cầu | 13 |
 | Tiền điều kiện | Người chơi đã đồng ý gửi thống kê; có mạng |
 | Luồng chính | 1. Game lấy tối đa 100 sự kiện từ hàng đợi. 2. Gửi lên máy chủ. 3. Máy chủ lưu, bỏ qua sự kiện trùng mã. 4. Game xóa lô đã gửi khỏi hàng đợi. |
-| Luồng khác | 2a. Mất mạng hoặc máy chủ lỗi: lô nằm lại hàng đợi, game thử lại sau thời gian chờ tăng dần; việc chơi không bị ảnh hưởng. |
+| Luồng khác | 2a. Mất mạng hoặc máy chủ lỗi: lô nằm lại hàng đợi, game thử lại sau thời gian chờ tăng dần (exponential backoff) [@sre]; việc chơi không bị ảnh hưởng. |
 
 : Đặc tả use case “Gửi lô thống kê”
