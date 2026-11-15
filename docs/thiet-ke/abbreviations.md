@@ -1,5 +1,5 @@
 | Viết tắt | Tiếng Anh | Nghĩa |
-|---|---|---|
+|------|----------|----------|
 | AI | Artificial intelligence | Trí tuệ nhân tạo; trong tài liệu này là hành vi tự động của nhân vật do game điều khiển |
 | API | Application programming interface | Giao diện lập trình ứng dụng |
 | CORS | Cross-Origin Resource Sharing | Chia sẻ tài nguyên khác nguồn gốc |

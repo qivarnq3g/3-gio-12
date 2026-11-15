@@ -80,7 +80,7 @@ Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Cá
 | Tác nhân | Người chơi |
 | Yêu cầu | 6 |
 | Luồng chính | 1. Lần chạy đầu, game hỏi người chơi có đồng ý gửi thống kê ẩn danh không. 2. Người chơi đồng ý. 3. Game tạo mã cài đặt (installationId), từ đó ghi sự kiện vào hàng đợi trên đĩa. |
-| Luồng khác | 2a. Người chơi từ chối: game không ghi sự kiện nào. 4. Sau này người chơi rút đồng ý trong Cài đặt: game xóa hàng đợi trên máy và gọi API xóa mọi sự kiện của mã cài đặt trên máy chủ. |
+| Luồng khác | 2a. Người chơi từ chối: game không ghi sự kiện nào. *a. Bất kỳ lúc nào sau đó, người chơi rút đồng ý trong Cài đặt: game xóa hàng đợi trên máy và gọi API xóa mọi sự kiện của mã cài đặt trên máy chủ. |
 
 : Đặc tả use case “Đồng ý hoặc rút đồng ý gửi thống kê”
 
@@ -92,7 +92,7 @@ Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Cá
 | Yêu cầu | 7, 14 |
 | Tiền điều kiện | Người chơi đã đạt kết thúc "Về nhà", nhờ đó mục gửi bằng chứng trong game được mở; câu đố đang bật; người chơi đã giải mã tệp lấy từ website câu đố |
 | Luồng chính | 1. Người chơi chọn tệp bằng chứng trong game. 2. Game tính mã băm SHA-256 trên máy; tệp không rời máy. 3. Game gửi mã băm lên máy chủ. 4. Máy chủ so với các mã băm hợp lệ. 5. Đúng: game nhận mã mở khóa và mở kết thúc thật. |
-| Luồng khác | 4a. Sai: máy chủ trả số lượt còn lại. 4b. Sai quá 5 lần trong 60 phút: máy chủ tạm khóa và báo thời gian chờ. 3a. Mất mạng: game báo không gửi được, không trừ lượt. |
+| Luồng khác | 3a. Mất mạng: game báo không gửi được, không trừ lượt. 4a. Sai: máy chủ trả số lượt còn lại. 4b. Đã sai đủ số lượt trong cửa sổ thời gian (mặc định 5 lần trong 60 phút, quản trị viên đổi được): máy chủ chặn lần gửi này, kể cả khi mã băm đúng, và báo thời gian chờ. |
 
 : Đặc tả use case “Gửi bằng chứng câu đố”
 

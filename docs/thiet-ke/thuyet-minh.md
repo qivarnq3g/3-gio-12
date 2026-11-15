@@ -24,7 +24,7 @@ Chương 2 phân tích yêu cầu bằng lược đồ use case. Chương 3 trì
 
 ## Giới thiệu phần mềm
 
-3 GIỜ 12 là game kinh dị hành động 3D góc nhìn thứ nhất. Người chơi nhặt được chiếc điện thoại của một nữ sinh viên mất tích và bị cuốn vào việc tìm cô. Người chơi đi lại trong các không gian 3D (phòng trọ, nhà xe, chung cư cũ, căn nhà nơi cô bị giam), lục chiếc điện thoại để tìm manh mối, lẻn vào, ẩn nấp và chạy trốn khi bị phát hiện. Mỗi lựa chọn làm thay đổi diễn biến và dẫn tới nhiều kết thúc khác nhau. Kết thúc thật chỉ mở được khi người chơi giải một câu đố tiếp nối ra ngoài game, trên một website do nhóm dựng. Nội dung dành cho người chơi từ 18 tuổi.
+3 GIỜ 12 là game kinh dị hành động 3D góc nhìn thứ nhất. Nhân vật người chơi điều khiển là một sinh viên, nhặt được chiếc điện thoại của Ngân, một nữ sinh viên mất tích, và bị cuốn vào việc tìm cô. Trong game, người chơi dùng cả hai máy: máy của Ngân và máy của chính mình. Người chơi đi lại trong các không gian 3D (phòng trọ, nhà xe, chung cư cũ, căn nhà nơi cô bị giam), lục điện thoại của Ngân để tìm manh mối, lẻn vào, ẩn nấp và chạy trốn khi bị phát hiện. Mỗi lựa chọn làm thay đổi diễn biến và dẫn tới nhiều kết thúc khác nhau. Kết thúc thật chỉ mở được khi người chơi giải một câu đố tiếp nối ra ngoài game, trên một website do nhóm dựng. Nội dung dành cho người chơi từ 18 tuổi.
 
 Phần mềm gồm ba thành phần chính:
 
