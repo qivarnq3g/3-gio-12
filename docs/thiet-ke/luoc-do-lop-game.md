@@ -6,7 +6,7 @@ Phụ trách: Phúc. Phục vụ #11 và phần lược đồ lớp trong thuy�
 
 Các sơ đồ mô tả lớp có trong mã nguồn game ngày 31/10/2026, khi đã có điều khiển góc nhìn thứ nhất và bản chơi thô Đêm 1; riêng phần lưu tiến độ và cài đặt ở mục 4.1 theo mã nguồn ngày 05/11/2026. Phần máy chủ ở task #12; ranh giới giữa các thành phần ở task #10.
 
-Các sơ đồ dưới đây mô tả lớp đã có trong code. Chỉ liệt kê thành viên liên quan đến trách nhiệm và quan hệ chính, không chép toàn bộ hàm dựng UI, hàm Unity lifecycle hay cấu hình màn chơi. Các kiểu `MonoBehaviour`, `Camera`, `CharacterController`, `NavMeshAgent`, `InputActionAsset`, `UIDocument` là kiểu của Unity/package, không phải lớp tự viết.
+Các sơ đồ từ mục 1 tới mục 6 mô tả lớp đã có trong code; mục 7 là thiết kế lớp cho các phần chưa làm. Chỉ liệt kê thành viên liên quan đến trách nhiệm và quan hệ chính, không chép toàn bộ hàm dựng UI, hàm Unity lifecycle hay cấu hình màn chơi. Các kiểu `MonoBehaviour`, `Camera`, `CharacterController`, `NavMeshAgent`, `InputActionAsset`, `UIDocument` là kiểu của Unity/package, không phải lớp tự viết.
 
 | Ký hiệu | Ý nghĩa |
 |---|---|
@@ -114,3 +114,27 @@ Prototype này chưa nối với director hoặc HUD của Đêm 1; vì vậy kh
 Director phát `TelemetryProduced` với payload có kiểu; `NightTelemetry` cung cấp UUID, session ID, sequence, thời điểm UTC và JSON. `InternalEvent` là kênh debug nội bộ `(string type, string detail)` riêng, không phải sự kiện HTTP theo OpenAPI. Các lớp payload không kế thừa `MonoBehaviour`.
 
 Phần gửi thống kê của game (xin đồng ý, hàng đợi trên đĩa, gửi theo lô, gửi lại) chưa làm, nên sơ đồ chưa có các lớp này. Khi làm, payload nội bộ phải đổi sang đúng định dạng của hợp đồng API: `CaughtTelemetry.position` chỉ dùng trong game, không có trong sự kiện `player_caught`; `installationId`, `gameVersion`, `platform` nằm ở vỏ lô, không phải trường của `NightTelemetry`. Game chỉ gửi khi người chơi đã đồng ý.
+
+## 7. Lớp dự kiến cho các phần chưa làm
+
+Các mục trên mô tả lớp đã có trong mã nguồn. Mục này thiết kế lớp cho những yêu cầu chưa có mã: chơi tiếp Đêm 2 và Đêm 3 (yêu cầu 2), điện thoại hoàn chỉnh (yêu cầu 3), xin đồng ý và gửi thống kê (yêu cầu 6), gửi bằng chứng câu đố (yêu cầu 7). Tên lớp là tên dự kiến; khi viết mã, sơ đồ được cập nhật theo mã thật.
+
+### 7.1. Các đêm
+
+![Lược đồ lớp: Lớp dự kiến cho các đêm](lop-game/planned-nights.png)
+
+Phần dùng chung của `NightOneDirector` (nhân vật, điểm lưu, điện thoại, phát sự kiện thống kê, xử lý khi bị bắt) được tách lên lớp trừu tượng `NightDirector`. Mỗi đêm là một lớp con và chỉ viết phần riêng của đêm đó: kịch bản, hành động và trạng thái riêng, mỗi trạng thái kế thừa `NightStateBase`. `NightObserver` trỏ tới `NightDirector` thay vì `NightOneDirector`, nên người quan sát dùng lại được ở mọi đêm. `NightLoader` nạp đêm theo số và giữ đêm đang chơi.
+
+### 7.2. Điện thoại
+
+![Lược đồ lớp: Lớp dự kiến cho điện thoại](lop-game/planned-phone.png)
+
+`PhoneController` thay giao diện điện thoại tạm trong `NightOneHud`. Mỗi máy (của Ngân hoặc của nhân vật người chơi, `PhoneOwner`) gồm các ứng dụng kế thừa `PhoneApp`: tin nhắn, ảnh, ghi âm, cài đặt. Hội thoại không viết trong mã: `DialogueScript` đọc tệp JSON của từng đêm thành các `Conversation`; mỗi tin nhắn có thể kèm các lựa chọn trả lời. Khi người chơi chọn, `PhoneController.Choose` báo cho đêm đang chơi để ghi biến truyện.
+
+### 7.3. Gửi thống kê và gửi bằng chứng
+
+![Lược đồ lớp: Lớp dự kiến cho gửi thống kê và bằng chứng](lop-game/planned-network.png)
+
+`ConsentService` giữ trạng thái đồng ý và mã cài đặt. `TelemetryQueue` chỉ nhận sự kiện khi người chơi đã đồng ý và ghi hàng đợi xuống đĩa bằng `LocalJsonStore` đã có. `TelemetryUploader` lấy tối đa 100 sự kiện mỗi lần, gửi qua `ApiClient`, xóa lô đã gửi khỏi hàng đợi và thử lại sau thời gian chờ tăng dần khi lỗi. Khi người chơi rút đồng ý, `ConsentService` xóa hàng đợi và gọi `ApiClient` xóa dữ liệu trên máy chủ.
+
+`EvidencePanel` là màn hình chọn tệp bằng chứng. `EvidenceHasher` tính SHA-256 trên máy, từ chối tệp lớn hơn 20 MiB; `ApiClient` chỉ gửi mã băm. Khi máy chủ chấp nhận, `UnlockStore` lưu mã mở khóa để mở kết thúc thật. `ApiClient` là lớp duy nhất gọi mạng và không chứa khóa bí mật nào.

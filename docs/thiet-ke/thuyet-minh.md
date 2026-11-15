@@ -67,7 +67,7 @@ Hệ thống:
 
 ## Quy ước trong tài liệu
 
-- Lược đồ use case và lược đồ lớp vẽ bằng draw.io theo ký hiệu UML (unified modeling language, ngôn ngữ mô hình hóa thống nhất) [@uml]. Các sơ đồ còn lại vẽ bằng Mermaid.
+- Lược đồ use case, lược đồ lớp, sơ đồ thành phần và sơ đồ triển khai vẽ bằng draw.io theo ký hiệu UML (unified modeling language, ngôn ngữ mô hình hóa thống nhất) [@uml]. Sơ đồ tuần tự và lược đồ quan hệ thực thể vẽ bằng Mermaid.
 - Số trong ngoặc sau tên use case là số yêu cầu chức năng ở mục 1.4.
 - Tên lớp, thuộc tính, bảng dữ liệu và đường dẫn API giữ nguyên như trong mã nguồn (tiếng Anh).
 - Hợp đồng API (application programming interface, giao diện lập trình ứng dụng) giữa game và máy chủ được đặc tả bằng OpenAPI [@openapi]. Khi tài liệu này lệch với hợp đồng API, hợp đồng API là bản đúng.

@@ -26,36 +26,9 @@ Ba nguyên tắc chi phối thiết kế:
 
 ## 2. Sơ đồ thành phần
 
-```mermaid
-%%{init: {"layout": "elk"}}%%
-flowchart TB
-    subgraph player["Máy người chơi"]
-        game["Game Unity<br/>(offline)"]
-        save[("Tệp lưu và<br/>hàng đợi thống kê<br/>(JSON trên đĩa)")]
-        browser1["Trình duyệt"]
-    end
+![Sơ đồ thành phần](architecture/component.png)
 
-    subgraph admin_pc["Máy quản trị viên"]
-        browser2["Trình duyệt"]
-    end
-
-    subgraph server["Máy chủ (Docker Compose)"]
-        proxy["Proxy ngược<br/>(Caddy, HTTPS)"]
-        api["Máy chủ API<br/>ASP.NET Core"]
-        db[("PostgreSQL")]
-        admin["Trang quản trị<br/>(tệp tĩnh)"]
-        arg["Website câu đố<br/>(tệp tĩnh)"]
-    end
-
-    game -- "đọc, ghi" --> save
-    game -- "HTTPS:<br/>/api/v1/telemetry,<br/>/api/v1/puzzles" --> proxy
-    browser1 -- "HTTPS:<br/>tải tệp câu đố" --> proxy
-    browser2 -- "HTTPS:<br/>/admin, /api/admin" --> proxy
-    proxy -- "/api" --> api
-    proxy -- "/admin" --> admin
-    proxy -- "tên miền blog" --> arg
-    api -- "EF Core" --> db
-```
+Sơ đồ vẽ theo ký hiệu thành phần (component) của UML. Máy chủ API cung cấp hai giao diện: API công khai cho game và API quản trị cho trang quản trị; máy chủ dùng giao diện SQL của PostgreSQL. Website câu đố không nối với thành phần nào: người chơi mở nó bằng trình duyệt, và mối nối duy nhất với máy chủ là quản trị viên nhập mã băm bằng chứng (mục 2.5). Proxy ngược Caddy là hạ tầng, nên vẽ ở sơ đồ triển khai (mục 4).
 
 ### 2.1. Game
 
@@ -132,22 +105,22 @@ Website câu đố và máy chủ API không nói chuyện với nhau. Mối n�
 Luồng này phục vụ yêu cầu 6, 10, 11 và 13.
 
 ```mermaid
-%%{init: {"sequence": {"actorMargin": 24, "width": 110, "wrap": true, "messageMargin": 30}}}%%
+%%{init: {"fontSize": 22, "sequence": {"actorMargin": 12, "width": 150, "wrap": true, "messageMargin": 26, "boxMargin": 6, "mirrorActors": false, "actorFontSize": 22, "messageFontSize": 22, "noteFontSize": 22}}}%%
 sequenceDiagram
     actor P as Người chơi
     participant G as Game
     participant Q as Hàng đợi<br/>trên đĩa
-    participant A as Máy chủ API
+    participant A as Máy chủ<br/>API
     participant D as PostgreSQL
     actor M as Quản trị viên
 
-    P->>G: Đồng ý gửi thống kê (lần chạy đầu hoặc trong Cài đặt)
+    P->>G: Đồng ý gửi thống kê
     loop Khi chơi
         G->>Q: Ghi sự kiện, gán eventId
     end
-    G->>A: POST /api/v1/telemetry/batches<br/>(tối đa 100 sự kiện)
-    A->>D: Lưu sự kiện, bỏ qua eventId đã có
-    A-->>G: 200, danh sách sự kiện bị loại
+    G->>A: POST /api/v1/<br/>telemetry/batches<br/>(tối đa 100 sự kiện)
+    A->>D: Lưu, bỏ qua eventId đã có
+    A-->>G: 200, sự kiện bị loại
     G->>Q: Xóa lô đã gửi
     M->>A: Mở dashboard, xuất CSV
     A->>D: Truy vấn tổng hợp
@@ -163,12 +136,12 @@ Khi mất mạng: lô nằm lại trong hàng đợi, game thử lại theo th�
 Luồng này phục vụ yêu cầu 7, 12 và 14.
 
 ```mermaid
-%%{init: {"sequence": {"actorMargin": 24, "width": 110, "wrap": true, "messageMargin": 30}}}%%
+%%{init: {"fontSize": 22, "sequence": {"actorMargin": 12, "width": 150, "wrap": true, "messageMargin": 26, "boxMargin": 6, "mirrorActors": false, "actorFontSize": 22, "messageFontSize": 22, "noteFontSize": 22}}}%%
 sequenceDiagram
     actor P as Người chơi
     participant G as Game
-    participant W as Website câu đố
-    participant A as Máy chủ API
+    participant W as Website<br/>câu đố
+    participant A as Máy chủ<br/>API
     participant D as PostgreSQL
     actor M as Quản trị viên
 
@@ -176,10 +149,10 @@ sequenceDiagram
     A->>D: Lưu cấu hình
     P->>G: Tìm địa chỉ blog và chìa khóa trong game
     P->>W: Tải ảnh ở trang /drop
-    P->>P: Tách và giải mã trên máy của mình
+    P->>P: Tách và giải mã trên máy
     P->>G: Chọn tệp ảnh đã giải mã
     G->>G: Tính SHA-256, tệp không rời máy
-    G->>A: POST /api/v1/puzzles/<br/>red-thread-sandal/submissions
+    G->>A: POST /api/v1/puzzles/<br/>red-thread-sandal/<br/>submissions
     A->>D: Kiểm lượt còn lại, so mã băm, lưu lượt gửi
     alt Đúng
         A-->>G: 200 accepted, unlockId
@@ -197,26 +170,9 @@ Luồng này phục vụ yêu cầu 9 đến 12. Quản trị viên đăng nhậ
 
 ## 4. Sơ đồ triển khai
 
-```mermaid
-flowchart TB
-    subgraph pc["Máy người chơi (Windows)"]
-        exe["Bản build game (.exe)"]
-    end
+![Sơ đồ triển khai](architecture/deployment.png)
 
-    subgraph vm["Một máy ảo Linux, Docker Compose"]
-        caddy["caddy<br/>cổng 80, 443"]
-        apic["api<br/>ASP.NET Core, cổng 8080 trong mạng Docker"]
-        pg["postgres<br/>cổng 5432 trong mạng Docker"]
-        vol[("volume pgdata")]
-        static["Tệp tĩnh: admin/dist, arg-site"]
-    end
-
-    exe -- "HTTPS 443" --> caddy
-    caddy --> apic
-    caddy --> static
-    apic --> pg
-    pg --> vol
-```
+Sơ đồ vẽ theo ký hiệu triển khai (deployment) của UML: khối hộp là thiết bị (node), hình tờ giấy gấp góc là tệp được triển khai (artifact). Ba container chạy trong Docker Compose trên một máy ảo Linux. Chỉ `caddy` mở cổng ra ngoài; `api` và `postgres` chỉ nói chuyện với nhau trong mạng Docker.
 
 | Dịch vụ Compose | Ảnh | Mở ra ngoài | Ghi chú |
 |---|---|---|---|

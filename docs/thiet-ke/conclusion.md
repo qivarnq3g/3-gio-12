@@ -6,7 +6,7 @@ Chương cuối của thuyết minh: tóm tắt kết quả thiết kế và nh�
 
 Thiết kế đã xác định mười bốn yêu cầu chức năng, hai tác nhân và mười một use case có đặc tả. Hệ thống gồm năm thành phần: game, máy chủ API, cơ sở dữ liệu, trang quản trị và website câu đố; luồng dữ liệu giữa chúng và cách triển khai bằng Docker Compose được mô tả ở `kien-truc-he-thong.md`.
 
-Lược đồ lớp của game bám theo mã nguồn đã có, gồm sáu nhóm lớp: nhân vật và tương tác, điều phối Đêm 1, kẻ truy đuổi, trạng thái và lưu tiến độ, điện thoại, sự kiện thống kê. Lược đồ lớp của máy chủ gồm lớp thực thể, dịch vụ và controller, kèm các quy tắc nghiệp vụ chính. Cơ sở dữ liệu có bốn bảng nghiệp vụ và bảng tài khoản của ASP.NET Core Identity.
+Lược đồ lớp của game bám theo mã nguồn đã có, gồm sáu nhóm lớp: nhân vật và tương tác, điều phối Đêm 1, kẻ truy đuổi, trạng thái và lưu tiến độ, điện thoại, sự kiện thống kê. Phần game chưa có mã (các đêm sau, điện thoại hoàn chỉnh, gửi thống kê, gửi bằng chứng) đã có lược đồ lớp dự kiến. Lược đồ lớp của máy chủ gồm lớp thực thể, dịch vụ và controller, kèm các quy tắc nghiệp vụ chính. Cơ sở dữ liệu có bốn bảng nghiệp vụ và bảng tài khoản của ASP.NET Core Identity.
 
 Ba nguyên tắc của kiến trúc được giữ ở mọi phần: game chơi được khi không có mạng (trừ bước gửi bằng chứng để mở kết thúc thật), người chơi không cần tài khoản, và game không chứa bí mật vì bằng chứng câu đố được kiểm trên máy chủ.
 

@@ -11,7 +11,7 @@ Tài liệu cho task #9, một trong ba phần bắt buộc của thuyết minh 
 
 : Các tác nhân trong lược đồ use case
 
-Game là một phần của hệ thống nên không vẽ thành tác nhân, kể cả ở lược đồ phân hệ máy chủ. Khi game gọi API (gửi thống kê, xóa thống kê, gửi bằng chứng), game làm thay người chơi, nên các use case đó nối với tác nhân Người chơi.
+Game là một phần của hệ thống nên không vẽ thành tác nhân. Gửi lô thống kê và xóa thống kê trên máy chủ do game tự làm, người chơi không chủ động yêu cầu, nên không nối thẳng với tác nhân mà vẽ thành use case mở rộng («extend») của use case người chơi trực tiếp làm.
 
 Website câu đố là trang tĩnh, không nói chuyện với máy chủ và không thu dữ liệu (mục 2.5 của tài liệu kiến trúc), nên không có use case riêng. Người chơi tải tệp ở đó rồi gửi bằng chứng qua game.
 
@@ -19,23 +19,24 @@ Website câu đố là trang tĩnh, không nói chuyện với máy chủ và kh
 
 ![Lược đồ use case tổng quát](use-case/tong-quat.png)
 
-Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Các use case con của "Chơi một đêm" và phần máy chủ nằm ở hai lược đồ phân hệ.
+Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Các use case con và use case mở rộng nằm ở hai lược đồ phân hệ.
 
 ## 3. Phân hệ game
 
 ![Lược đồ use case phân hệ game](use-case/phan-he-game.png)
 
-- "Chơi một đêm" (2) luôn gồm "Điều khiển nhân vật" (1) và "Dùng điện thoại trong game" (3), nên nối bằng «include» [@uml].
+- "Chơi một đêm" (1, 2) luôn gồm "Dùng điện thoại trong game" (3), nên nối bằng «include» [@uml]. Điều khiển nhân vật (yêu cầu 1) là thao tác bên trong mỗi đêm, không phải mục tiêu riêng của người chơi, nên không tách thành use case.
 - "Ẩn nấp, chạy trốn" (4) chỉ xảy ra khi có người quan sát để ý tới người chơi, nên nối bằng «extend» vào "Chơi một đêm" [@uml].
 - Âm lượng, độ nhạy chuột, đồ họa và cảnh báo nội dung là các bước bên trong "Chỉnh cài đặt" (8), không tách thành use case riêng.
-- "Lưu và tải tiến độ" (5) tách khỏi cài đặt: game tự lưu ở điểm lưu, người chơi trở về điểm lưu qua Sổ tay.
+- "Gửi lô thống kê" (13) mở rộng "Chơi một đêm" khi người chơi đã đồng ý gửi thống kê. "Xóa thống kê trên máy chủ" (6) mở rộng "Đồng ý hoặc rút đồng ý gửi thống kê" khi người chơi rút đồng ý.
+- "Tiếp tục từ điểm lưu" (5): game tự lưu ở điểm lưu; việc người chơi chủ động làm là tiếp tục chơi hoặc trở về điểm lưu qua Sổ tay.
 
-## 4. Phân hệ máy chủ và trang quản trị
+## 4. Phân hệ trang quản trị
 
-![Lược đồ use case phân hệ máy chủ và trang quản trị](use-case/phan-he-may-chu.png)
+![Lược đồ use case phân hệ trang quản trị](use-case/phan-he-may-chu.png)
 
 - Bốn việc của quản trị viên đều cần phiên đăng nhập, nên cùng «include» "Đăng nhập" (9). Phần quản lý tài khoản thuộc yêu cầu 9 (đăng nhập, tài khoản quản trị).
-- Ba use case của người chơi ở phía máy chủ ứng với ba API công khai mà game gọi thay người chơi: gửi lô thống kê (13), xóa thống kê theo mã cài đặt (6), gửi mã băm bằng chứng (14).
+- Máy chủ còn ba API công khai mà game gọi: gửi lô thống kê, xóa thống kê, gửi bằng chứng. Chúng là các bước bên trong use case của người chơi ở mục 3 và mục 5, nên không vẽ lại ở đây.
 
 ## 5. Đặc tả use case
 
@@ -52,7 +53,7 @@ Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Cá
 
 : Đặc tả use case “Chơi một đêm”
 
-### 5.2. Lưu và tải tiến độ
+### 5.2. Tiếp tục từ điểm lưu
 
 | Mục | Nội dung |
 |---|---|
@@ -61,7 +62,7 @@ Lược đồ chỉ giữ use case mà tác nhân trực tiếp muốn làm. Cá
 | Luồng chính | 1. Khi tới điểm lưu, game ghi tiến độ và biến truyện vào tệp JSON trên máy. 2. Lần mở sau, người chơi chọn Tiếp tục. 3. Game đọc tệp và đưa người chơi về điểm lưu cuối. |
 | Luồng khác | 2a. Người chơi chọn "Trở về điểm lưu" trong Sổ tay: game nạp lại điểm lưu gần nhất. 3a. Tệp lưu hỏng hoặc không đọc được: game báo lỗi và cho bắt đầu lại. |
 
-: Đặc tả use case “Lưu và tải tiến độ”
+: Đặc tả use case “Tiếp tục từ điểm lưu”
 
 ### 5.3. Chỉnh cài đặt
 
