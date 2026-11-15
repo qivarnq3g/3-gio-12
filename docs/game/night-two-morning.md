@@ -2,7 +2,7 @@
 
 ## Phạm vi của nhánh
 
-Nối từ kết thúc `night1_completed` trong `NightOneGraybox` tới lúc tỉnh dậy 21:00 ngày 25/11. Đối chiếu `docs/kich-ban/dem-2.md` mục 3.1–3.3, 4, 5.1–5.3, 6–9. Không đóng #22: buổi tối Đêm 2, Đêm 3 và chơi xuyên suốt ba đêm chưa được triển khai ở lát cắt này.
+Phần buổi sáng nối từ kết thúc `night1_completed` trong `NightOneGraybox` tới lúc tỉnh dậy 21:00 ngày 25/11. Đối chiếu `docs/kich-ban/dem-2.md` mục 3.1–3.3, 4, 5.1–5.3, 6–9. Phần tiếp theo xem [buổi tối Đêm 2](night-two-evening.md) và [Đêm 3](night-three.md). Chưa đóng #22: còn ghép UI/asset cuối và chơi thử ba đêm liền mạch.
 
 Giữ riêng khối thô ở x = 80–120, dựng khi chạy, không sửa scene đã lưu và không chép cảnh từ PR #80. Quang sẽ ghép các điểm tương tác vào bối cảnh sau. Người chơi dùng điều khiển và raycast E thật của `FirstPersonPlayer`. Điện thoại buổi sáng là HUD tạm, chưa phải tích hợp giao diện #17. Không có model/âm thanh/ảnh hay lời thoại cuối cùng mới.
 
@@ -46,7 +46,6 @@ Các bài hồi quy Đêm 1 và save #21 vẫn phải đạt. Chưa thay bài ch
 
 ## Phần còn lại của #22
 
-- Buổi tối Đêm 2: lục máy, quán cơm, trà sữa, câu hỏi/đặt mã, chọn ngủ/thức và sang Đêm 3.
-- Đêm 3: cây xăng, mẹ thật, camera/bằng chứng, mã két, pin/cáp/thuốc, nhánh kết thúc và hết đêm.
+- Luồng buổi tối Đêm 2 và Đêm 3 đã có bản thô trong các tài liệu nối tiếp ở trên; cần kiểm lại trên cảnh và điện thoại cuối.
 - Ghép điện thoại #17, bối cảnh/model của nhóm; thay bảng chữ và thoại giữ chỗ bằng nội dung được duyệt.
 - Kiểm chơi liền mạch cả ba đêm và lưu/nạp các nhánh mới trước khi đóng issue.

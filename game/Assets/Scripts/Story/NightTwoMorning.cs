@@ -41,6 +41,8 @@ namespace BaGio12.Story
             bool active = story.InNightTwo;
             if (active) EnsureWorld();
             if (active) RefreshWorld();
+            if (story.InNightThree) { EnsureThreeWorld(); RefreshThreeWorld(); }
+            if (threeWorld != null) threeWorld.SetActive(story.InNightThree);
             if (world != null) world.SetActive(active);
             if (!active && wasActive) story.player.eyes.backgroundColor = originalSky;
             if (active || wasActive)
@@ -52,6 +54,7 @@ namespace BaGio12.Story
         public void RestoreControl()
         {
             StopAllCoroutines(); Transitioning = false; page = "";
+            if (story.InNightThree) { RestoreThreeControl(); return; }
             if (State.stage == MorningStage.Alarm) page = "alarm";
             if (State.stage == MorningStage.Vigil && State.vigilSeconds >= NightTwoEvening.VigilLength) page = "alarm2";
             story.player.SetOverlay(State.riding || page != "" || State.stage == MorningStage.Ended);
@@ -60,6 +63,7 @@ namespace BaGio12.Story
 
         void Update()
         {
+            if (story.InNightThree) { UpdateThree(); return; }
             if (!story.InNightTwo || story.player.IsPaused || Transitioning || State.stage == MorningStage.Ended) return;
             RefreshWorld();
             var keys = Keyboard.current;
@@ -229,7 +233,8 @@ namespace BaGio12.Story
         }
         void Checkpoint()
         {
-            story.Checkpoints.Save("n2." + State.stage.ToString().ToLowerInvariant(), story.State, story.player.transform.position, story.player.transform.eulerAngles.y);
+            string id = story.InNightThree ? "n3." + Third.stage.ToString().ToLowerInvariant() : "n2." + State.stage.ToString().ToLowerInvariant();
+            story.Checkpoints.Save(id, story.State, story.player.transform.position, story.player.transform.eulerAngles.y);
         }
         void OpenPage(string value)
         {

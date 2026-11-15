@@ -53,6 +53,7 @@ namespace BaGio12.Story
         public bool NotebookOpen { get; private set; }
         public bool HasNgan => State.hasNganPhone;
         public bool InNightTwo => State.nightTwoStarted;
+        public bool InNightThree => State.nightThreeStarted;
         public NightTwoMorning Morning { get; private set; }
         float subtitleUntil, roomSeconds, immuneUntil;
         float hidingSeconds;
