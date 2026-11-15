@@ -13,6 +13,7 @@ namespace BaGio12.Stealth
         public bool child, flashlight, stationary, startsDormant, irregularLook, once, patrol;
         public float interval = 20, watchDuration = 5, startDelay;
         public float range = 8, fieldOfView = 90;
+        public Vector3 patrolOffset = new Vector3(-1.3f, 0, 0);
         public float Attention { get; private set; }
         public ObserverMode Mode { get; private set; }
         public bool ActiveThreat => Mode == ObserverMode.Suspicious || Mode == ObserverMode.Chasing || Mode == ObserverMode.Searching;
@@ -72,7 +73,7 @@ namespace BaGio12.Stealth
                 if(once && director.State.prologue_beaten==0)watching=director.PrologueDeparted && scheduleTime>=startDelay && scheduleTime<startDelay+watchDuration;
                 if(irregularLook && elapsed>=nextRandom) {watchUntil=elapsed+3;nextRandom=elapsed+UnityEngine.Random.Range(8f,15f);}
                 if(irregularLook)watching=elapsed<watchUntil;
-                if(patrol)Travel(home+new Vector3(watching?-1.3f:0,0,0));
+                if(patrol)Travel(home+(watching?patrolOffset:Vector3.zero));
                 if (patrol && agent != null && agent.velocity.sqrMagnitude > .01f)
                     transform.rotation = Quaternion.LookRotation(new Vector3(agent.velocity.x, 0, agent.velocity.z));
                 else transform.rotation = Quaternion.Slerp(transform.rotation, homeRotation * Quaternion.Euler(0,watching ? 0 : 180,0),Time.deltaTime*5);

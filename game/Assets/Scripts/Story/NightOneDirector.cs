@@ -32,8 +32,15 @@ namespace BaGio12.Story
         public string BlackTitle { get; private set; } = "";
         public float HoldProgress { get; set; }
         public bool Busy { get; private set; }
-        public bool InParking => player.transform.position.z >= 27 && player.transform.position.y < 2;
-        public bool InRoom => player.transform.position.y > 7 && player.transform.position.x > 12;
+        public Bounds parkingZone = new Bounds(new Vector3(0, -499, 527), new Vector3(2000, 1002, 1000));
+        public Bounds roomZone = new Bounds(new Vector3(512, 507, 0), new Vector3(1000, 1000, 2000));
+        public Transform securityCamera;
+        public bool InParking => parkingZone.Contains(player.transform.position);
+        public bool InRoom => roomZone.Contains(player.transform.position);
+        float AlleyProgress => Vector3.Dot(player.transform.position - alleyStart.position, Vector3.ProjectOnPlane(alleyStart.forward, Vector3.up).normalized);
+        float StartYaw => alleyStart.eulerAngles.y;
+        Vector3 FromBed(Vector3 offset) => bed.position + Quaternion.Euler(0, bed.eulerAngles.y, 0) * offset;
+        float BedYaw => bed.eulerAngles.y + 90;
         public bool Dark => !IsIlluminated(player.eyes.transform.position);
         public bool IsIlluminated(Vector3 point)
         {
@@ -82,7 +89,7 @@ namespace BaGio12.Story
             nightStartedAt=Time.time;
             isReplay=completedInSession;
             TelemetryProduced?.Invoke(new NightStartedTelemetry(isReplay));
-            Checkpoints.Save("n1.alley_start", State, alleyStart.position, 0);
+            Checkpoints.Save("n1.alley_start", State, alleyStart.position, StartYaw);
             Objective = "Tới nhà xe cuối hẻm. Cúi và đặt chiếc máy dưới chân xe.";
             Say("Đừng để ai thấy.", 6);
             SyncWorld();
@@ -100,9 +107,9 @@ namespace BaGio12.Story
             if (HoldProgress > 0) HoldProgress = Mathf.Max(0, HoldProgress - Time.deltaTime * .1f);
             if (State.stage == NightStage.Prologue && !Busy)
             {
-                if (!PrologueDeparted && player.transform.position.z > 3) PrologueDeparted=true;
+                if (!PrologueDeparted && AlleyProgress > 1.4f) PrologueDeparted=true;
                 if(PrologueDeparted)PrologueElapsed+=Time.deltaTime;
-                if (player.transform.position.z > 5) leftStart = true;
+                if (AlleyProgress > 3.4f) leftStart = true;
                 bool seen = observers.Any(x => x.CanSeePlayer());
                 // Remaining unseen while moving is not eight seconds of staying in cover.
                 if (!Hidden || seen || Vector3.Distance(hideAnchor, player.transform.position) > .05f)
@@ -115,7 +122,7 @@ namespace BaGio12.Story
                 if (State.prologue_beaten >= 2 && Hidden)
                     foreach (var observer in observers.Where(o => o.CanHearBreathing && Vector3.Distance(o.transform.position, player.transform.position) <= 3))
                         observer.HearBreathing(player.transform.position);
-                if (leftStart && player.transform.position.z < 1.2f)
+                if (leftStart && AlleyProgress < -.4f)
                 {
                     if (State.phonePlaced) StartCoroutine(CompletePrologue());
                     else ResetPrologue();
@@ -150,7 +157,7 @@ namespace BaGio12.Story
             if (restoringSave) return;
             if (State.stage == NightStage.Room && InRoom)
             {
-                if (next != 0) { player.Teleport(bed.position + new Vector3(0,.23f,-.4f),90); player.SetCrouch(true); }
+                if (next != 0) { player.Teleport(FromBed(new Vector3(0,.23f,-.4f)),BedYaw); player.SetCrouch(true); }
                 if (previous == 1 && next != 1 && !State.timeJumped) JumpTime(true);
                 if(previous!=0 && next==0)ApplyBagChange(true);
             }
@@ -184,7 +191,7 @@ namespace BaGio12.Story
                             State.phoneEverPicked = true;
                             foreach (string line in Dialogue.batchA) Deliver("Mẹ · 20:56 · 4 phút trước: " + line);
                             State.stage = NightStage.Exploration;
-                            Checkpoints.Save("n1.parking", State, parkingSpawn.position, 180);
+                            Checkpoints.Save("n1.parking", State, parkingSpawn.position, parkingSpawn.eulerAngles.y + 180);
                         }
                         Objective = "Đọc tin trên máy Ngân (1), khám phá hẻm hoặc lên phòng 7.";
                         Say("Máy không khóa. Có tin nhắn từ Mẹ."); player.SetPhone(1);
@@ -205,7 +212,7 @@ namespace BaGio12.Story
                     string contents = State.prologue_beaten >= 2 ? "Áo mưa rách, chỉ còn găng phải." : State.prologue_beaten == 1 ? "Áo mưa rách một tay, đôi găng xám." : "Áo mưa xanh còn ướt, đôi găng xám.";
                     State.Note("Ba lô: sạc dự phòng, chai nước, khẩu trang. " + contents);
                     Say(State.bagMoved ? "Ủa... mình để nó trên nệm hồi nào ta. Ngăn nhỏ bị kẹt." : contents + (State.bagOpen ? " Ngăn chính mở hé." : "") + " Ngăn nhỏ bị kẹt."); break;
-                case NightAction.MoveBag: State.bagDisplaced = true; bag.transform.position = bed.position + new Vector3(.9f,.3f,0); State.bagPosition=bag.transform.position;State.hasBagPosition=true; Say("Bạn dời ba lô sang cạnh nệm."); break;
+                case NightAction.MoveBag: State.bagDisplaced = true; bag.transform.position = FromBed(new Vector3(.9f,.3f,0)); State.bagPosition=bag.transform.position;State.hasBagPosition=true; Say("Bạn dời ba lô sang cạnh nệm."); break;
                 case NightAction.Wifi: State.Note("Mật khẩu Wi-Fi sau cửa phòng 7"); Say("Đã ghi Wi-Fi vào Sổ tay."); break;
                 case NightAction.Mirror: Say("Gương mờ quá, soi không ra mặt."); break;
                 case NightAction.Notice: State.Note("Ai để xe qua đêm tự khóa cổ, mất ráng chịu"); Say("Ai để xe qua đêm tự khóa cổ, mất ráng chịu."); break;
@@ -225,7 +232,7 @@ namespace BaGio12.Story
             if (!State.helpedLien) { Say("Phụ cô Liên dựng chậu trước khi lên phòng."); return; }
             State.stage = NightStage.Room; Clock.Set("21:20");
             bag.transform.position = bagAtDoor.position; State.bagPosition=bag.transform.position;State.hasBagPosition=true;
-            Checkpoints.Save("n1.room7", State, roomSpawn.position, 90);
+            Checkpoints.Save("n1.room7", State, roomSpawn.position, roomSpawn.eulerAngles.y + 90);
             Objective = "Xem đồ trong phòng. Đọc hoặc gửi tin trên máy Ngân.";
             Say("Bạn đặt ba lô xuống sàn cạnh cửa.");
             EmitInternal("area_entered", "n1.room7");
@@ -250,14 +257,14 @@ namespace BaGio12.Story
             if (Busy) yield break;
             Busy = true; player.SetOverlay(true);
             // First-person glance at the security camera, without moving the body.
-            player.eyes.transform.LookAt(new Vector3(-2.1f,2.8f,5));
+            player.eyes.transform.LookAt(securityCamera != null ? securityCamera.position : new Vector3(-2.1f,2.8f,5));
             yield return new WaitForSeconds(2);
             BlackTitle = "3 GIỜ 12"; yield return new WaitForSeconds(1.5f);
             State.stage = NightStage.Parking; Clock.Set("21:00");
-            player.Teleport(parkingSpawn.position,0);
+            player.Teleport(parkingSpawn.position,parkingSpawn.eulerAngles.y);
             BlackTitle = ""; Busy = false; player.SetOverlay(false);
             player.RunMultiplier = 1;
-            Checkpoints.Save("n1.parking", State, parkingSpawn.position,0);
+            Checkpoints.Save("n1.parking", State, parkingSpawn.position,parkingSpawn.eulerAngles.y);
             Objective = "Dựng xe, tắt máy và xem số đồng hồ.";
 
         }
@@ -280,14 +287,14 @@ namespace BaGio12.Story
         {
             Busy=true;player.SetOverlay(true);BlackTitle=" ";
             yield return new WaitForSeconds(.25f);
-            player.Teleport(bed.position+new Vector3(0,.23f,-.4f),90);player.SetCrouch(true);
+            player.Teleport(FromBed(new Vector3(0,.23f,-.4f)),BedYaw);player.SetCrouch(true);
             ApplyBagChange(true);BlackTitle="";Busy=false;player.SetOverlay(false);
         }
         public void ApplyBagChange(bool concealed)
         {
             if(!State.bagChangePending || !concealed)return;
             if(State.bagDisplaced)State.bagOpen=true;
-            else {bag.transform.position=bed.position+new Vector3(.5f,.3f,0);State.bagMoved=true;}
+            else {bag.transform.position=FromBed(new Vector3(.5f,.3f,0));State.bagMoved=true;}
             State.bagPosition=bag.transform.position;State.hasBagPosition=true;State.bagChangePending=false;
         }
         public void Send(string id, string text)
@@ -343,7 +350,7 @@ namespace BaGio12.Story
         public void WaitUntilLate()
         {
             CloseModal(); State.stage = NightStage.LateNight; Clock.Set("22:30");
-            Checkpoints.Save("n1.room7.late", State, roomSpawn.position,90);
+            Checkpoints.Save("n1.room7.late", State, roomSpawn.position,roomSpawn.eulerAngles.y + 90);
             Objective = "Tới nệm: đi ngủ hoặc thức canh tới sáng.";
         }
         public void Rest(bool sleep) { CloseModal(); StartCoroutine(RestSequence(sleep)); }
@@ -412,7 +419,7 @@ namespace BaGio12.Story
             else
             {
                 var nearest = hidingPoints.OrderBy(x => Vector3.Distance(x.position, player.transform.position)).First();
-                player.Teleport(nearest.position,0); player.SetCrouch(true);
+                player.Teleport(nearest.position,nearest.eulerAngles.y); player.SetCrouch(true);
                 foreach (var o in observers) o.ResetObserver(false);
                 foreach (var l in alertLights.Take(State.prologue_beaten+1)) l.enabled = true;
                 if(parkingAlertLight!=null)parkingAlertLight.enabled=true;
@@ -423,7 +430,7 @@ namespace BaGio12.Story
         public void ResetPrologue()
         {
             State = new NightOneState(); Clock = new StoryClock(State);
-            player.Teleport(alleyStart.position); player.RunMultiplier = 1;
+            player.Teleport(alleyStart.position, StartYaw); player.RunMultiplier = 1;
             foreach (var o in observers) o.ResetObserver(false);
             foreach (var l in alertLights) l.enabled = false;
             leftStart = false; shoutCount = 0; hidingSeconds = 0; hideAnchor = player.transform.position; PrologueDeparted=false;PrologueElapsed=0;
@@ -436,7 +443,7 @@ namespace BaGio12.Story
             if(State.stage==NightStage.Prologue)
             {
                 // A safety recovery must never clear persistent capture penalties.
-                player.Teleport(alleyStart.position);player.RunMultiplier=State.prologue_beaten>=2?2f/3:1;
+                player.Teleport(alleyStart.position, StartYaw);player.RunMultiplier=State.prologue_beaten>=2?2f/3:1;
                 foreach(var observer in observers)observer.ResetObserver(State.phonePlaced);
                 foreach(var light in alertLights)light.enabled=false;
                 foreach(var light in alertLights.Take(State.prologue_beaten>0?State.prologue_beaten+1:0))light.enabled=true;

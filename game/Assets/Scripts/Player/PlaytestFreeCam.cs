@@ -46,7 +46,7 @@ namespace BaGio12.Gameplay
             var keys = Keyboard.current;
             if (keys == null || player.IsPaused || player.ExternalUI || player.ActivePhone != 0) return;
             if (keys.vKey.wasPressedThisFrame) SetFlying(!Flying);
-            if (SceneManager.GetActiveScene().name == ReviewScene)
+            if (SceneManager.GetActiveScene().name is ReviewScene or "NightOneRealistic")
                 foreach (var s in Spots)
                     if (keys[s.key].wasPressedThisFrame) GoTo(s.name);
             if (Flying) Fly(keys);

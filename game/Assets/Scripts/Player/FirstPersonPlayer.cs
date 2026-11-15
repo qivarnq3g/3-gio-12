@@ -9,11 +9,12 @@ namespace BaGio12.Gameplay
         public InputActionAsset inputTemplate;
         public Camera eyes;
         public float walkSpeed = 3, runSpeed = 5, crouchSpeed = 1.5f;
-        public float sensitivity = 0.09f, reach = 2.4f;
+        public float sensitivity = 0.09f, reach = 2.4f, keyTurnSpeed = 120;
         public bool showTestHud = true;
         public bool ExternalUI { get; set; }
         public bool HasPauseMenu { get; set; }
         public bool PauseMenuLocked { get; set; }
+        public IGameSession Session { get; set; }
         public bool InvertY { get; set; }
         public float ViewPitch => pitch;
         public float RunMultiplier { get; set; } = 1f;
@@ -28,7 +29,7 @@ namespace BaGio12.Gameplay
         public int ActivePhone { get; private set; }
         public int ItemsCollected { get; private set; }
         InputActionAsset inputs;
-        InputAction move, look, sprint, crouch, interact, phoneOne, phoneTwo, cancel;
+        InputAction move, look, lookKeys, sprint, crouch, interact, phoneOne, phoneTwo, cancel;
         CharacterController body;
         float pitch, fall;
         WorldInteractable target;
@@ -61,6 +62,10 @@ namespace BaGio12.Gameplay
             phoneOne = map.AddAction("PhoneOne", InputActionType.Button, "<Keyboard>/1");
             phoneTwo = map.AddAction("PhoneTwo", InputActionType.Button, "<Keyboard>/2");
             cancel = map.AddAction("Close", InputActionType.Button, "<Keyboard>/escape");
+            for (int i = 0; i < move.bindings.Count; i++)
+                if (move.bindings[i].path != null && move.bindings[i].path.EndsWith("Arrow")) move.ApplyBindingOverride(i, "");
+            lookKeys = map.AddAction("LookKeys", InputActionType.Value);
+            lookKeys.AddCompositeBinding("2DVector").With("Up", "<Keyboard>/upArrow").With("Down", "<Keyboard>/downArrow").With("Left", "<Keyboard>/leftArrow").With("Right", "<Keyboard>/rightArrow");
         }
         void OnEnable() { inputs.Enable(); LockCursor(true); }
         void OnDisable() { if(inputs!=null) inputs.Disable(); SetPaused(false); LockCursor(false); }
@@ -90,6 +95,9 @@ namespace BaGio12.Gameplay
                 float scale = look.activeControl?.device is Gamepad ? 160 * Time.deltaTime : sensitivity;
                 transform.Rotate(0, delta.x * scale, 0);
                 pitch = Mathf.Clamp(pitch - delta.y * scale * (InvertY ? -1 : 1), -80, 80);
+                Vector2 turn = lookKeys.ReadValue<Vector2>() * keyTurnSpeed * Time.deltaTime;
+                transform.Rotate(0, turn.x, 0);
+                pitch = Mathf.Clamp(pitch - turn.y * .7f, -80, 80);
                 eyes.transform.localRotation = Quaternion.Euler(pitch, 0, 0);
                 if (crouch.WasPressedThisFrame()) SetCrouch(!IsCrouched);
                 if (Physics.Raycast(eyes.transform.position, eyes.transform.forward, out var hit, reach, PlayerGeometry.WorldMask, QueryTriggerInteraction.Ignore))
