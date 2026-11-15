@@ -23,10 +23,13 @@ MEMBERS = DESIGN_DIR / "thanh-vien.local.txt"
 COVER_TEMPLATE = DESIGN_DIR / "mau-bia.docx"
 COVER_BLOCK = re.compile(r'^::: \{custom-style="(Cover \w+)"\}\n(.*?)\n:::', re.M | re.S)
 PARTS = [
-    ("kien-truc-he-thong.md", 10, "Kiến trúc hệ thống"),
     ("luoc-do-use-case.md", 9, "Lược đồ use case"),
+    ("kien-truc-he-thong.md", 10, "Kiến trúc hệ thống"),
     ("luoc-do-lop-game.md", 11, "Lược đồ lớp phần game"),
-    ("luoc-do-lop-may-chu.md", 12, "Lược đồ lớp phần máy chủ và web"),
+    ("luoc-do-lop-may-chu.md", 12, "Lược đồ lớp phần máy chủ"),
+    ("database-design.md", 12, "Thiết kế cơ sở dữ liệu"),
+    ("admin-ui-design.md", 27, "Thiết kế trang quản trị"),
+    ("conclusion.md", 13, "Kết luận"),
 ]
 FONT = "Times New Roman"
 BROWSERS = [
@@ -38,20 +41,15 @@ BROWSERS = [
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
 ]
 SCALE = 2
-PORTRAIT = (15.0, 16.0)
-LANDSCAPE = (23.0, 12.0)
+PORTRAIT = (15.0, 21.0)
+TEXT_WIDTH = 16.0
+TABLE_RULE = re.compile(r"^\|(\s*:?-+:?\s*\|)+\s*$")
 TABLE_BORDER = '<w:{0} w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
 MERMAID_CONFIG = {
     "fontFamily": "Arial",
     **{kind: {"useMaxWidth": False} for kind in ("flowchart", "sequence", "class", "er", "state")},
 }
 PAGE_MARGINS = '<w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1701" w:header="567" w:footer="567" w:gutter="0"/>'
-LANDSCAPE_START = f"""```{{=openxml}}
-<w:p><w:pPr><w:sectPr><w:pgSz w:w="11906" w:h="16838"/>{PAGE_MARGINS}</w:sectPr></w:pPr></w:p>
-```"""
-LANDSCAPE_END = f"""```{{=openxml}}
-<w:p><w:pPr><w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>{PAGE_MARGINS}</w:sectPr></w:pPr></w:p>
-```"""
 HEADING = re.compile(r"^(#{1,6})\s+(?:\d+(?:\.\d+)*\.?\s+)?(.*?)\s*$")
 FENCE = re.compile(r"^```\s*mermaid\s*$")
 IMAGE = re.compile(r"^!\[[^\]]*\]\((?!https?://)([^)\s]+\.png)\)\s*$")
@@ -61,6 +59,44 @@ TOC_XML = """```{=openxml}
 <w:p><w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \\o "1-3" \\h \\z \\u </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Nhấn F9 để cập nhật mục lục.</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>
 <w:p><w:r><w:br w:type="page"/></w:r></w:p>
 ```"""
+ABBREVIATIONS = DESIGN_DIR / "abbreviations.md"
+BIBLIOGRAPHY = DESIGN_DIR / "references.json"
+CSL = DESIGN_DIR / "ieee.csl"
+REFERENCES_TITLE = "Tài liệu tham khảo"
+CAPTION = re.compile(r"^: (.+)$")
+
+
+def list_xml(title, style):
+    field = f'<w:p><w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \\h \\z \\t "{style},1" </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Nhấn F9 để cập nhật danh mục.</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>'
+    return f'<w:p><w:pPr><w:pStyle w:val="TOCHeading"/></w:pPr><w:r><w:t>{title}</w:t></w:r></w:p>{field}<w:p><w:r><w:br w:type="page"/></w:r></w:p>'
+
+
+def front_lists():
+    lists = list_xml("Danh mục hình", "Image Caption") + list_xml("Danh mục bảng", "Table Caption")
+    heading = '<w:p><w:pPr><w:pStyle w:val="TOCHeading"/></w:pPr><w:r><w:t>Danh mục chữ viết tắt</w:t></w:r></w:p>'
+    table = ABBREVIATIONS.read_text(encoding="utf-8").strip()
+    page_break = '```{=openxml}\n<w:p><w:r><w:br w:type="page"/></w:r></w:p>\n```'
+    return f"```{{=openxml}}\n{lists}{heading}\n```\n\n{table}\n\n{page_break}"
+
+
+def number_tables(text):
+    out, chapter, count, in_code = [], 0, 0, False
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        if line.startswith("```"):
+            in_code = not in_code
+        heading = None if in_code else re.match(r"^# (\d+)\. ", line)
+        if heading:
+            chapter, count = int(heading.group(1)), 0
+        caption = None if in_code else CAPTION.match(line)
+        if caption:
+            before = next((lines[j] for j in range(index - 1, -1, -1) if lines[j].strip()), "")
+            if not before.startswith("|"):
+                sys.exit(f"Chú thích bảng không đứng ngay sau bảng: {line}")
+            count += 1
+            line = f": Bảng {chapter}.{count}. {caption.group(1)}"
+        out.append(line)
+    return "\n".join(out)
 
 
 def split_cover(text):
@@ -158,12 +194,7 @@ def png_size(path):
 def figure_size(pixel_width, pixel_height):
     width = pixel_width / SCALE * 2.54 / 96
     height = pixel_height / SCALE * 2.54 / 96
-    portrait = min(1, PORTRAIT[0] / width, PORTRAIT[1] / height)
-    if portrait < 0.8 and width / height >= 1.5:
-        landscape = min(1, LANDSCAPE[0] / width, LANDSCAPE[1] / height)
-        if landscape > portrait:
-            return width * landscape, True
-    return width * portrait, False
+    return width * min(1, PORTRAIT[0] / width, PORTRAIT[1] / height)
 
 
 def browser_config(work):
@@ -186,37 +217,15 @@ def mermaid_command():
 
 
 def figure_lines(image, chapter, figure, title):
-    size, landscape = figure_size(*png_size(image))
-    line = f"![Hình {chapter}.{figure}. {title}]({image.as_posix()}){{width={size:.1f}cm}}"
-    return [LANDSCAPE_START, "", line, "", LANDSCAPE_END] if landscape else [line]
-
-
-def place_figure(out, lines, heading_at):
-    if lines[0] != LANDSCAPE_START or heading_at is None or any(item.strip() for item in out[heading_at + 1:]):
-        out.extend(lines)
-        return
-    start = heading_at
-    while True:
-        before = start
-        while before > 0 and not out[before - 1].strip():
-            before -= 1
-        if before > 0 and HEADING.match(out[before - 1]):
-            start = before - 1
-            continue
-        break
-    if before > 0 and out[before - 1] == LANDSCAPE_END:
-        del out[before - 1]
-    else:
-        out[start:start] = [LANDSCAPE_START, ""]
-    out.extend(lines[1:])
+    size = figure_size(*png_size(image))
+    return [f"![Hình {chapter}.{figure}. {title}]({image.as_posix()}){{width={size:.1f}cm}}"]
 
 
 def render_diagrams(text, chapter, work, cache):
-    out, block, figure, title, heading_at = [], None, 0, "", None
+    out, block, figure, title = [], None, 0, ""
     for line in text.splitlines():
         heading = HEADING.match(line)
         if block is None and heading:
-            heading_at = len(out)
             title = re.sub(r"^\d+(?:\.\d+)*\.\s*", "", line.lstrip("#").strip())
         if block is None and FENCE.match(line):
             block = []
@@ -237,7 +246,7 @@ def render_diagrams(text, chapter, work, cache):
                     cmd += ["-p", str(browser)]
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
             figure += 1
-            place_figure(out, figure_lines(image, chapter, figure, title), heading_at)
+            out.extend(figure_lines(image, chapter, figure, title))
             block = None
             continue
         picture = IMAGE.match(line) if block is None else None
@@ -246,7 +255,7 @@ def render_diagrams(text, chapter, work, cache):
             if not image.exists():
                 sys.exit(f"Thiếu ảnh {image}")
             figure += 1
-            place_figure(out, figure_lines(image, chapter, figure, title), heading_at)
+            out.extend(figure_lines(image, chapter, figure, title))
             continue
         if block is not None:
             block.append(line)
@@ -268,7 +277,7 @@ def build_markdown(work, cache):
     for name, _, _ in PARTS:
         chapters[name] = next_chapter
         next_chapter += 1
-    pieces = [TOC_XML, body_numbered]
+    pieces = [TOC_XML, front_lists(), body_numbered]
     for name, task, title in PARTS:
         path = DESIGN_DIR / name
         if path.exists():
@@ -281,7 +290,7 @@ def build_markdown(work, cache):
         text = rewrite_references(text, chapter, chapters)
         text = render_diagrams(text, chapter, work, cache)
         pieces.append(text)
-    combined = "\n\n".join(pieces) + "\n"
+    combined = number_tables("\n\n".join(pieces)) + "\n"
     leftovers = sorted(set(re.findall(r"task #\d+", combined)) - {f"task #{t}" for n, t, _ in PARTS if f"{n} (task #{t})" in missing})
     prose = re.sub(r"^```.*?^```", "", combined, flags=re.M | re.S)
     leftovers += sorted(set(re.findall(r"(?<![\w&/#])#\d+\b", prose)) - set(leftovers))
@@ -312,9 +321,18 @@ def make_reference(path):
     subprocess.run(["pandoc", "-o", str(path), "--print-default-data-file", "reference.docx"], check=True)
     doc = Document(str(path))
     styles = doc.styles
-    for name in ("Normal", "Body Text", "First Paragraph", "Compact", "Table", "Caption", "Image Caption"):
+    for name in ("Normal", "Body Text", "First Paragraph", "Compact", "Table", "Caption", "Image Caption", "Table Caption", "Bibliography"):
         if name in [s.name for s in styles]:
             set_font(styles[name], 13)
+    if "Table Caption" in [s.name for s in styles]:
+        fmt = styles["Table Caption"].paragraph_format
+        fmt.space_before, fmt.space_after, fmt.keep_with_next = Pt(6), Pt(3), True
+    if "Bibliography" in [s.name for s in styles]:
+        fmt = styles["Bibliography"].paragraph_format
+        fmt.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        fmt.left_indent, fmt.first_line_indent = Cm(1.2), Cm(-1.2)
+        fmt.space_before, fmt.space_after, fmt.line_spacing = Pt(0), Pt(6), 1.0
+        fmt.tab_stops.add_tab_stop(Cm(1.2))
     for name, size in (("Heading 1", 16), ("Heading 2", 14), ("Heading 3", 13), ("Heading 4", 13), ("TOC Heading", 16)):
         if name in [s.name for s in styles]:
             set_font(styles[name], size, bold=True)
@@ -348,7 +366,68 @@ def add_borders(tbl_pr):
         anchor.addnext(borders)
 
 
-def finish_docx(path, widths):
+def word_finish(docx, pdf):
+    if os.name != "nt":
+        sys.exit("--word chỉ chạy trên Windows có Microsoft Word")
+    script = (
+        "$ErrorActionPreference='Stop';$w=New-Object -ComObject Word.Application;$w.Visible=$false;$w.DisplayAlerts=0;"
+        f"try{{$d=$w.Documents.Open('{docx}');foreach($t in $d.TablesOfContents){{$t.Update()}};"
+        f"$d.Save();$d.ExportAsFixedFormat('{pdf}',17);Write-Output ('pages=' + $d.ComputeStatistics(2));$d.Close(0)}}finally{{$w.Quit()}}"
+    )
+    result = subprocess.run(["powershell", "-NoProfile", "-Command", script], check=True, capture_output=True, text=True)
+    print(result.stdout.strip())
+
+
+def space_after_tables(doc):
+    for table in doc.element.body.iter(qn("w:tbl")):
+        follower = table.getnext()
+        if follower is None or follower.tag != qn("w:p"):
+            continue
+        ppr = follower.get_or_add_pPr()
+        spacing = ppr.find(qn("w:spacing"))
+        if spacing is None:
+            spacing = OxmlElement("w:spacing")
+            ppr.append(spacing)
+        spacing.set(qn("w:before"), "160")
+
+
+def table_ratios(text):
+    ratios = []
+    for line in text.split("\n"):
+        if TABLE_RULE.match(line):
+            ratios.append([len(cell.strip(" :")) for cell in line.strip().strip("|").split("|")])
+    return ratios
+
+
+def fix_columns(table, ratio):
+    total = TEXT_WIDTH * 567
+    widths = [round(total * part / sum(ratio)) for part in ratio]
+    tbl = table._tbl
+    tbl_pr = tbl.tblPr
+    for name in ("w:tblW", "w:tblLayout"):
+        for old in tbl_pr.findall(qn(name)):
+            tbl_pr.remove(old)
+    tbl_w = OxmlElement("w:tblW")
+    tbl_w.set(qn("w:w"), str(total))
+    tbl_w.set(qn("w:type"), "dxa")
+    layout = OxmlElement("w:tblLayout")
+    layout.set(qn("w:type"), "fixed")
+    tbl_pr.append(tbl_w)
+    tbl_pr.append(layout)
+    for col, width in zip(tbl.tblGrid.findall(qn("w:gridCol")), widths):
+        col.set(qn("w:w"), str(width))
+    for row in tbl.findall(qn("w:tr")):
+        for tc, width in zip(row.findall(qn("w:tc")), widths):
+            tc_pr = tc.get_or_add_tcPr()
+            for old in tc_pr.findall(qn("w:tcW")):
+                tc_pr.remove(old)
+            tc_w = OxmlElement("w:tcW")
+            tc_w.set(qn("w:w"), str(width))
+            tc_w.set(qn("w:type"), "dxa")
+            tc_pr.insert(0, tc_w)
+
+
+def finish_docx(path, widths, ratios, update_on_open=True):
     doc = Document(str(path))
     shapes = doc.inline_shapes
     if len(shapes) != len(widths):
@@ -357,6 +436,11 @@ def finish_docx(path, widths):
         target = Cm(width)
         shape.height = int(shape.height * target / shape.width)
         shape.width = target
+    if len(doc.tables) != len(ratios):
+        sys.exit(f"Số bảng trong bản Word ({len(doc.tables)}) khác số bảng Markdown ({len(ratios)})")
+    for table, ratio in zip(doc.tables, ratios):
+        if len(set(ratio)) > 1 and len(ratio) == len(table.columns):
+            fix_columns(table, ratio)
     for table in doc.tables:
         rows = table.rows
         if not rows:
@@ -364,6 +448,10 @@ def finish_docx(path, widths):
         trpr = rows[0]._tr.get_or_add_trPr()
         if trpr.find(qn("w:tblHeader")) is None:
             trpr.append(OxmlElement("w:tblHeader"))
+        for row in rows:
+            row_pr = row._tr.get_or_add_trPr()
+            if row_pr.find(qn("w:cantSplit")) is None:
+                row_pr.insert(0, OxmlElement("w:cantSplit"))
         for cell in table._tbl.iter(qn("w:shd")):
             cell.getparent().remove(cell)
         add_borders(table._tbl.tblPr)
@@ -387,18 +475,26 @@ def finish_docx(path, widths):
             node.text = text
         run.append(node)
         footer._p.append(run)
+    space_after_tables(doc)
     settings = doc.settings.element
-    if settings.find(qn("w:updateFields")) is None:
+    if update_on_open and settings.find(qn("w:updateFields")) is None:
         update = OxmlElement("w:updateFields")
         update.set(qn("w:val"), "true")
         settings.append(update)
     doc.save(str(path))
 
 
+def table_breaks(text):
+    def code(match):
+        return "`" + re.sub(r"([./,])(?=\S)", "\\1\u200b", match.group(1)) + "`"
+    return "\n".join(re.sub(r"`([^`\n]+)`", code, line) if line.startswith("|") else line for line in text.split("\n"))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Ghép các phần thiết kế thành bản thuyết minh .docx")
     parser.add_argument("-o", "--output", default=str(DESIGN_DIR / "build" / "thuyet-minh-thiet-ke.docx"))
     parser.add_argument("--markdown", help="Ghi thêm bản Markdown đã ghép ra đường dẫn này")
+    parser.add_argument("--word", action="store_true", help="Dùng Microsoft Word (Windows) cập nhật mục lục, danh mục và xuất PDF")
     args = parser.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
     output = Path(args.output)
@@ -409,19 +505,22 @@ def main():
         work = Path(tmp)
         combined, missing, leftovers, fields = build_markdown(work, cache)
         source = work / "combined.md"
-        source.write_text(combined, encoding="utf-8")
+        source.write_text(table_breaks(combined), encoding="utf-8")
         if args.markdown:
             Path(args.markdown).write_text(combined, encoding="utf-8")
         reference = work / "reference.docx"
         make_reference(reference)
-        subprocess.run(["pandoc", str(source), "-f", "markdown-auto_identifiers", "-o", str(output), "--reference-doc", str(reference), "--resource-path", str(ROOT), "--columns", "10000"], check=True)
-    finish_docx(output, [float(w) for w in re.findall(r"\{width=([\d.]+)cm\}", combined)])
+        citations = ["--citeproc", "--bibliography", str(BIBLIOGRAPHY), "--csl", str(CSL), "-M", f"reference-section-title={REFERENCES_TITLE}"]
+        subprocess.run(["pandoc", str(source), "-f", "markdown-auto_identifiers", "-o", str(output), "--reference-doc", str(reference), "--resource-path", str(ROOT), "--columns", "10000", *citations], check=True)
+    finish_docx(output, [float(w) for w in re.findall(r"\{width=([\d.]+)cm\}", combined)], table_ratios(combined), update_on_open=not args.word)
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from design_doc_cover import apply_cover
     members, named = read_members()
     if not named:
         missing.append(f"MSSV và họ tên ở bìa ({MEMBERS.relative_to(ROOT).as_posix()}, mỗi dòng: MSSV - Họ và tên)")
     apply_cover(output, COVER_TEMPLATE, members, fields)
+    if args.word:
+        word_finish(output, output.with_suffix(".pdf"))
     print(f"Đã ghi {output}")
     for item in missing:
         print(f"Thiếu phần: {item}")

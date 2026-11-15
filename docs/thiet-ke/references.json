@@ -1,0 +1,178 @@
+[
+  {
+    "id": "uml",
+    "type": "report",
+    "author": [{"literal": "Object Management Group"}],
+    "title": "OMG Unified Modeling Language (OMG UML), version 2.5.1",
+    "number": "formal/17-12-05",
+    "publisher": "Object Management Group",
+    "issued": {"date-parts": [[2017, 12]]},
+    "URL": "https://www.omg.org/spec/UML/2.5.1/PDF",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  },
+  {
+    "id": "openapi",
+    "type": "webpage",
+    "author": [{"literal": "OpenAPI Initiative"}],
+    "title": "OpenAPI Specification v3.1.0",
+    "issued": {"date-parts": [[2021, 2, 15]]},
+    "URL": "https://spec.openapis.org/oas/v3.1.0.html",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  },
+  {
+    "id": "rfc9457",
+    "type": "report",
+    "author": [{"family": "Nottingham", "given": "M."}, {"family": "Wilde", "given": "E."}, {"family": "Dalal", "given": "S."}],
+    "title": "Problem details for HTTP APIs",
+    "genre": "RFC",
+    "number": "9457",
+    "publisher": "RFC Editor",
+    "issued": {"date-parts": [[2023, 7]]},
+    "DOI": "10.17487/RFC9457",
+    "URL": "https://www.rfc-editor.org/rfc/rfc9457"
+  },
+  {
+    "id": "fips180",
+    "type": "report",
+    "author": [{"literal": "National Institute of Standards and Technology"}],
+    "title": "Secure Hash Standard (SHS)",
+    "genre": "FIPS PUB",
+    "number": "180-4",
+    "publisher": "U.S. Department of Commerce",
+    "publisher-place": "Gaithersburg, MD",
+    "issued": {"date-parts": [[2015, 8]]},
+    "DOI": "10.6028/NIST.FIPS.180-4"
+  },
+  {
+    "id": "ms-identity",
+    "type": "webpage",
+    "author": [{"literal": "Microsoft"}],
+    "title": "Introduction to Identity on ASP.NET Core",
+    "container-title": "Microsoft Learn",
+    "issued": {"date-parts": [[2026, 9, 18]]},
+    "URL": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  },
+  {
+    "id": "ms-identity-config",
+    "type": "webpage",
+    "author": [{"literal": "Microsoft"}],
+    "title": "Configure ASP.NET Core Identity",
+    "container-title": "Microsoft Learn",
+    "issued": {"date-parts": [[2026, 9, 18]]},
+    "URL": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-configuration",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  },
+  {
+    "id": "ms-ratelimit",
+    "type": "webpage",
+    "author": [{"literal": "Microsoft"}],
+    "title": "Rate limiting middleware in ASP.NET Core",
+    "container-title": "Microsoft Learn",
+    "issued": {"date-parts": [[2026, 10, 27]]},
+    "URL": "https://learn.microsoft.com/en-us/aspnet/core/performance/rate-limit",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  },
+  {
+    "id": "ms-errors",
+    "type": "webpage",
+    "author": [{"literal": "Microsoft"}],
+    "title": "Handle errors in ASP.NET Core APIs",
+    "container-title": "Microsoft Learn",
+    "issued": {"date-parts": [[2026, 10, 27]]},
+    "URL": "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling-api",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  },
+  {
+    "id": "ms-timeprovider",
+    "type": "webpage",
+    "author": [{"literal": "Microsoft"}],
+    "title": "TimeProvider class",
+    "container-title": ".NET API reference, Microsoft Learn",
+    "issued": {"date-parts": [[2025, 7, 1]]},
+    "URL": "https://learn.microsoft.com/en-us/dotnet/api/system.timeprovider",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  },
+  {
+    "id": "ms-efcore",
+    "type": "webpage",
+    "author": [{"literal": "Microsoft"}],
+    "title": "Overview of Entity Framework Core",
+    "container-title": "Microsoft Learn",
+    "issued": {"date-parts": [[2020, 9, 20]]},
+    "URL": "https://learn.microsoft.com/en-us/ef/core/",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  },
+  {
+    "id": "unity-persistent",
+    "type": "webpage",
+    "author": [{"literal": "Unity Technologies"}],
+    "title": "Application.persistentDataPath",
+    "container-title": "Unity scripting API, version 6000.3",
+    "URL": "https://docs.unity3d.com/6000.3/Documentation/ScriptReference/Application-persistentDataPath.html",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  },
+  {
+    "id": "unity-cc",
+    "type": "webpage",
+    "author": [{"literal": "Unity Technologies"}],
+    "title": "CharacterController",
+    "container-title": "Unity scripting API, version 6000.3",
+    "URL": "https://docs.unity3d.com/6000.3/Documentation/ScriptReference/CharacterController.html",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  },
+  {
+    "id": "unity-navmesh",
+    "type": "webpage",
+    "author": [{"literal": "Unity Technologies"}],
+    "title": "NavMeshAgent",
+    "container-title": "Unity scripting API, version 6000.3",
+    "URL": "https://docs.unity3d.com/6000.3/Documentation/ScriptReference/AI.NavMeshAgent.html",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  },
+  {
+    "id": "unity-json",
+    "type": "webpage",
+    "author": [{"literal": "Unity Technologies"}],
+    "title": "JSON serialization",
+    "container-title": "Unity manual, version 6000.3",
+    "URL": "https://docs.unity3d.com/6000.3/Documentation/Manual/json-serialization.html",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  },
+  {
+    "id": "unity-input",
+    "type": "webpage",
+    "author": [{"literal": "Unity Technologies"}],
+    "title": "Input System 1.14 manual",
+    "container-title": "Unity package documentation",
+    "URL": "https://docs.unity3d.com/Packages/com.unity.inputsystem@1.14/manual/index.html",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  },
+  {
+    "id": "unity-uitk",
+    "type": "webpage",
+    "author": [{"literal": "Unity Technologies"}],
+    "title": "UI Toolkit",
+    "container-title": "Unity manual, version 6000.3",
+    "URL": "https://docs.unity3d.com/6000.3/Documentation/Manual/UIElements.html",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  },
+  {
+    "id": "pg-lexical",
+    "type": "webpage",
+    "author": [{"literal": "PostgreSQL Global Development Group"}],
+    "title": "4.1. Lexical structure",
+    "container-title": "PostgreSQL 17 documentation",
+    "URL": "https://www.postgresql.org/docs/17/sql-syntax-lexical.html",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  },
+  {
+    "id": "caddy",
+    "type": "webpage",
+    "author": [{"literal": "Caddy"}],
+    "title": "Automatic HTTPS",
+    "container-title": "Caddy documentation",
+    "URL": "https://caddyserver.com/docs/automatic-https",
+    "accessed": {"date-parts": [[2026, 11, 13]]}
+  }
+]
