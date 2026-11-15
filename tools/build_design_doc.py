@@ -64,6 +64,10 @@ BIBLIOGRAPHY = DESIGN_DIR / "references.json"
 CSL = DESIGN_DIR / "ieee.csl"
 REFERENCES_TITLE = "Tài liệu tham khảo"
 CAPTION = re.compile(r"^: (.+)$")
+ZOTERO_DB = Path.home() / "Zotero" / "zotero.sqlite"
+ZOTERO_STYLE = "http://www.zotero.org/styles/ieee"
+CITATION = re.compile(r"\[(@[^\]\s;]+(?:\s*;\s*@[^\]\s;]+)*)\]")
+BIBLIOGRAPHY_PLACEHOLDER = "Zotero sẽ điền danh mục tài liệu tham khảo khi làm mới."
 
 
 def list_xml(title, style):
@@ -366,12 +370,28 @@ def add_borders(tbl_pr):
         anchor.addnext(borders)
 
 
-def word_finish(docx, pdf):
+def word_finish(docx, pdf, zotero=False):
     if os.name != "nt":
         sys.exit("--word chỉ chạy trên Windows có Microsoft Word")
+    refresh = ""
+    if zotero:
+        plugin = Path(os.environ["APPDATA"]) / "Microsoft" / "Word" / "STARTUP" / "Zotero.dotm"
+        refresh = (
+            f"if(-not ($w.AddIns | Where-Object {{$_.Name -eq 'Zotero.dotm' -and $_.Installed}})){{[void]$w.AddIns.Add('{plugin}',$true)}};"
+            "$d.Activate();$w.Run('ZoteroRefresh');"
+            "$bib=$null;for($i=0;$i -lt 240;$i++){Start-Sleep -Seconds 2;"
+            "$bib=$d.Fields | Where-Object {$_.Code.Text -like '*ZOTERO_BIBL*'} | Select-Object -First 1;"
+            f"if($bib -and $bib.Result.Text -notlike '*{BIBLIOGRAPHY_PLACEHOLDER[:20]}*' -and $bib.Result.Paragraphs.Count -gt 3){{break}}}};"
+            "if(-not $bib -or $bib.Result.Paragraphs.Count -le 3){throw 'Zotero chưa điền danh mục'};Start-Sleep -Seconds 5;"
+            "$cm=$w.CentimetersToPoints(1.2);foreach($p in $bib.Result.Paragraphs){$f=$p.Format;$f.Alignment=0;$f.LeftIndent=$cm;"
+            "$f.FirstLineIndent=-$cm;$f.SpaceBefore=0;$f.SpaceAfter=3;$f.LineSpacingRule=0;$f.TabStops.ClearAll();[void]$f.TabStops.Add($cm)};"
+            "$r=$bib.Result;$fd=$r.Find;[void]$fd.Execute([string][char]0x2013,$false,$false,$false,$false,$false,$true,0,$false,'-',2);"
+            "Write-Output ('citations=' + @($d.Fields | Where-Object {$_.Code.Text -like '*ZOTERO_ITEM*'}).Count);"
+        )
     script = (
-        "$ErrorActionPreference='Stop';$w=New-Object -ComObject Word.Application;$w.Visible=$false;$w.DisplayAlerts=0;"
-        f"try{{$d=$w.Documents.Open('{docx}');foreach($t in $d.TablesOfContents){{$t.Update()}};"
+        "$ErrorActionPreference='Stop';$w=New-Object -ComObject Word.Application;"
+        f"$w.Visible=${'true' if zotero else 'false'};$w.DisplayAlerts=0;"
+        f"try{{$d=$w.Documents.Open('{docx}');{refresh}foreach($t in $d.TablesOfContents){{$t.Update()}};"
         f"$d.Save();$d.ExportAsFixedFormat('{pdf}',17);Write-Output ('pages=' + $d.ComputeStatistics(2));$d.Close(0)}}finally{{$w.Quit()}}"
     )
     result = subprocess.run(["powershell", "-NoProfile", "-Command", script], check=True, capture_output=True, text=True)
@@ -487,6 +507,115 @@ def finish_docx(path, widths, ratios, update_on_open=True):
     doc.save(str(path))
 
 
+def zotero_items(refs, work):
+    import sqlite3
+    copy = work / "zotero.sqlite"
+    shutil.copy(ZOTERO_DB, copy)
+    wal = ZOTERO_DB.with_name(ZOTERO_DB.name + "-wal")
+    if wal.exists():
+        shutil.copy(wal, copy.with_name(copy.name + "-wal"))
+    db = sqlite3.connect(copy)
+    user = db.execute("select value from settings where setting='account' and key='localUserKey'").fetchone()[0]
+    rows = db.execute(
+        "select i.itemID, i.key, f.fieldName, v.value from items i join itemData d using(itemID) join fields f using(fieldID) "
+        "join itemDataValues v using(valueID) where i.itemID not in (select itemID from deletedItems) "
+        "and f.fieldName in ('DOI','url','title','nameOfAct','extra') order by i.dateAdded"
+    ).fetchall()
+    db.close()
+    index = {}
+    for item, key, field, value in rows:
+        if field == "extra":
+            match = re.search(r"^DOI:\s*(\S+)", value, re.M)
+            if not match:
+                continue
+            field, value = "DOI", match.group(1)
+        kind = "title" if field in ("title", "nameOfAct") else field.lower()
+        index[(kind, value.strip().lower())] = (item, f"http://zotero.org/users/local/{user}/items/{key}")
+    found, missing = {}, []
+    for ref in refs.values():
+        probes = [("doi", ref.get("DOI", "")), ("url", ref.get("URL", "")), ("title", ref.get("title", ""))]
+        hit = next((index[(k, v.lower())] for k, v in probes if v and (k, v.lower()) in index), None)
+        if hit:
+            found[ref["id"]] = hit
+        else:
+            missing.append(ref["id"])
+    if missing:
+        sys.exit("Không tìm thấy trong thư viện Zotero: " + ", ".join(missing))
+    return found
+
+
+def zotero_fields(text, refs, items):
+    order = {}
+    def field(match):
+        keys = [k.strip().lstrip("@") for k in match.group(1).split(";")]
+        for key in keys:
+            if key not in refs:
+                sys.exit(f"Trích dẫn [@{key}] không có trong {BIBLIOGRAPHY.name}")
+            order.setdefault(key, len(order) + 1)
+        label = ", ".join(f"[{order[k]}]" for k in keys)
+        citation = {
+            "citationID": hashlib.sha1(f"{match.start()}{match.group(0)}".encode()).hexdigest()[:8],
+            "properties": {"formattedCitation": label, "plainCitation": label, "noteIndex": 0},
+            "citationItems": [{"id": items[k][0], "uris": [items[k][1]], "itemData": {**refs[k], "id": items[k][0]}} for k in keys],
+            "schema": "https://github.com/citation-style-language/schema/raw/master/csl-citation.json",
+        }
+        code = escape_xml(" ADDIN ZOTERO_ITEM CSL_CITATION " + json.dumps(citation, ensure_ascii=False) + " ")
+        return "`" + field_xml(code, escape_xml(label)) + "`{=openxml}"
+    text = CITATION.sub(field, text)
+    bibl = escape_xml(' ADDIN ZOTERO_BIBL {"uncited":[],"omitted":[],"custom":[]} CSL_BIBLIOGRAPHY ')
+    return text + f"\n\n# {REFERENCES_TITLE}\n\n```{{=openxml}}\n<w:p>{field_xml(bibl, BIBLIOGRAPHY_PLACEHOLDER)}</w:p>\n```\n"
+
+
+def escape_xml(value):
+    return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("|", "&#124;").replace("`", "&#96;")
+
+
+def field_xml(code, result):
+    return (
+        '<w:r><w:fldChar w:fldCharType="begin"/></w:r>'
+        f'<w:r><w:instrText xml:space="preserve">{code}</w:instrText></w:r>'
+        '<w:r><w:fldChar w:fldCharType="separate"/></w:r>'
+        f'<w:r><w:t xml:space="preserve">{result}</w:t></w:r>'
+        '<w:r><w:fldChar w:fldCharType="end"/></w:r>'
+    )
+
+
+def zotero_prefs(docx):
+    import zipfile
+    session = hashlib.sha1(str(docx).encode()).hexdigest()[:8].upper()
+    data = (
+        f'<data data-version="3" zotero-version="7.0"><session id="{session}"/>'
+        f'<style id="{ZOTERO_STYLE}" locale="en-US" hasBibliography="1" bibliographyStyleHasBeenSet="1"/>'
+        '<prefs><pref name="fieldType" value="Field"/><pref name="automaticJournalAbbreviations" value="true"/></prefs></data>'
+    )
+    chunks = [data[i:i + 240] for i in range(0, len(data), 240)]
+    with zipfile.ZipFile(docx) as source:
+        parts = {name: source.read(name) for name in source.namelist()}
+    custom = parts.get("docProps/custom.xml", b"").decode("utf-8")
+    vt = "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"
+    if not custom:
+        custom = f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" xmlns:vt="{vt}"></Properties>'
+        types = parts["[Content_Types].xml"].decode("utf-8")
+        types = types.replace("</Types>", '<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/></Types>')
+        parts["[Content_Types].xml"] = types.encode("utf-8")
+        rels = parts["_rels/.rels"].decode("utf-8")
+        rels = rels.replace("</Relationships>", '<Relationship Id="rIdZoteroPrefs" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties" Target="docProps/custom.xml"/></Relationships>')
+        parts["_rels/.rels"] = rels.encode("utf-8")
+    custom = re.sub(r"<Properties([^>]*?)\s*/>", r"<Properties\1></Properties>", custom)
+    custom = re.sub(r'<property [^>]*name="ZOTERO_PREF_\d+".*?</property>', "", custom, flags=re.S)
+    pid = max([int(p) for p in re.findall(r'pid="(\d+)"', custom)] or [1]) + 1
+    props = "".join(
+        f'<property fmtid="{{D5CDD505-2E9C-101B-9397-08002B2CF9AE}}" pid="{pid + i}" name="ZOTERO_PREF_{i + 1}"><vt:lpwstr>{escape_xml(chunk)}</vt:lpwstr></property>'
+        for i, chunk in enumerate(chunks)
+    )
+    if "xmlns:vt=" not in custom:
+        custom = custom.replace("<Properties ", f'<Properties xmlns:vt="{vt}" ', 1)
+    parts["docProps/custom.xml"] = custom.replace("</Properties>", props + "</Properties>").encode("utf-8")
+    with zipfile.ZipFile(docx, "w", zipfile.ZIP_DEFLATED) as target:
+        for name, content in parts.items():
+            target.writestr(name, content)
+
+
 def table_breaks(text):
     def code(match):
         return "`" + re.sub(r"([./,])(?=\S)", "\\1\u200b", match.group(1)) + "`"
@@ -498,6 +627,7 @@ def main():
     parser.add_argument("-o", "--output", default=str(DESIGN_DIR / "build" / "thuyet-minh-thiet-ke.docx"))
     parser.add_argument("--markdown", help="Ghi thêm bản Markdown đã ghép ra đường dẫn này")
     parser.add_argument("--word", action="store_true", help="Dùng Microsoft Word (Windows) cập nhật mục lục, danh mục và xuất PDF")
+    parser.add_argument("--zotero", action="store_true", help="Chèn trích dẫn thành trường Zotero lấy từ thư viện Zotero trên máy; kèm --word thì Zotero làm mới trong Word")
     args = parser.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
     output = Path(args.output)
@@ -508,12 +638,16 @@ def main():
         work = Path(tmp)
         combined, missing, leftovers, fields = build_markdown(work, cache)
         source = work / "combined.md"
-        source.write_text(table_breaks(combined), encoding="utf-8")
+        text = table_breaks(combined)
+        if args.zotero:
+            refs = {e["id"]: e for e in json.loads(BIBLIOGRAPHY.read_text(encoding="utf-8"))}
+            text = zotero_fields(text, refs, zotero_items(refs, work))
+        source.write_text(text, encoding="utf-8")
         if args.markdown:
             Path(args.markdown).write_text(combined, encoding="utf-8")
         reference = work / "reference.docx"
         make_reference(reference)
-        citations = ["--citeproc", "--bibliography", str(BIBLIOGRAPHY), "--csl", str(CSL), "-M", f"reference-section-title={REFERENCES_TITLE}"]
+        citations = [] if args.zotero else ["--citeproc", "--bibliography", str(BIBLIOGRAPHY), "--csl", str(CSL), "-M", f"reference-section-title={REFERENCES_TITLE}"]
         subprocess.run(["pandoc", str(source), "-f", "markdown-auto_identifiers", "-o", str(output), "--reference-doc", str(reference), "--resource-path", str(ROOT), "--columns", "10000", *citations], check=True)
     finish_docx(output, [float(w) for w in re.findall(r"\{width=([\d.]+)cm\}", combined)], table_ratios(combined), update_on_open=not args.word)
     sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -522,8 +656,10 @@ def main():
     if not named:
         missing.append(f"MSSV và họ tên ở bìa ({MEMBERS.relative_to(ROOT).as_posix()}, mỗi dòng: MSSV - Họ và tên)")
     apply_cover(output, COVER_TEMPLATE, members, fields)
+    if args.zotero:
+        zotero_prefs(output)
     if args.word:
-        word_finish(output, output.with_suffix(".pdf"))
+        word_finish(output, output.with_suffix(".pdf"), args.zotero)
     print(f"Đã ghi {output}")
     for item in missing:
         print(f"Thiếu phần: {item}")
