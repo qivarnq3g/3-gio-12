@@ -33,7 +33,8 @@ namespace BaGio12.Story
             {
                 Background(new Rect(0, 0, 1280, 720), Color.black);
                 GUI.Label(new Rect(280, 260, 750, 100), "HẾT ĐÊM 2", titleStyle);
-                GUI.Label(new Rect(280, 330, 750, 70), State.vigilDozed ? "Bạn ngủ gật lúc nào không hay. Trời đã sáng." : "Sáng 26/11 thuộc đêm 3, đang được làm trong #22.", textStyle);
+                GUI.Label(new Rect(280, 330, 750, 70), State.vigilDozed ? "Bạn ngủ gật lúc nào không hay. Trời đã sáng." : "Sáng 26/11/2026.", textStyle);
+                if (GUI.Button(new Rect(610, 420, 340, 50), "Sáng 26/11 — Đêm 3")) BeginThree();
                 if (GUI.Button(new Rect(280, 420, 300, 50), "Chơi lại đêm 1")) story.GetComponent<NightPersistence>().RequestNewGame();
                 return true;
             }

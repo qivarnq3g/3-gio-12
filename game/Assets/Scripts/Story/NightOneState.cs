@@ -28,6 +28,8 @@ namespace BaGio12.Story
         // Missing flag in existing v1 envelopes means the player is still in N1.
         public NightTwoMorningState nightTwo;
         public bool nightTwoStarted;
+        public bool nightThreeStarted;
+        public NightThreeState nightThree;
         public void Note(string text)
         {
             if (!notebook.Exists(x => x.EndsWith(" — " + text))) notebook.Add(clock + " — " + text);

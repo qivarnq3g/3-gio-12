@@ -40,6 +40,7 @@ namespace BaGio12.Story
             }
             var previous = GUI.matrix;
             GUI.matrix = Matrix4x4.Scale(new Vector3(Screen.width / 1280f, Screen.height / 720f, 1));
+            if (story.InNightThree) { DrawThree(); GUI.matrix = previous; return; }
             if (Transitioning)
             { Background(new Rect(0,0,1280,720), Color.black); GUI.matrix=previous; return; }
             if (DrawEveningOverlay()) { GUI.matrix = previous; return; }
