@@ -444,22 +444,51 @@ public static class RealisticSceneBuilder
 
     static void ParkBikes() => ParkBikes(new[] { (-.925f, 6.5f, 0f), (.925f, 13.5f, 180f), (-.925f, 19f, 0f), (.925f, 22.5f, 180f), (-.925f, 31f, 180f), (.925f, 34.5f, 0f) }, "Parked Cub ", 0);
 
-    static void ParkBikes((float x, float y, float yaw)[] spots, string prefix, int paintOffset)
+    static void ParkBikes((float x, float y, float yaw)[] spots, string prefix, int paintOffset, string[] slots = null)
     {
-        var cubAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/prop_motorbike_cub.fbx"); if (cubAsset == null) return;
         for (int k = 0; k < spots.Length; k++)
         {
             var (x, y, yaw) = spots[k];
-            int bike = (k + paintOffset) % BikePaints.Length;
-            var cub = (GameObject)PrefabUtility.InstantiatePrefab(cubAsset);
-            PrefabUtility.UnpackPrefabInstance(cub, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
-            cub.name = prefix + k;
-            cub.transform.SetPositionAndRotation(new Vector3(x, 0, -y), Quaternion.Euler(0, yaw + (k % 3 - 1) * 6, 0));
-            foreach (var r in cub.GetComponentsInChildren<MeshRenderer>())
-                r.sharedMaterials = r.sharedMaterials.Select(t => BikeMaterial(t, bike)).ToArray();
-            var b = RendererBounds(cub); var box = cub.AddComponent<BoxCollider>();
-            box.center = cub.transform.InverseTransformPoint(b.center); box.size = new Vector3(.7f, b.size.y, 1.8f);
+            var bike = PlaceBike(prefix, k, paintOffset, slots?[k]);
+            if (bike == null) continue;
+            bike.transform.SetPositionAndRotation(new Vector3(x, 0, -y), Quaternion.Euler(0, yaw + (k % 3 - 1) * 6, 0));
+            FitBikeCollider(bike);
         }
+    }
+
+    const string BikeModelRoot = "Assets/Art/Models/Props/prop_motorbike_";
+    static readonly string[] BikeMix = { "cub", "beat", "bebek", "sh", "cub", "vino", "beat", "cubblack", "bebek", "cub", "sh", "vino" };
+    static readonly (string prefix, int paint)[] BikeGroups = { ("Parked Cub ", 0), ("Garage Cub ", 6), (BoardingHouseBike, 3), (ShallowAlleyBike, 1), (RoadBikePrefix, 12) };
+
+    static string BikeModel(string prefix, int k, string slot)
+    {
+        if (slot == "Garage_Bike_Wave") return "bebek";
+        if (slot == "Garage_Bike_L02" || prefix == BoardingHouseBike) return "cub";
+        if (slot == "Garage_Bike_R04") return "goa";
+        int seed = prefix.Aggregate(7, (h, c) => (h * 31 + c) % 9973);
+        return BikeMix[(seed + k * 5) % BikeMix.Length];
+    }
+
+    static string[] GarageSlots() => Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+        .Where(r => r.name.StartsWith("Garage_Bike_")).Select(r => r.name).OrderBy(n => n).ToArray();
+
+    static GameObject PlaceBike(string prefix, int k, int paintOffset, string slot)
+    {
+        var asset = AssetDatabase.LoadAssetAtPath<GameObject>(BikeModelRoot + BikeModel(prefix, k, slot) + ".fbx");
+        if (asset == null) { Debug.LogError("REAL_BIKE missing model " + BikeModel(prefix, k, slot)); return null; }
+        int bike = (k + paintOffset) % BikePaints.Length;
+        var go = (GameObject)PrefabUtility.InstantiatePrefab(asset);
+        PrefabUtility.UnpackPrefabInstance(go, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+        go.name = prefix + k;
+        foreach (var r in go.GetComponentsInChildren<MeshRenderer>())
+            r.sharedMaterials = r.sharedMaterials.Select(t => BikeMaterial(t, bike)).ToArray();
+        return go;
+    }
+
+    static void FitBikeCollider(GameObject bike)
+    {
+        var b = RendererBounds(bike); var box = bike.AddComponent<BoxCollider>();
+        box.center = bike.transform.InverseTransformPoint(b.center); box.size = new Vector3(.7f, b.size.y, 1.8f);
     }
 
     static readonly Color[] BikePaints = { new Color(.12f, .22f, .5f), new Color(.75f, .75f, .73f), new Color(.08f, .08f, .09f), new Color(.6f, .08f, .08f), new Color(.2f, .35f, .25f), new Color(.5f, .45f, .35f) };
@@ -467,23 +496,95 @@ public static class RealisticSceneBuilder
     static Material BikeMaterial(Material toon, int bike)
     {
         var m = ExistingPBR(toon);
-        if (m == null || m.name != "M_CubRed") return m;
-        var key = "M_CubRed_" + bike;
+        if (m == null || m.name != "M_CubRed" && !m.name.EndsWith("Paint")) return m;
+        var key = m.name + "_" + bike;
         var v = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{key}.mat");
         if (v != null) return v;
         v = new Material(m) { name = key }; v.SetColor("_BaseColor", BikePaints[bike]); Save(v);
         return v;
     }
 
+    static readonly (string name, string tex, bool normal, float metal, float smooth)[] NewBikeMaterials =
+    {
+        ("M_BikeBeat", "T_BikeBeat", true, 0, .35f), ("M_BikeSH", "T_BikeSH", true, 0, .35f), ("M_BikeGoa", "T_BikeGoa", true, 0, .35f),
+        ("M_BikeVino", "T_BikeVino", false, 0, .4f), ("M_BikeVinoChrome", "T_BikeVino", false, .85f, .6f),
+        ("M_BikeBebek", "T_BikeBebek", false, 0, .4f), ("M_BikeBebekChrome", "T_BikeBebek", false, .85f, .6f), ("M_BikeBebekPaint", null, false, 0, .55f),
+        ("M_BikeCubBlack", "T_BikeCubBlack", false, 0, .4f), ("M_BikeCubBlackChrome", "T_BikeCubBlack", false, .85f, .6f),
+    };
+
+    public static void EnsureBikeMaterials()
+    {
+        var template = AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/Materials/M_CubBlack.mat");
+        bool created = false;
+        foreach (var (name, tex, normal, metal, smooth) in NewBikeMaterials)
+        {
+            var albedo = tex == null ? null : AssetDatabase.LoadAssetAtPath<Texture2D>($"Assets/Art/Textures/{tex}_Albedo.png");
+            var toonPath = $"Assets/Art/Materials/{name}.mat";
+            if (AssetDatabase.LoadAssetAtPath<Material>(toonPath) == null)
+            {
+                var t = new Material(template) { name = name };
+                foreach (var p in new[] { "_BaseColor", "_Color", "_1st_ShadeColor", "_2nd_ShadeColor" }) if (t.HasProperty(p)) t.SetColor(p, Color.white);
+                foreach (var p in new[] { "_BaseMap", "_MainTex", "_1st_ShadeMap", "_2nd_ShadeMap" }) if (t.HasProperty(p)) t.SetTexture(p, albedo);
+                t.SetFloat("_Use_BaseAs1st", 1); t.SetFloat("_Use_1stAs2nd", 1);
+                AssetDatabase.CreateAsset(t, toonPath); created = true;
+            }
+            if (AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{name}.mat") != null) continue;
+            var m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = name };
+            m.SetColor("_BaseColor", Color.white);
+            if (albedo != null) m.SetTexture("_BaseMap", albedo);
+            var nrm = normal ? AssetDatabase.LoadAssetAtPath<Texture2D>($"Assets/Art/Textures/{tex}_Normal.png") : null;
+            if (nrm != null) { m.SetTexture("_BumpMap", nrm); m.EnableKeyword("_NORMALMAP"); }
+            m.SetFloat("_Metallic", metal); m.SetFloat("_Smoothness", smooth);
+            Save(m); created = true;
+        }
+        if (!created) return;
+        AssetDatabase.SaveAssets();
+        foreach (var stray in AssetDatabase.FindAssets("t:Material M_Bike", new[] { "Assets/Art/Models" }).Select(AssetDatabase.GUIDToAssetPath).Where(p => p.EndsWith(".mat")).ToList())
+            AssetDatabase.DeleteAsset(stray);
+        foreach (var model in new[] { "beat", "sh", "goa", "vino", "bebek", "cubblack" })
+            AssetDatabase.ImportAsset(BikeModelRoot + model + ".fbx", ImportAssetOptions.ForceUpdate);
+    }
+
+    public static void PatchBikeVariety()
+    {
+        EnsureBikeMaterials();
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var slots = GarageSlots();
+        int placed = 0;
+        var mix = new Dictionary<string, int>();
+        foreach (var (prefix, offset) in BikeGroups)
+            foreach (var old in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name.StartsWith(prefix) && t.parent == null).ToList())
+            {
+                int k = int.Parse(old.name.Substring(prefix.Length));
+                string slot = prefix == "Garage Cub " && k < slots.Length ? slots[k] : null;
+                var bike = PlaceBike(prefix, k, offset, slot);
+                if (bike == null) { EditorApplication.Exit(1); return; }
+                bike.transform.SetPositionAndRotation(old.position, old.rotation);
+                bike.transform.SetSiblingIndex(old.GetSiblingIndex());
+                Object.DestroyImmediate(old.gameObject);
+                FitBikeCollider(bike);
+                var model = BikeModel(prefix, k, slot);
+                mix[model] = mix.TryGetValue(model, out var c) ? c + 1 : 1;
+                if (slot != null) Debug.Log($"REAL_BIKE_VARIETY {bike.name} {slot} {model}");
+                placed++;
+            }
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        Debug.Log("REAL_BIKE_VARIETY placed=" + placed + " " + string.Join(" ", mix.OrderBy(p => p.Key).Select(p => p.Key + "=" + p.Value)));
+        EditorApplication.Exit(placed > 0 ? 0 : 1);
+    }
+
     public static void PatchBikeMaterials()
     {
         var scene = EditorSceneManager.OpenScene(ScenePath);
-        var source = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/prop_motorbike_cub.fbx").GetComponentsInChildren<MeshRenderer>();
+        var slots = GarageSlots();
         int bikes = 0;
-        foreach (var (prefix, offset) in new[] { ("Parked Cub ", 0), ("Garage Cub ", 6), (RoadBikePrefix, 12) })
+        foreach (var (prefix, offset) in BikeGroups)
             foreach (var root in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name.StartsWith(prefix)).ToList())
             {
-                int bike = (int.Parse(root.name.Substring(prefix.Length)) + offset) % BikePaints.Length;
+                int k = int.Parse(root.name.Substring(prefix.Length));
+                int bike = (k + offset) % BikePaints.Length;
+                var source = AssetDatabase.LoadAssetAtPath<GameObject>(BikeModelRoot + BikeModel(prefix, k, prefix == "Garage Cub " && k < slots.Length ? slots[k] : null) + ".fbx").GetComponentsInChildren<MeshRenderer>();
                 var renderers = root.GetComponentsInChildren<MeshRenderer>();
                 if (renderers.Length != source.Length) { Debug.LogError("REAL_BIKE_MATERIALS mismatch " + root.name); EditorApplication.Exit(1); return; }
                 for (int i = 0; i < renderers.Length; i++)
@@ -650,7 +751,8 @@ public static class RealisticSceneBuilder
 
         var slots = blockout.GetComponentsInChildren<Renderer>().Where(r => r.name.StartsWith("Garage_Bike_")).OrderBy(r => r.name)
             .Select((r, k) => (r.name, r.bounds.center.x, -r.bounds.center.z, (r.bounds.center.x < 0 ? 90f : 270f) + (k % 4 == 2 ? 180 : 0) + (k % 3 - 1) * 5)).ToArray();
-        ParkBikes(slots.Select(s => (s.Item2, s.Item3, s.Item4)).ToArray(), "Garage Cub ", 6);
+        EnsureBikeMaterials();
+        ParkBikes(slots.Select(s => (s.Item2, s.Item3, s.Item4)).ToArray(), "Garage Cub ", 6, slots.Select(s => s.name).ToArray());
         ParkBikes();
         Physics.SyncTransforms();
         DressAlley();
