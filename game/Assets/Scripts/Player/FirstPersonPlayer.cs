@@ -175,7 +175,7 @@ namespace BaGio12.Gameplay
             if (paused) return;
             if (!showTestHud)
             {
-                if (!paused && ActivePhone == 0 && !ExternalUI && target != null && !string.IsNullOrEmpty(target.Prompt)) GUI.Label(new Rect(Screen.width/2 - 220, Screen.height*.64f, 440, 65), "E - " + target.Prompt, title);
+                if (!paused && ActivePhone == 0 && !ExternalUI && target != null && !string.IsNullOrEmpty(target.Prompt)) HudKit.Prompt("E", target.Prompt);
                 return;
             }
             GUI.Box(new Rect(12, 12, 580, 95), "");

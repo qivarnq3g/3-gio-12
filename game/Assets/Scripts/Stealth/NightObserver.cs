@@ -204,10 +204,7 @@ namespace BaGio12.Stealth
             if (Attention <= .01f || director == null || director.Busy || director.player.ActivePhone != 0) return;
             var p=director.player.eyes.WorldToScreenPoint(transform.position+Vector3.up*2.2f);
             if(p.z<=0)return;
-            var rect=new Rect(p.x-45,Screen.height-p.y,90,7);
-            GUI.color=Color.black; GUI.DrawTexture(rect,Texture2D.whiteTexture);
-            GUI.color=Mode == ObserverMode.Chasing ? Color.red : Color.yellow;
-            GUI.DrawTexture(new Rect(rect.x,rect.y,rect.width*Attention,rect.height),Texture2D.whiteTexture); GUI.color=Color.white;
+            HudKit.Meter(new Vector2(p.x,Screen.height-p.y),Attention,Mode == ObserverMode.Chasing);
         }
     }
 }
