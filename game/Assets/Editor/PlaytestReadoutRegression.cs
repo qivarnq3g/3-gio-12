@@ -70,9 +70,10 @@ public static class PlaytestReadoutRegression
                 case 1:
                     Require(readout.IsVisible && PanelIsActive(), "F3 did not show coordinates");
                     string value = readout.GetReadoutText();
-                    Require(value.Contains("NightOneRealistic") && value.Contains("X ") &&
-                            value.Contains("Y ") && value.Contains("Z ") && value.Contains("Hướng"),
-                        "readout missing scene, coordinates, or view direction");
+                    Require(value.IndexOfAny(new[] { '\r', '\n' }) < 0 && value.Contains("X ") &&
+                            value.Contains("Y ") && value.Contains("Z ") && value.Contains("Hướng") &&
+                            value.Contains("Góc dọc"),
+                        "readout should show coordinates and view direction on one line");
                     player.SetPaused(true);
                     PressF3();
                     break;

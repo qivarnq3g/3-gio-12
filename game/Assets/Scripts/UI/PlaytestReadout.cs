@@ -6,14 +6,13 @@ using System.Runtime.InteropServices;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 
 namespace BaGio12.Gameplay
 {
     [RequireComponent(typeof(FirstPersonPlayer))]
     public sealed class PlaytestReadout : MonoBehaviour
     {
-        const float RefreshSeconds = .1f, ProbeDistance = 50, ShortcutDebounce = .075f;
+        const float RefreshSeconds = .1f, ShortcutDebounce = .075f;
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
         const int VirtualKeyF3 = 0x72;
         [DllImport("user32.dll")]
@@ -25,7 +24,7 @@ namespace BaGio12.Gameplay
         InputAction toggleReadout;
         Canvas canvas;
         TextMeshProUGUI text;
-        float nextRefresh, smoothedFrame = 1 / 60f, nextShortcut;
+        float nextRefresh, nextShortcut;
         bool visible, shortcutRequested;
         GUIStyle boxStyle, labelStyle;
         string cachedReadout = "";
@@ -73,11 +72,13 @@ namespace BaGio12.Gameplay
             {
                 canvas = GameUi.Canvas(transform, "Playtest readout", 90);
                 canvas.GetComponent<CanvasGroup>().blocksRaycasts = false;
-                var panel = GameUi.Place(GameUi.Box(canvas.transform, "Panel", new Color(0, 0, 0, .75f)), Vector2.one, Vector2.one, new Vector2(-24, -24), new Vector2(760, 206));
-                text = GameUi.Text(panel, "Readout", "", 24, GameUi.Ink);
+                var panel = GameUi.Place(GameUi.Box(canvas.transform, "Panel", new Color(0, 0, 0, .75f)), Vector2.one, Vector2.one, new Vector2(-24, -24), new Vector2(640, 52));
+                text = GameUi.Text(panel, "Readout", "", 24, GameUi.Ink, TextAlignmentOptions.Right);
                 text.font = GameUi.Font("Fonts/BeVietnamPro-Regular");
-                text.alignment = TextAlignmentOptions.TopLeft;
-                GameUi.Place((RectTransform)text.transform, Vector2.up, Vector2.up, new Vector2(16, -12), new Vector2(728, 182));
+                text.enableAutoSizing = true;
+                text.fontSizeMin = 17;
+                text.fontSizeMax = 24;
+                GameUi.Place(text.rectTransform, Vector2.one, Vector2.one, new Vector2(-14, 0), new Vector2(612, 52));
                 UpdateCanvasVisibility();
             }
             catch (System.Exception ex)
@@ -98,7 +99,6 @@ namespace BaGio12.Gameplay
 
         void Update()
         {
-            smoothedFrame = Mathf.Lerp(smoothedFrame, Time.unscaledDeltaTime, .05f);
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
             shortcutRequested |= PhysicalKeyboardHook.ConsumeReadoutToggle();
 #endif
@@ -133,6 +133,7 @@ namespace BaGio12.Gameplay
                 {
                     fontSize = 17,
                     fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleRight,
                     normal = { textColor = Color.white }
                 };
             }
@@ -144,12 +145,13 @@ namespace BaGio12.Gameplay
             {
                 GUI.depth = -2000;
                 GUI.matrix = Matrix4x4.identity;
-                float w = Mathf.Min(680, Screen.width - 48);
-                var rect = new Rect(Screen.width - w - 24, 24, w, 175);
+                var content = new GUIContent(cachedReadout);
+                float w = Mathf.Min(labelStyle.CalcSize(content).x + 28, Screen.width - 48);
+                var rect = new Rect(Screen.width - w - 24, 24, w, 34);
                 GUI.color = new Color(0, 0, 0, .85f);
                 GUI.Box(rect, GUIContent.none);
                 GUI.color = Color.white;
-                GUI.Label(new Rect(rect.x + 14, rect.y + 10, rect.width - 28, rect.height - 20), cachedReadout, labelStyle);
+                GUI.Label(new Rect(rect.x + 14, rect.y, rect.width - 28, rect.height), content, labelStyle);
             }
             finally
             {
@@ -161,30 +163,12 @@ namespace BaGio12.Gameplay
 
         string Describe()
         {
-            if (player == null) player = GetComponent<FirstPersonPlayer>();
             var p = transform.position;
             float yaw = Mathf.Repeat(transform.eulerAngles.y, 360);
-            float pitch = player != null ? Mathf.DeltaAngle(0, player.ViewPitch) : 0;
-            var eye = (player != null && player.eyes != null) ? player.eyes.transform : transform;
+            float pitch = Mathf.DeltaAngle(0, player.ViewPitch);
             return string.Format(CultureInfo.InvariantCulture,
-                "X {0:F2}   Y {1:F2}   Z {2:F2}\nHướng {3:F0}°   Ngước {4:F0}°\nDưới chân: {5}\nĐang nhìn: {6}\n{7}   {8:F0} FPS   {9}\n[F3 / ~]: Ẩn/Hiện tọa độ  |  V: bay  |  F5-F9: Dịch chuyển",
-                p.x, p.y, p.z, yaw, pitch,
-                Hit(p + Vector3.up * .5f, Vector3.down),
-                Hit(eye.position, eye.forward),
-                SceneManager.GetActiveScene().name, 1 / Mathf.Max(smoothedFrame, .0001f), SystemInfo.graphicsDeviceType);
-        }
-
-        string Hit(Vector3 origin, Vector3 direction)
-        {
-            foreach (var hit in Sorted(Physics.RaycastAll(origin, direction, ProbeDistance, ~0, QueryTriggerInteraction.Ignore)))
-                if (!hit.collider.transform.IsChildOf(transform)) return hit.collider.name;
-            return "(trống)";
-        }
-
-        static RaycastHit[] Sorted(RaycastHit[] hits)
-        {
-            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-            return hits;
+                "X {0:F2}   Y {1:F2}   Z {2:F2}  |  Hướng {3:F0}° · Góc dọc {4:F0}°",
+                p.x, p.y, p.z, yaw, pitch);
         }
     }
 }
