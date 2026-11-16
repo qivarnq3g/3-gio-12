@@ -19,7 +19,7 @@ namespace BaGio12.Persistence
         bool startup, playing, settings, confirmNew, confirmDelete, quitting;
         float nextSave;
         GUIStyle label, title;
-        public static string DataRoot => Environment.GetEnvironmentVariable("THREEGIO12_DATA_ROOT") ?? Path.Combine(Application.persistentDataPath, "local-v1");
+        public static string DataRoot => System.Environment.GetEnvironmentVariable("THREEGIO12_DATA_ROOT") ?? Path.Combine(Application.persistentDataPath, "local-v1");
         IEnumerator Start()
         {
             // All observer Start methods must establish their home and NavMeshAgent first.
@@ -29,7 +29,7 @@ namespace BaGio12.Persistence
             if (!preferences.TryLoad(out var loaded, out var warning)) loaded = new GamePreferences();
             Preferences = loaded; Preferences.Apply(story.player); Status = warning;
             initial = story.CaptureSave(); Ready = true; story.player.HasPauseMenu = true;
-            if (Environment.GetEnvironmentVariable("THREEGIO12_SKIP_START_MENU") == "1") { playing = true; yield break; }
+            if (System.Environment.GetEnvironmentVariable("THREEGIO12_SKIP_START_MENU") == "1") { playing = true; yield break; }
             startup = true; story.player.SetPaused(true); story.player.PauseMenuLocked = true;
         }
         void LateUpdate()

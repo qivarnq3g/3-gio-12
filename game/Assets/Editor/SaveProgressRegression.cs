@@ -24,7 +24,7 @@ public static class SaveProgressRegression
     public static void Read() { SessionState.SetBool("SaveProgressMenu", false); Run(true); }
     static void Run(bool read)
     {
-        string root = Environment.GetEnvironmentVariable("THREEGIO12_DATA_ROOT");
+        string root = System.Environment.GetEnvironmentVariable("THREEGIO12_DATA_ROOT");
         if (string.IsNullOrEmpty(root) || Path.GetFullPath(root).StartsWith(Application.persistentDataPath))
             throw new Exception("Set THREEGIO12_DATA_ROOT to an isolated test directory.");
         if (!read) StorageCases(root + "-storage");
