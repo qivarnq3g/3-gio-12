@@ -23,10 +23,13 @@ MEMBERS = DESIGN_DIR / "thanh-vien.local.txt"
 COVER_TEMPLATE = DESIGN_DIR / "mau-bia.docx"
 COVER_BLOCK = re.compile(r'^::: \{custom-style="(Cover \w+)"\}\n(.*?)\n:::', re.M | re.S)
 PARTS = [
-    ("kien-truc-he-thong.md", 10, "Kiến trúc hệ thống"),
     ("luoc-do-use-case.md", 9, "Lược đồ use case"),
+    ("kien-truc-he-thong.md", 10, "Kiến trúc hệ thống"),
     ("luoc-do-lop-game.md", 11, "Lược đồ lớp phần game"),
-    ("luoc-do-lop-may-chu.md", 12, "Lược đồ lớp phần máy chủ và web"),
+    ("luoc-do-lop-may-chu.md", 12, "Lược đồ lớp phần máy chủ"),
+    ("database-design.md", 12, "Thiết kế cơ sở dữ liệu"),
+    ("admin-ui-design.md", 27, "Thiết kế trang quản trị"),
+    ("conclusion.md", 13, "Kết luận"),
 ]
 FONT = "Times New Roman"
 BROWSERS = [
@@ -38,20 +41,15 @@ BROWSERS = [
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
 ]
 SCALE = 2
-PORTRAIT = (15.0, 16.0)
-LANDSCAPE = (23.0, 12.0)
+PORTRAIT = (15.0, 21.0)
+TEXT_WIDTH = 16.0
+TABLE_RULE = re.compile(r"^\|(\s*:?-+:?\s*\|)+\s*$")
 TABLE_BORDER = '<w:{0} w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
 MERMAID_CONFIG = {
     "fontFamily": "Arial",
     **{kind: {"useMaxWidth": False} for kind in ("flowchart", "sequence", "class", "er", "state")},
 }
 PAGE_MARGINS = '<w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1701" w:header="567" w:footer="567" w:gutter="0"/>'
-LANDSCAPE_START = f"""```{{=openxml}}
-<w:p><w:pPr><w:sectPr><w:pgSz w:w="11906" w:h="16838"/>{PAGE_MARGINS}</w:sectPr></w:pPr></w:p>
-```"""
-LANDSCAPE_END = f"""```{{=openxml}}
-<w:p><w:pPr><w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>{PAGE_MARGINS}</w:sectPr></w:pPr></w:p>
-```"""
 HEADING = re.compile(r"^(#{1,6})\s+(?:\d+(?:\.\d+)*\.?\s+)?(.*?)\s*$")
 FENCE = re.compile(r"^```\s*mermaid\s*$")
 IMAGE = re.compile(r"^!\[[^\]]*\]\((?!https?://)([^)\s]+\.png)\)\s*$")
@@ -61,6 +59,48 @@ TOC_XML = """```{=openxml}
 <w:p><w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \\o "1-3" \\h \\z \\u </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Nhấn F9 để cập nhật mục lục.</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>
 <w:p><w:r><w:br w:type="page"/></w:r></w:p>
 ```"""
+ABBREVIATIONS = DESIGN_DIR / "abbreviations.md"
+BIBLIOGRAPHY = DESIGN_DIR / "references.json"
+CSL = DESIGN_DIR / "ieee.csl"
+REFERENCES_TITLE = "Tài liệu tham khảo"
+CAPTION = re.compile(r"^: (.+)$")
+ZOTERO_DB = Path.home() / "Zotero" / "zotero.sqlite"
+ZOTERO_STYLE = "http://www.zotero.org/styles/ieee"
+CITATION = re.compile(r"\[(@[^\]\s;]+(?:\s*;\s*@[^\]\s;]+)*)\]")
+BIBLIOGRAPHY_PLACEHOLDER = "Zotero sẽ điền danh mục tài liệu tham khảo khi làm mới."
+
+
+def list_xml(title, style):
+    field = f'<w:p><w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \\h \\z \\t "{style},1" </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Nhấn F9 để cập nhật danh mục.</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>'
+    return f'<w:p><w:pPr><w:pStyle w:val="TOCHeading"/></w:pPr><w:r><w:t>{title}</w:t></w:r></w:p>{field}<w:p><w:r><w:br w:type="page"/></w:r></w:p>'
+
+
+def front_lists():
+    lists = list_xml("Danh mục hình", "Image Caption") + list_xml("Danh mục bảng", "Table Caption")
+    heading = '<w:p><w:pPr><w:pStyle w:val="TOCHeading"/></w:pPr><w:r><w:t>Danh mục chữ viết tắt</w:t></w:r></w:p>'
+    table = ABBREVIATIONS.read_text(encoding="utf-8").strip()
+    page_break = '```{=openxml}\n<w:p><w:r><w:br w:type="page"/></w:r></w:p>\n```'
+    return f"```{{=openxml}}\n{lists}{heading}\n```\n\n{table}\n\n{page_break}"
+
+
+def number_tables(text):
+    out, chapter, count, in_code = [], 0, 0, False
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        if line.startswith("```"):
+            in_code = not in_code
+        heading = None if in_code else re.match(r"^# (\d+)\. ", line)
+        if heading:
+            chapter, count = int(heading.group(1)), 0
+        caption = None if in_code else CAPTION.match(line)
+        if caption:
+            before = next((lines[j] for j in range(index - 1, -1, -1) if lines[j].strip()), "")
+            if not before.startswith("|"):
+                sys.exit(f"Chú thích bảng không đứng ngay sau bảng: {line}")
+            count += 1
+            line = f": Bảng {chapter}.{count}. {caption.group(1)}"
+        out.append(line)
+    return "\n".join(out)
 
 
 def split_cover(text):
@@ -158,12 +198,7 @@ def png_size(path):
 def figure_size(pixel_width, pixel_height):
     width = pixel_width / SCALE * 2.54 / 96
     height = pixel_height / SCALE * 2.54 / 96
-    portrait = min(1, PORTRAIT[0] / width, PORTRAIT[1] / height)
-    if portrait < 0.8 and width / height >= 1.5:
-        landscape = min(1, LANDSCAPE[0] / width, LANDSCAPE[1] / height)
-        if landscape > portrait:
-            return width * landscape, True
-    return width * portrait, False
+    return width * min(1, PORTRAIT[0] / width, PORTRAIT[1] / height)
 
 
 def browser_config(work):
@@ -186,37 +221,15 @@ def mermaid_command():
 
 
 def figure_lines(image, chapter, figure, title):
-    size, landscape = figure_size(*png_size(image))
-    line = f"![Hình {chapter}.{figure}. {title}]({image.as_posix()}){{width={size:.1f}cm}}"
-    return [LANDSCAPE_START, "", line, "", LANDSCAPE_END] if landscape else [line]
-
-
-def place_figure(out, lines, heading_at):
-    if lines[0] != LANDSCAPE_START or heading_at is None or any(item.strip() for item in out[heading_at + 1:]):
-        out.extend(lines)
-        return
-    start = heading_at
-    while True:
-        before = start
-        while before > 0 and not out[before - 1].strip():
-            before -= 1
-        if before > 0 and HEADING.match(out[before - 1]):
-            start = before - 1
-            continue
-        break
-    if before > 0 and out[before - 1] == LANDSCAPE_END:
-        del out[before - 1]
-    else:
-        out[start:start] = [LANDSCAPE_START, ""]
-    out.extend(lines[1:])
+    size = figure_size(*png_size(image))
+    return [f"![Hình {chapter}.{figure}. {title}]({image.as_posix()}){{width={size:.1f}cm}}"]
 
 
 def render_diagrams(text, chapter, work, cache):
-    out, block, figure, title, heading_at = [], None, 0, "", None
+    out, block, figure, title = [], None, 0, ""
     for line in text.splitlines():
         heading = HEADING.match(line)
         if block is None and heading:
-            heading_at = len(out)
             title = re.sub(r"^\d+(?:\.\d+)*\.\s*", "", line.lstrip("#").strip())
         if block is None and FENCE.match(line):
             block = []
@@ -237,7 +250,7 @@ def render_diagrams(text, chapter, work, cache):
                     cmd += ["-p", str(browser)]
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
             figure += 1
-            place_figure(out, figure_lines(image, chapter, figure, title), heading_at)
+            out.extend(figure_lines(image, chapter, figure, title))
             block = None
             continue
         picture = IMAGE.match(line) if block is None else None
@@ -246,7 +259,7 @@ def render_diagrams(text, chapter, work, cache):
             if not image.exists():
                 sys.exit(f"Thiếu ảnh {image}")
             figure += 1
-            place_figure(out, figure_lines(image, chapter, figure, title), heading_at)
+            out.extend(figure_lines(image, chapter, figure, title))
             continue
         if block is not None:
             block.append(line)
@@ -268,7 +281,7 @@ def build_markdown(work, cache):
     for name, _, _ in PARTS:
         chapters[name] = next_chapter
         next_chapter += 1
-    pieces = [TOC_XML, body_numbered]
+    pieces = [TOC_XML, front_lists(), body_numbered]
     for name, task, title in PARTS:
         path = DESIGN_DIR / name
         if path.exists():
@@ -281,7 +294,7 @@ def build_markdown(work, cache):
         text = rewrite_references(text, chapter, chapters)
         text = render_diagrams(text, chapter, work, cache)
         pieces.append(text)
-    combined = "\n\n".join(pieces) + "\n"
+    combined = number_tables("\n\n".join(pieces)) + "\n"
     leftovers = sorted(set(re.findall(r"task #\d+", combined)) - {f"task #{t}" for n, t, _ in PARTS if f"{n} (task #{t})" in missing})
     prose = re.sub(r"^```.*?^```", "", combined, flags=re.M | re.S)
     leftovers += sorted(set(re.findall(r"(?<![\w&/#])#\d+\b", prose)) - set(leftovers))
@@ -312,9 +325,18 @@ def make_reference(path):
     subprocess.run(["pandoc", "-o", str(path), "--print-default-data-file", "reference.docx"], check=True)
     doc = Document(str(path))
     styles = doc.styles
-    for name in ("Normal", "Body Text", "First Paragraph", "Compact", "Table", "Caption", "Image Caption"):
+    for name in ("Normal", "Body Text", "First Paragraph", "Compact", "Table", "Caption", "Image Caption", "Table Caption", "Bibliography"):
         if name in [s.name for s in styles]:
             set_font(styles[name], 13)
+    if "Table Caption" in [s.name for s in styles]:
+        fmt = styles["Table Caption"].paragraph_format
+        fmt.space_before, fmt.space_after, fmt.keep_with_next = Pt(6), Pt(3), True
+    if "Bibliography" in [s.name for s in styles]:
+        fmt = styles["Bibliography"].paragraph_format
+        fmt.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        fmt.left_indent, fmt.first_line_indent = Cm(1.2), Cm(-1.2)
+        fmt.space_before, fmt.space_after, fmt.line_spacing = Pt(0), Pt(6), 1.0
+        fmt.tab_stops.add_tab_stop(Cm(1.2))
     for name, size in (("Heading 1", 16), ("Heading 2", 14), ("Heading 3", 13), ("Heading 4", 13), ("TOC Heading", 16)):
         if name in [s.name for s in styles]:
             set_font(styles[name], size, bold=True)
@@ -348,7 +370,84 @@ def add_borders(tbl_pr):
         anchor.addnext(borders)
 
 
-def finish_docx(path, widths):
+def word_finish(docx, pdf, zotero=False):
+    if os.name != "nt":
+        sys.exit("--word chỉ chạy trên Windows có Microsoft Word")
+    refresh = ""
+    if zotero:
+        plugin = Path(os.environ["APPDATA"]) / "Microsoft" / "Word" / "STARTUP" / "Zotero.dotm"
+        refresh = (
+            f"if(-not ($w.AddIns | Where-Object {{$_.Name -eq 'Zotero.dotm' -and $_.Installed}})){{[void]$w.AddIns.Add('{plugin}',$true)}};"
+            "$d.Activate();$w.Run('ZoteroRefresh');"
+            "$bib=$null;for($i=0;$i -lt 240;$i++){Start-Sleep -Seconds 2;"
+            "$bib=$d.Fields | Where-Object {$_.Code.Text -like '*ZOTERO_BIBL*'} | Select-Object -First 1;"
+            f"if($bib -and $bib.Result.Text -notlike '*{BIBLIOGRAPHY_PLACEHOLDER[:20]}*' -and $bib.Result.Paragraphs.Count -gt 3){{break}}}};"
+            "if(-not $bib -or $bib.Result.Paragraphs.Count -le 3){throw 'Zotero chưa điền danh mục'};Start-Sleep -Seconds 5;"
+            "$cm=$w.CentimetersToPoints(1.2);foreach($p in $bib.Result.Paragraphs){$f=$p.Format;$f.Alignment=0;$f.LeftIndent=$cm;"
+            "$f.FirstLineIndent=-$cm;$f.SpaceBefore=0;$f.SpaceAfter=3;$f.LineSpacingRule=0;$f.TabStops.ClearAll();[void]$f.TabStops.Add($cm)};"
+            "$r=$bib.Result;$fd=$r.Find;[void]$fd.Execute([string][char]0x2013,$false,$false,$false,$false,$false,$true,0,$false,'-',2);"
+            "Write-Output ('citations=' + @($d.Fields | Where-Object {$_.Code.Text -like '*ZOTERO_ITEM*'}).Count);"
+        )
+    script = (
+        "$ErrorActionPreference='Stop';$w=New-Object -ComObject Word.Application;"
+        f"$w.Visible=${'true' if zotero else 'false'};$w.DisplayAlerts=0;"
+        f"try{{$d=$w.Documents.Open('{docx}');{refresh}foreach($t in $d.TablesOfContents){{$t.Update()}};"
+        f"$d.Save();$d.ExportAsFixedFormat('{pdf}',17);Write-Output ('pages=' + $d.ComputeStatistics(2));$d.Close(0)}}finally{{$w.Quit()}}"
+    )
+    result = subprocess.run(["powershell", "-NoProfile", "-Command", script], check=True, capture_output=True, text=True)
+    print(result.stdout.strip())
+
+
+def space_after_tables(doc):
+    for table in doc.element.body.iter(qn("w:tbl")):
+        follower = table.getnext()
+        if follower is None or follower.tag != qn("w:p"):
+            continue
+        ppr = follower.get_or_add_pPr()
+        spacing = ppr.find(qn("w:spacing"))
+        if spacing is None:
+            spacing = OxmlElement("w:spacing")
+            ppr.append(spacing)
+        spacing.set(qn("w:before"), "160")
+
+
+def table_ratios(text):
+    ratios = []
+    for line in text.split("\n"):
+        if TABLE_RULE.match(line):
+            ratios.append([len(cell.strip(" :")) for cell in line.strip().strip("|").split("|")])
+    return ratios
+
+
+def fix_columns(table, ratio):
+    total = TEXT_WIDTH * 567
+    widths = [round(total * part / sum(ratio)) for part in ratio]
+    tbl = table._tbl
+    tbl_pr = tbl.tblPr
+    for name in ("w:tblW", "w:tblLayout"):
+        for old in tbl_pr.findall(qn(name)):
+            tbl_pr.remove(old)
+    tbl_w = OxmlElement("w:tblW")
+    tbl_w.set(qn("w:w"), str(total))
+    tbl_w.set(qn("w:type"), "dxa")
+    layout = OxmlElement("w:tblLayout")
+    layout.set(qn("w:type"), "fixed")
+    tbl_pr.append(tbl_w)
+    tbl_pr.append(layout)
+    for col, width in zip(tbl.tblGrid.findall(qn("w:gridCol")), widths):
+        col.set(qn("w:w"), str(width))
+    for row in tbl.findall(qn("w:tr")):
+        for tc, width in zip(row.findall(qn("w:tc")), widths):
+            tc_pr = tc.get_or_add_tcPr()
+            for old in tc_pr.findall(qn("w:tcW")):
+                tc_pr.remove(old)
+            tc_w = OxmlElement("w:tcW")
+            tc_w.set(qn("w:w"), str(width))
+            tc_w.set(qn("w:type"), "dxa")
+            tc_pr.insert(0, tc_w)
+
+
+def finish_docx(path, widths, ratios, update_on_open=True):
     doc = Document(str(path))
     shapes = doc.inline_shapes
     if len(shapes) != len(widths):
@@ -357,6 +456,11 @@ def finish_docx(path, widths):
         target = Cm(width)
         shape.height = int(shape.height * target / shape.width)
         shape.width = target
+    if len(doc.tables) != len(ratios):
+        sys.exit(f"Số bảng trong bản Word ({len(doc.tables)}) khác số bảng Markdown ({len(ratios)})")
+    for table, ratio in zip(doc.tables, ratios):
+        if len(set(ratio)) > 1 and len(ratio) == len(table.columns):
+            fix_columns(table, ratio)
     for table in doc.tables:
         rows = table.rows
         if not rows:
@@ -364,6 +468,10 @@ def finish_docx(path, widths):
         trpr = rows[0]._tr.get_or_add_trPr()
         if trpr.find(qn("w:tblHeader")) is None:
             trpr.append(OxmlElement("w:tblHeader"))
+        for row in rows:
+            row_pr = row._tr.get_or_add_trPr()
+            if row_pr.find(qn("w:cantSplit")) is None:
+                row_pr.insert(0, OxmlElement("w:cantSplit"))
         for cell in table._tbl.iter(qn("w:shd")):
             cell.getparent().remove(cell)
         add_borders(table._tbl.tblPr)
@@ -387,18 +495,139 @@ def finish_docx(path, widths):
             node.text = text
         run.append(node)
         footer._p.append(run)
+    space_after_tables(doc)
+    for node in doc.element.body.iter(qn("w:t")):
+        if node.text and chr(0x2013) in node.text:
+            node.text = node.text.replace(chr(0x2013), "-")
     settings = doc.settings.element
-    if settings.find(qn("w:updateFields")) is None:
+    if update_on_open and settings.find(qn("w:updateFields")) is None:
         update = OxmlElement("w:updateFields")
         update.set(qn("w:val"), "true")
         settings.append(update)
     doc.save(str(path))
 
 
+def zotero_items(refs, work):
+    import sqlite3
+    copy = work / "zotero.sqlite"
+    shutil.copy(ZOTERO_DB, copy)
+    wal = ZOTERO_DB.with_name(ZOTERO_DB.name + "-wal")
+    if wal.exists():
+        shutil.copy(wal, copy.with_name(copy.name + "-wal"))
+    db = sqlite3.connect(copy)
+    user = db.execute("select value from settings where setting='account' and key='localUserKey'").fetchone()[0]
+    rows = db.execute(
+        "select i.itemID, i.key, f.fieldName, v.value from items i join itemData d using(itemID) join fields f using(fieldID) "
+        "join itemDataValues v using(valueID) where i.itemID not in (select itemID from deletedItems) "
+        "and f.fieldName in ('DOI','url','title','nameOfAct','extra') order by i.dateAdded"
+    ).fetchall()
+    db.close()
+    index = {}
+    for item, key, field, value in rows:
+        if field == "extra":
+            match = re.search(r"^DOI:\s*(\S+)", value, re.M)
+            if not match:
+                continue
+            field, value = "DOI", match.group(1)
+        kind = "title" if field in ("title", "nameOfAct") else field.lower()
+        index[(kind, value.strip().lower())] = (item, f"http://zotero.org/users/local/{user}/items/{key}")
+    found, missing = {}, []
+    for ref in refs.values():
+        probes = [("doi", ref.get("DOI", "")), ("url", ref.get("URL", "")), ("title", ref.get("title", ""))]
+        hit = next((index[(k, v.lower())] for k, v in probes if v and (k, v.lower()) in index), None)
+        if hit:
+            found[ref["id"]] = hit
+        else:
+            missing.append(ref["id"])
+    if missing:
+        sys.exit("Không tìm thấy trong thư viện Zotero: " + ", ".join(missing))
+    return found
+
+
+def zotero_fields(text, refs, items):
+    order = {}
+    def field(match):
+        keys = [k.strip().lstrip("@") for k in match.group(1).split(";")]
+        for key in keys:
+            if key not in refs:
+                sys.exit(f"Trích dẫn [@{key}] không có trong {BIBLIOGRAPHY.name}")
+            order.setdefault(key, len(order) + 1)
+        label = ", ".join(f"[{order[k]}]" for k in keys)
+        citation = {
+            "citationID": hashlib.sha1(f"{match.start()}{match.group(0)}".encode()).hexdigest()[:8],
+            "properties": {"formattedCitation": label, "plainCitation": label, "noteIndex": 0},
+            "citationItems": [{"id": items[k][0], "uris": [items[k][1]], "itemData": {**refs[k], "id": items[k][0]}} for k in keys],
+            "schema": "https://github.com/citation-style-language/schema/raw/master/csl-citation.json",
+        }
+        code = escape_xml(" ADDIN ZOTERO_ITEM CSL_CITATION " + json.dumps(citation, ensure_ascii=False) + " ")
+        return "`" + field_xml(code, escape_xml(label)) + "`{=openxml}"
+    text = CITATION.sub(field, text)
+    bibl = escape_xml(' ADDIN ZOTERO_BIBL {"uncited":[],"omitted":[],"custom":[]} CSL_BIBLIOGRAPHY ')
+    return text + f"\n\n# {REFERENCES_TITLE}\n\n```{{=openxml}}\n<w:p>{field_xml(bibl, BIBLIOGRAPHY_PLACEHOLDER)}</w:p>\n```\n"
+
+
+def escape_xml(value):
+    return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("|", "&#124;").replace("`", "&#96;")
+
+
+def field_xml(code, result):
+    return (
+        '<w:r><w:fldChar w:fldCharType="begin"/></w:r>'
+        f'<w:r><w:instrText xml:space="preserve">{code}</w:instrText></w:r>'
+        '<w:r><w:fldChar w:fldCharType="separate"/></w:r>'
+        f'<w:r><w:t xml:space="preserve">{result}</w:t></w:r>'
+        '<w:r><w:fldChar w:fldCharType="end"/></w:r>'
+    )
+
+
+def zotero_prefs(docx):
+    import zipfile
+    session = hashlib.sha1(str(docx).encode()).hexdigest()[:8].upper()
+    data = (
+        f'<data data-version="3" zotero-version="7.0"><session id="{session}"/>'
+        f'<style id="{ZOTERO_STYLE}" locale="en-US" hasBibliography="1" bibliographyStyleHasBeenSet="1"/>'
+        '<prefs><pref name="fieldType" value="Field"/><pref name="automaticJournalAbbreviations" value="true"/></prefs></data>'
+    )
+    chunks = [data[i:i + 240] for i in range(0, len(data), 240)]
+    with zipfile.ZipFile(docx) as source:
+        parts = {name: source.read(name) for name in source.namelist()}
+    custom = parts.get("docProps/custom.xml", b"").decode("utf-8")
+    vt = "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"
+    if not custom:
+        custom = f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" xmlns:vt="{vt}"></Properties>'
+        types = parts["[Content_Types].xml"].decode("utf-8")
+        types = types.replace("</Types>", '<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/></Types>')
+        parts["[Content_Types].xml"] = types.encode("utf-8")
+        rels = parts["_rels/.rels"].decode("utf-8")
+        rels = rels.replace("</Relationships>", '<Relationship Id="rIdZoteroPrefs" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties" Target="docProps/custom.xml"/></Relationships>')
+        parts["_rels/.rels"] = rels.encode("utf-8")
+    custom = re.sub(r"<Properties([^>]*?)\s*/>", r"<Properties\1></Properties>", custom)
+    custom = re.sub(r'<property [^>]*name="ZOTERO_PREF_\d+".*?</property>', "", custom, flags=re.S)
+    pid = max([int(p) for p in re.findall(r'pid="(\d+)"', custom)] or [1]) + 1
+    props = "".join(
+        f'<property fmtid="{{D5CDD505-2E9C-101B-9397-08002B2CF9AE}}" pid="{pid + i}" name="ZOTERO_PREF_{i + 1}"><vt:lpwstr>{escape_xml(chunk)}</vt:lpwstr></property>'
+        for i, chunk in enumerate(chunks)
+    )
+    if "xmlns:vt=" not in custom:
+        custom = custom.replace("<Properties ", f'<Properties xmlns:vt="{vt}" ', 1)
+    parts["docProps/custom.xml"] = custom.replace("</Properties>", props + "</Properties>").encode("utf-8")
+    with zipfile.ZipFile(docx, "w", zipfile.ZIP_DEFLATED) as target:
+        for name, content in parts.items():
+            target.writestr(name, content)
+
+
+def table_breaks(text):
+    def code(match):
+        return "`" + re.sub(r"([./,])(?=\S)", "\\1\u200b", match.group(1)) + "`"
+    return "\n".join(re.sub(r"`([^`\n]+)`", code, line) if line.startswith("|") else line for line in text.split("\n"))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Ghép các phần thiết kế thành bản thuyết minh .docx")
     parser.add_argument("-o", "--output", default=str(DESIGN_DIR / "build" / "thuyet-minh-thiet-ke.docx"))
     parser.add_argument("--markdown", help="Ghi thêm bản Markdown đã ghép ra đường dẫn này")
+    parser.add_argument("--word", action="store_true", help="Dùng Microsoft Word (Windows) cập nhật mục lục, danh mục và xuất PDF")
+    parser.add_argument("--zotero", action="store_true", help="Chèn trích dẫn thành trường Zotero lấy từ thư viện Zotero trên máy; kèm --word thì Zotero làm mới trong Word")
     args = parser.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
     output = Path(args.output)
@@ -409,19 +638,28 @@ def main():
         work = Path(tmp)
         combined, missing, leftovers, fields = build_markdown(work, cache)
         source = work / "combined.md"
-        source.write_text(combined, encoding="utf-8")
+        text = table_breaks(combined)
+        if args.zotero:
+            refs = {e["id"]: e for e in json.loads(BIBLIOGRAPHY.read_text(encoding="utf-8"))}
+            text = zotero_fields(text, refs, zotero_items(refs, work))
+        source.write_text(text, encoding="utf-8")
         if args.markdown:
             Path(args.markdown).write_text(combined, encoding="utf-8")
         reference = work / "reference.docx"
         make_reference(reference)
-        subprocess.run(["pandoc", str(source), "-f", "markdown-auto_identifiers", "-o", str(output), "--reference-doc", str(reference), "--resource-path", str(ROOT), "--columns", "10000"], check=True)
-    finish_docx(output, [float(w) for w in re.findall(r"\{width=([\d.]+)cm\}", combined)])
+        citations = [] if args.zotero else ["--citeproc", "--bibliography", str(BIBLIOGRAPHY), "--csl", str(CSL), "-M", f"reference-section-title={REFERENCES_TITLE}"]
+        subprocess.run(["pandoc", str(source), "-f", "markdown-auto_identifiers", "-o", str(output), "--reference-doc", str(reference), "--resource-path", str(ROOT), "--columns", "10000", *citations], check=True)
+    finish_docx(output, [float(w) for w in re.findall(r"\{width=([\d.]+)cm\}", combined)], table_ratios(combined), update_on_open=not args.word)
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from design_doc_cover import apply_cover
     members, named = read_members()
     if not named:
         missing.append(f"MSSV và họ tên ở bìa ({MEMBERS.relative_to(ROOT).as_posix()}, mỗi dòng: MSSV - Họ và tên)")
     apply_cover(output, COVER_TEMPLATE, members, fields)
+    if args.zotero:
+        zotero_prefs(output)
+    if args.word:
+        word_finish(output, output.with_suffix(".pdf"), args.zotero)
     print(f"Đã ghi {output}")
     for item in missing:
         print(f"Thiếu phần: {item}")
