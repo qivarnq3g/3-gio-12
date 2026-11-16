@@ -17,14 +17,17 @@ namespace BaGio12.Gameplay
         TextMeshProUGUI text;
         float nextRefresh, smoothedFrame = 1 / 60f;
 
-        public bool IsVisible => canvas != null && canvas.gameObject.activeSelf;
-        public void Toggle() { if (canvas != null) canvas.gameObject.SetActive(!canvas.gameObject.activeSelf); }
+        public bool IsVisible { get { if (canvas == null) Init(); return canvas != null && canvas.gameObject.activeSelf; } }
+        public void Toggle() { if (canvas == null) Init(); if (canvas != null) canvas.gameObject.SetActive(!canvas.gameObject.activeSelf); }
         public string GetReadoutText() => Describe();
 
         void Awake() { player = GetComponent<FirstPersonPlayer>(); }
 
-        void Start()
+        void Start() { Init(); }
+
+        void Init()
         {
+            if (canvas != null) return;
             canvas = GameUi.Canvas(transform, "Playtest readout", 90);
             canvas.GetComponent<CanvasGroup>().blocksRaycasts = false;
             var panel = GameUi.Place(GameUi.Box(canvas.transform, "Panel", new Color(0, 0, 0, .6f)), Vector2.up, Vector2.up, new Vector2(24, -24), new Vector2(760, 206));
@@ -46,10 +49,11 @@ namespace BaGio12.Gameplay
 
         string Describe()
         {
+            if (player == null) player = GetComponent<FirstPersonPlayer>();
             var p = transform.position;
             float yaw = Mathf.Repeat(transform.eulerAngles.y, 360);
-            float pitch = Mathf.DeltaAngle(0, player.ViewPitch);
-            var eye = player.eyes != null ? player.eyes.transform : transform;
+            float pitch = player != null ? Mathf.DeltaAngle(0, player.ViewPitch) : 0;
+            var eye = (player != null && player.eyes != null) ? player.eyes.transform : transform;
             return string.Format(CultureInfo.InvariantCulture,
                 "X {0:F2}   Y {1:F2}   Z {2:F2}\nHướng {3:F0}°   Ngước {4:F0}°\nDưới chân: {5}\nĐang nhìn: {6}\n{7}   {8:F0} FPS   {9}\nV: bay   F5 hẻm, F6 giữa hẻm, F7 cổng, F8 nhà xe, F9 phòng 7",
                 p.x, p.y, p.z, yaw, pitch,

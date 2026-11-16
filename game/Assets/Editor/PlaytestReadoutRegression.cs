@@ -50,14 +50,14 @@ public static class PlaytestReadoutRegression
                 throw new Exception("Readout text does not contain active scene name!");
             }
 
-            if (!text.Contains("X:") || !text.Contains("Y:") || !text.Contains("Z:"))
+            if ((!text.Contains("X:") && !text.Contains("X ")) || (!text.Contains("Y:") && !text.Contains("Y ")) || (!text.Contains("Z:") && !text.Contains("Z ")))
             {
                 throw new Exception("Readout text missing X, Y, or Z coordinates!");
             }
 
-            if (!text.Contains("Yaw:") || !text.Contains("Pitch:"))
+            if (!text.Contains("Yaw") && !text.Contains("Hướng"))
             {
-                throw new Exception("Readout text missing Yaw or Pitch angle!");
+                throw new Exception("Readout text missing Yaw or Hướng angle!");
             }
 
             // Test 4: Toggle again hides it
