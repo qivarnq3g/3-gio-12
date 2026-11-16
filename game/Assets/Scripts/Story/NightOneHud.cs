@@ -51,7 +51,7 @@ namespace BaGio12.Story
                 Panel(new Rect(20,18,660,115),new Color(.025f,.035f,.05f,.85f));
                 GUI.Label(new Rect(38,25,600,35),state.clock+"  •  "+(state.stage==NightStage.Prologue?"Hẻm 12":"Đêm 1"),heading);
                 GUI.Label(new Rect(38,70,620,55),story.Objective,normal);
-                GUI.Label(new Rect(24,675,1200,35),state.stage==NightStage.Prologue?"WASD đi · Shift chạy · C cúi · Giữ E để đặt máy · Esc tạm dừng":"WASD đi · Shift chạy · C cúi · E tương tác · 1/2 điện thoại · N Sổ tay · Esc tạm dừng",small);
+                if(story.player.enabled)GUI.Label(new Rect(24,675,1200,35),state.stage==NightStage.Prologue?"WASD đi · Shift chạy · C cúi · Giữ E để đặt máy · Esc tạm dừng":"WASD đi · Shift chạy · C cúi · E tương tác · 1/2 điện thoại · N Sổ tay · Esc tạm dừng",small);
                 if(story.Subtitle!="")
                 { Panel(new Rect(440,548,800,84),new Color(0,0,0,.8f));GUI.Label(new Rect(460,558,760,70),story.Subtitle,normal); }
                 if(story.HoldProgress>.01f)

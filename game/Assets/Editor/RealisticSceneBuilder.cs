@@ -876,6 +876,8 @@ public static class RealisticSceneBuilder
     {
         var views = new (string name, Vector3 pos, Vector3 rot)[] {
             ("bh_corridor", new Vector3(-2.7f, 11.8f, -41), new Vector3(6, 270, 0)),
+            ("wires_garage", new Vector3(0f, 1.6f, -40f), new Vector3(-32.5f, 166.7f, 0)),
+            ("wires_mouth", new Vector3(0.5f, 1.6f, -8f), new Vector3(-37.4f, 342.8f, 0)),
             ("bh_door", new Vector3(-7.9f, 11.8f, -40.7f), new Vector3(10, 215, 0)),
             ("bh_stairs", new Vector3(-6f, 11.8f, -39.7f), new Vector3(25, 95, 0)),
             ("front_near", new Vector3(20f, 1.6f, 2.3f), new Vector3(6, 72, 0)),
@@ -1316,6 +1318,24 @@ public static class RealisticSceneBuilder
             var mc = f.GetComponent<MeshCollider>(); if (mc != null) { mc.sharedMesh = null; mc.sharedMesh = mesh; }
         }
         return (exact, shifted);
+    }
+
+    public static void PatchAlleyWires()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var go = GameObject.Find("env_alley")?.transform.Find("Alley_Wires");
+        var src = AssetDatabase.LoadAllAssetsAtPath(AlleyModel).OfType<Mesh>().FirstOrDefault(m => m.name == "Alley_Wires");
+        if (go == null || src == null) { Debug.LogError("REAL_ALLEY_WIRES missing"); EditorApplication.Exit(1); return; }
+        var f = go.GetComponent<MeshFilter>(); var r = go.GetComponent<MeshRenderer>();
+        var old = AssetDatabase.GetAssetPath(f.sharedMesh); int before = f.sharedMesh.vertexCount;
+        f.sharedMesh = src;
+        BoxUV(f, r, true);
+        if (!string.IsNullOrEmpty(old) && old != AssetDatabase.GetAssetPath(f.sharedMesh)) AssetDatabase.DeleteAsset(old);
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        AssetDatabase.SaveAssets();
+        Debug.Log($"REAL_ALLEY_WIRES before={before} after={f.sharedMesh.vertexCount} submeshes={f.sharedMesh.subMeshCount} materials={r.sharedMaterials.Length}");
+        EditorApplication.Exit(0);
     }
 
     public static void PatchBlockoutCopies()
