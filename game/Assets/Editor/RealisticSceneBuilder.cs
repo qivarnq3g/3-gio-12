@@ -1338,21 +1338,28 @@ public static class RealisticSceneBuilder
         EditorApplication.Exit(0);
     }
 
-    public static void PatchAlleyWires()
+    public static void PatchAlleyWires() => PatchModelMesh(AlleyModel, "Alley_Wires");
+    public static void PatchMainRoadSurface() => PatchModelMesh("Assets/Art/Models/Environment/env_main_road.fbx", "MainRoad_Surface");
+
+    static void PatchModelMesh(string model, string name)
     {
         var scene = EditorSceneManager.OpenScene(ScenePath);
-        var go = GameObject.Find("env_alley")?.transform.Find("Alley_Wires");
-        var src = AssetDatabase.LoadAllAssetsAtPath(AlleyModel).OfType<Mesh>().FirstOrDefault(m => m.name == "Alley_Wires");
-        if (go == null || src == null) { Debug.LogError("REAL_ALLEY_WIRES missing"); EditorApplication.Exit(1); return; }
-        var f = go.GetComponent<MeshFilter>(); var r = go.GetComponent<MeshRenderer>();
+        var go = Object.FindObjectsByType<MeshFilter>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(m => m.name == name).ToArray();
+        var src = AssetDatabase.LoadAllAssetsAtPath(model).OfType<Mesh>().FirstOrDefault(m => m.name == name);
+        var srcRenderer = AssetDatabase.LoadAllAssetsAtPath(model).OfType<MeshRenderer>().FirstOrDefault(m => m.name == name);
+        if (go.Length != 1 || src == null || srcRenderer == null) { Debug.LogError($"REAL_PATCH_MESH {name} scene={go.Length} src={src != null}"); EditorApplication.Exit(1); return; }
+        var f = go[0]; var r = f.GetComponent<MeshRenderer>();
+        var mats = srcRenderer.sharedMaterials.Select(m => AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{m.name}.mat")).ToArray();
+        if (mats.Any(m => m == null)) { Debug.LogError("REAL_PATCH_MESH missing material " + string.Join(",", srcRenderer.sharedMaterials.Where(m => AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{m.name}.mat") == null).Select(m => m.name))); EditorApplication.Exit(1); return; }
         var old = AssetDatabase.GetAssetPath(f.sharedMesh); int before = f.sharedMesh.vertexCount;
+        r.sharedMaterials = mats;
         f.sharedMesh = src;
         BoxUV(f, r, true);
         if (!string.IsNullOrEmpty(old) && old != AssetDatabase.GetAssetPath(f.sharedMesh)) AssetDatabase.DeleteAsset(old);
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene, ScenePath);
         AssetDatabase.SaveAssets();
-        Debug.Log($"REAL_ALLEY_WIRES before={before} after={f.sharedMesh.vertexCount} submeshes={f.sharedMesh.subMeshCount} materials={r.sharedMaterials.Length}");
+        Debug.Log($"REAL_PATCH_MESH {name} before={before} after={f.sharedMesh.vertexCount} materials={string.Join(",", mats.Select(m => m.name))}");
         EditorApplication.Exit(0);
     }
 
