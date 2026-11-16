@@ -14,6 +14,7 @@ namespace BaGio12.Story
         void Awake()
         {
             previousPosition=transform.position;previousPose=director.player.PoseRevision;breath=gameObject.AddComponent<AudioSource>();
+            breath.playOnAwake=false;
             breath.loop=true;breath.volume=.18f;
             var samples=new float[22050];var random=new System.Random(12);
             float filtered=0;
@@ -32,7 +33,11 @@ namespace BaGio12.Story
         }
         public void ProcessMotion(Vector3 motion,bool running)
         {
-            if(director.player.IsPaused)return;
+            if(director.player.IsPaused)
+            {
+                if(breath!=null && breath.isPlaying)breath.Pause();
+                return;
+            }
             bool injured=director.State.prologue_beaten>=2 && director.State.stage!=NightStage.Ended;
             bool climbing=motion.y>.001f && new Vector2(motion.x,motion.z).sqrMagnitude>.00001f;
             bool straining=running || climbing || (director.State.stage==NightStage.Prologue && director.Hidden);

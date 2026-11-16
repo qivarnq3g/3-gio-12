@@ -115,9 +115,20 @@ namespace BaGio12.Gameplay
         public void SetPaused(bool value)
         {
             if (paused == value) return;
-            if (value) {previousTimeScale=Time.timeScale;previousAudioPause=AudioListener.pause;Time.timeScale=0;AudioListener.pause=true;}
-            else {Time.timeScale=previousTimeScale;AudioListener.pause=previousAudioPause;}
-            paused=value; pauseFrame=Time.frameCount; LockCursor(!value && ActivePhone==0 && !ExternalUI);
+            if (value)
+            {
+                previousTimeScale = Time.timeScale;
+                previousAudioPause = AudioListener.pause;
+                // Suspend audio before freezing gameplay; timeScale alone does not pause audio.
+                AudioListener.pause = true;
+                Time.timeScale = 0;
+            }
+            else
+            {
+                Time.timeScale = previousTimeScale;
+                AudioListener.pause = previousAudioPause;
+            }
+            paused = value; pauseFrame = Time.frameCount; LockCursor(!value && ActivePhone == 0 && !ExternalUI);
         }
         public void ResumeControl() { SetPaused(false); LockCursor(ActivePhone == 0 && !ExternalUI); }
         public void SetPhone(int phone)

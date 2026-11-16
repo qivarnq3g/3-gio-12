@@ -67,7 +67,9 @@ namespace BaGio12.Story
         {
             Clock = new StoryClock(State);
             Dialogue = JsonUtility.FromJson<NightDialogue>(Resources.Load<TextAsset>("Story/night-one-dialogue").text);
-            sound = gameObject.AddComponent<AudioSource>(); sound.loop = true; sound.volume = .13f;
+            sound = gameObject.AddComponent<AudioSource>();
+            sound.playOnAwake = false;
+            sound.loop = true; sound.volume = .13f;
             alarmClip = AudioClip.Create("Graybox alarm", 22050, 1, 22050, false);
             var samples = new float[22050];
             for (int i=0;i<samples.Length;i++) samples[i] = i % 11025 < 5500 ? Mathf.Sin(2*Mathf.PI*880*i/22050f)*.2f : 0;
