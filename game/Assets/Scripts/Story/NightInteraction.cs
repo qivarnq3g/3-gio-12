@@ -11,7 +11,7 @@ namespace BaGio12.Story
         float heldTime, lastHeld;
         NightOneDirector Director => director != null ? director : director = FindFirstObjectByType<NightOneDirector>();
         public override string Prompt => action == NightAction.PlacePhone && Director.State.stage == NightStage.Prologue
-            ? (Director.CanPlace ? "Giữ E 2 giây — Đặt máy (cần cúi)" : "Chưa thể đặt máy khi có người nghi/đuổi") : caption;
+            ? (Director.State.phonePlaced ? "" : Director.CanPlace ? "Đặt máy (cúi, giữ 2 giây)" : "Chưa đặt máy được khi có người nghi hay đuổi") : caption;
         public override void HandleInput(FirstPersonPlayer player, bool pressed, bool held)
         {
             if (action != NightAction.PlacePhone || Director.State.stage != NightStage.Prologue) { base.HandleInput(player, pressed, held); return; }

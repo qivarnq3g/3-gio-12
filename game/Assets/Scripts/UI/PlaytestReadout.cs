@@ -23,7 +23,7 @@ namespace BaGio12.Gameplay
         {
             canvas = GameUi.Canvas(transform, "Playtest readout", 90);
             canvas.GetComponent<CanvasGroup>().blocksRaycasts = false;
-            var panel = GameUi.Place(GameUi.Box(canvas.transform, "Panel", new Color(0, 0, 0, .6f)), Vector2.up, Vector2.up, new Vector2(24, -24), new Vector2(760, 206));
+            var panel = GameUi.Place(GameUi.Box(canvas.transform, "Panel", new Color(0, 0, 0, .6f)), Vector2.one, Vector2.one, new Vector2(-24, -24), new Vector2(760, 206));
             text = GameUi.Text(panel, "Readout", "", 24, GameUi.Ink);
             text.alignment = TextAlignmentOptions.TopLeft;
             GameUi.Place((RectTransform)text.transform, Vector2.up, Vector2.up, new Vector2(16, -12), new Vector2(728, 182));

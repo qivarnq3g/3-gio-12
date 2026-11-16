@@ -30,6 +30,7 @@ public static class StealthRegression
         Application.runInBackground = true; step = 0; deadline = EditorApplication.timeSinceStartup + 100;
         EditorApplication.update += Tick;
     }
+    static void SetDeparted(bool value) => typeof(NightOneDirector).GetProperty("PrologueDeparted").GetSetMethod(true).Invoke(story, new object[] { value });
     static void Check(bool ok, string detail) { if (!ok) throw new Exception("STEALTH REGRESSION: " + detail); }
     static void Tick()
     {
@@ -44,6 +45,9 @@ public static class StealthRegression
                 story.player.ResumeControl();
                 foreach (var o in story.observers) o.enabled = false;
                 var hung = story.observers.First(x => x.flashlight);
+                story.player.Teleport(story.alleyStart.position); Physics.SyncTransforms();
+                Check(!story.PrologueDeparted && !hung.CanSeePlayer() && !hung.CanHear, "observer active before player left alley start");
+                SetDeparted(true);
                 story.player.Teleport(new Vector3(-.3f, .1f, 7));
                 var sample = hung.CaptureObserver(); sample.mode = ObserverMode.Chasing; sample.elapsed = 100; sample.lampTime = .8f;
                 sample.position = new Vector3(-2.7f, .03f, 7); sample.rotation = Quaternion.Euler(0, 60, 0); hung.ApplyObserver(sample);
@@ -55,6 +59,7 @@ public static class StealthRegression
                 Physics.SyncTransforms(); Check(!hung.CanSeePlayer(), "wall did not block line of sight");
                 hung.SendMessage("Update"); Check(!story.Busy && hung.Mode == ObserverMode.Searching, "caught through a solid wall");
                 wall.GetComponent<Collider>().enabled = false; UnityEngine.Object.Destroy(wall);
+                SetDeparted(false);
                 var lien = story.observers.First(x => x.once); var dormant = lien.CaptureObserver(); dormant.mode = ObserverMode.Normal; lien.ApplyObserver(dormant);
                 Check(!story.PrologueDeparted && !lien.CanHear, "off-schedule observer hears before appearing");
                 lien.Hear(story.player.transform.position, true); Check(lien.Mode == ObserverMode.Normal, "invisible observer reacted to shout");
@@ -71,7 +76,7 @@ public static class StealthRegression
                 Check(!story.observers.Any(x => x.CanSeePlayer()), "hiding fixture is exposed");
                 story.SendMessage("Update"); Check(!hung.ActiveThreat, "eight seconds still and unseen did not lose trail");
                 // Observe real NavMesh movement over simulation time, not editor wall time.
-                story.ResetPrologue(); story.player.Teleport(story.alleyStart.position);
+                story.ResetPrologue(); story.player.Teleport(story.alleyStart.position); SetDeparted(true);
                 child = story.observers.First(x => x.patrol); sample = child.CaptureObserver(); sample.mode = ObserverMode.Normal; sample.elapsed = 1; sample.startDelay = 0;
                 child.ApplyObserver(sample); child.enabled = true; patrolStart = child.transform.position;
                 until = Time.time + 2; step = 1; return;
@@ -154,7 +159,7 @@ public static class StealthRegression
     static void CheckCloseCapture()
     {
         story.ResetPrologue();
-        var save = story.CaptureSave(); save.position = new Vector3(-1.8f, .1f, 7); save.immuneRemaining = 0;
+        var save = story.CaptureSave(); save.position = new Vector3(-1.8f, .1f, 7); save.immuneRemaining = 0; save.prologueDeparted = true;
         foreach (var observer in save.observers) observer.mode = ObserverMode.Inactive;
         var hung = story.observers.First(x => x.flashlight); var pursuer = save.observers.First(x => x.id == hung.name);
         pursuer.mode = ObserverMode.Chasing; pursuer.position = new Vector3(-2.7f, .03f, 7); pursuer.elapsed = 100; pursuer.lampTime = 0;

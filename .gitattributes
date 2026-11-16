@@ -29,3 +29,4 @@
 # Unity baked navigation data is binary, unlike ordinary YAML .asset files.
 game/Assets/Scenes/Night01/NightOneNavMesh.asset -text
 **/LightingData.asset -text
+game/Assets/Scenes/Night01/NightOneRealisticNavMesh.asset -text

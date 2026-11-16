@@ -8,6 +8,7 @@ namespace BaGio12.Story
         public NightOneDirector story;
         GUIStyle normal, heading, small;
         Vector2 messagesScroll, notebookScroll;
+        int shownMessages = -1;
         void Update()
         {
             var keys=Keyboard.current;
@@ -40,7 +41,7 @@ namespace BaGio12.Story
                 {
                     GUI.Label(new Rect(280,355,730,70),state.ending=="bystander" ? "Bạn giao chiếc máy cho người khác. Câu chuyện của bạn dừng lại ở đây." : "Buổi sáng 25/11 thuộc đêm 2.",normal);
                     if(GUI.Button(new Rect(280,455,260,50),"Chơi lại từ điểm lưu"))story.RestoreCheckpoint();
-                    if(GUI.Button(new Rect(560,455,250,50),"Chơi lại đêm 1"))story.GetComponent<BaGio12.Persistence.NightPersistence>().RequestNewGame();
+                    if(GUI.Button(new Rect(560,455,250,50),"Chơi lại đêm 1"))story.GetComponent<BaGio12.Persistence.NightPersistence>().StartNewGame();
                 }
             }
             else if(story.player.ActivePhone!=0 && !story.Busy)DrawPhone();
@@ -52,7 +53,7 @@ namespace BaGio12.Story
                 GUI.Label(new Rect(38,70,620,55),story.Objective,normal);
                 GUI.Label(new Rect(24,675,1200,35),state.stage==NightStage.Prologue?"WASD đi · Shift chạy · C cúi · Giữ E để đặt máy · Esc tạm dừng":"WASD đi · Shift chạy · C cúi · E tương tác · 1/2 điện thoại · N Sổ tay · Esc tạm dừng",small);
                 if(story.Subtitle!="")
-                { Panel(new Rect(180,540,920,90),new Color(0,0,0,.8f));GUI.Label(new Rect(200,552,880,75),story.Subtitle,normal); }
+                { Panel(new Rect(440,548,800,84),new Color(0,0,0,.8f));GUI.Label(new Rect(460,558,760,70),story.Subtitle,normal); }
                 if(story.HoldProgress>.01f)
                 { Panel(new Rect(450,510,380,8),Color.gray);Panel(new Rect(450,510,380*story.HoldProgress,8),new Color(.25f,.75f,.65f)); }
                 if(state.alarm)
@@ -72,25 +73,39 @@ namespace BaGio12.Story
             }
             if(GUI.Button(new Rect(65,90,190,42),s.phone_powered_off?"Bật nguồn":"Tắt nguồn"))story.TogglePower();
             if(s.phone_powered_off) {GUI.Label(new Rect(65,170,900,70),"Máy đã tắt nguồn.",heading);return;}
+            if(s.messages.Count!=shownMessages){shownMessages=s.messages.Count;messagesScroll.y=float.MaxValue;}
             messagesScroll=GUI.BeginScrollView(new Rect(65,150,1120,290),messagesScroll,new Rect(0,0,1070,Mathf.Max(280,s.messages.Count*58)));
-            for(int i=0;i<s.messages.Count;i++)GUI.Label(new Rect(12,i*58,1030,58),s.messages[i],normal);
+            for(int i=0;i<s.messages.Count;i++)GUI.Label(new Rect(12,i*58,1030,58),Shown(s.messages[i]),normal);
             GUI.EndScrollView();
-            if(story.State.alarm) {if(GUI.Button(new Rect(65,455,1120,60),"DẬY. KIỂM TRA CỬA. ĐỪNG NGỦ LẠI. — Tắt báo thức"))story.StopAlarm();return;}
-            if(GUI.Button(new Rect(65,455,340,45),"Cháu không biết có camera không"))story.Send("camera:unknown","Cháu không biết.");
-            if(GUI.Button(new Rect(425,455,340,45),"Ở nhà xe không có camera"))story.Send("camera:no","Ở nhà xe không có camera.");
-            GUI.enabled=s.saw_shop_camera;
-            if(GUI.Button(new Rect(785,455,400,45),"Có, tiệm đầu hẻm có camera"))story.Send("camera:yes","Có, tiệm đầu hẻm.");
-            GUI.enabled=true;
-            if(GUI.Button(new Rect(65,515,340,45),"Vì sao máy ở nhà xe?"))story.Send("why","Vì sao máy ở nhà xe ạ?");
-            if(GUI.Button(new Rect(425,515,340,45),"Gọi Mẹ"))story.Send("call","[Cuộc gọi không ai nghe]");
+            if(story.State.alarm) {if(GUI.Button(new Rect(65,455,1120,60),"DẬY. KIỂM TRA CỬA. ĐỪNG NGỦ LẠI. - Tắt báo thức"))story.StopAlarm();return;}
+            if(!s.sent.Any(x=>x.StartsWith("camera:")))
+            {
+                if(GUI.Button(new Rect(65,455,340,45),"Cháu không biết có camera không"))story.Send("camera:unknown","Cháu không biết.");
+                if(GUI.Button(new Rect(425,455,340,45),"Ở nhà xe không có camera"))story.Send("camera:no","Ở nhà xe không có camera.");
+                GUI.enabled=s.saw_shop_camera;
+                if(GUI.Button(new Rect(785,455,400,45),"Có, tiệm đầu hẻm có camera"))story.Send("camera:yes","Có, tiệm đầu hẻm.");
+                GUI.enabled=true;
+            }
+            if(!s.sent.Contains("why") && GUI.Button(new Rect(65,515,340,45),"Vì sao máy ở nhà xe?"))story.Send("why","Vì sao máy ở nhà xe ạ?");
+            if(!s.sent.Contains("call") && GUI.Button(new Rect(425,515,340,45),"Gọi Mẹ"))story.Send("call","[Cuộc gọi không ai nghe]");
             if(GUI.Button(new Rect(785,515,400,45),"Đặt mã khóa"))story.Say("Máy người ta, đặt mã lỡ người ta không mở được.");
-            if(s.numberArrived)
+            if(s.numberArrived && !s.number_chosen)
             {
                 if(GUI.Button(new Rect(65,580,340,45),"Chặn số lạ"))story.ChooseNumber("blocked");
                 if(GUI.Button(new Rect(425,580,340,45),"Trả lời / gọi lại số lạ"))story.ChooseNumber("replied");
                 if(GUI.Button(new Rect(785,580,400,45),"Kệ số lạ"))story.ChooseNumber("ignored");
             }
-            GUI.Label(new Rect(65,640,1100,65),"Tin gửi đi: Đã gửi. "+(story.Subtitle??""),small);
+            GUI.Label(new Rect(65,640,1100,65),story.Subtitle??"",small);
+        }
+        string Shown(string message)
+        {
+            const string tag=" · 4 phút trước";
+            if(!message.Contains(tag))return message;
+            var parts=story.State.clock.Split(':');
+            if(parts.Length!=2||!int.TryParse(parts[0],out int h)||!int.TryParse(parts[1],out int m))return message;
+            int now=h*60+m; if(now<20*60)now+=1440;
+            int ago=now-(20*60+56);
+            return message.Replace(tag,ago<60?" · "+Mathf.Max(1,ago)+" phút trước":"");
         }
         bool Button(int row,string label) => GUI.Button(new Rect(310,250+row*65,660,52),label);
         void DrawModal()
@@ -107,7 +122,7 @@ namespace BaGio12.Story
                 if(GUI.Button(new Rect(65,625,320,50),"Chơi lại từ điểm lưu"))story.RestoreCheckpoint();
                 return;
             }
-            GUI.Label(new Rect(310,100,720,110),id=="alarm"?"03:12 — DẬY. KIỂM TRA CỬA. ĐỪNG NGỦ LẠI.":id=="shop"?"Tiệm chú Hùng":id=="bed"?"22:30 — Bạn sẽ làm gì?":id=="police"?"Nộp chiếc máy cho công an phường?":id=="leave-phone"?"Để chiếc máy lại nhà xe?":id=="wait"?"Ngồi nghỉ tới 22:30?":"Chờ tới sáng",heading);
+            GUI.Label(new Rect(310,100,720,110),id=="alarm"?"03:12 - DẬY. KIỂM TRA CỬA. ĐỪNG NGỦ LẠI.":id=="shop"?"Tiệm chú Hùng":id=="bed"?"22:30 - Bạn sẽ làm gì?":id=="police"?"Nộp chiếc máy cho công an phường?":id=="leave-phone"?"Để chiếc máy lại nhà xe?":id=="wait"?"Ngồi nghỉ tới 22:30?":"Chờ tới sáng",heading);
             switch(id)
             {
                 case "shop":
