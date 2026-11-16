@@ -36,7 +36,7 @@ namespace BaGio12.Gameplay
         string notice = "";
         float noticeUntil;
         bool paused;
-        int pauseFrame = -1;
+        int pauseFrame = -1, overlayFrame = -1;
         float previousTimeScale = 1;
         bool previousAudioPause;
         GUIStyle text, title;
@@ -80,7 +80,7 @@ namespace BaGio12.Gameplay
             {
                 if (paused) { if (!PauseMenuLocked) ResumeControl(); }
                 else if (ActivePhone != 0) SetPhone(0);
-                else if (!ExternalUI) SetPaused(!paused);
+                else if (!ExternalUI && overlayFrame != Time.frameCount) SetPaused(!paused);
             }
             if (!paused)
             {
@@ -145,7 +145,7 @@ namespace BaGio12.Gameplay
             LockCursor(phone == 0 && !paused && !ExternalUI);
             if (previous != phone) PhoneChanged?.Invoke(previous, phone);
         }
-        public void SetOverlay(bool open) { ExternalUI = open; LockCursor(!open && ActivePhone == 0 && !paused); }
+        public void SetOverlay(bool open) { if (ExternalUI != open) overlayFrame = Time.frameCount; ExternalUI = open; LockCursor(!open && ActivePhone == 0 && !paused); }
         public void Teleport(Vector3 point, float yaw = 0)
         {
             PoseRevision++;
@@ -175,7 +175,8 @@ namespace BaGio12.Gameplay
             if (paused) return;
             if (!showTestHud)
             {
-                if (!paused && ActivePhone == 0 && !ExternalUI && target != null && !string.IsNullOrEmpty(target.Prompt)) HudKit.Prompt("E", target.Prompt);
+                bool free = ActivePhone == 0 && !ExternalUI;
+                HudKit.Prompt("E", free && target != null ? target.Prompt : null, !free);
                 return;
             }
             GUI.Box(new Rect(12, 12, 580, 95), "");
