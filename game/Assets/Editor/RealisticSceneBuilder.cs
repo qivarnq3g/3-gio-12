@@ -62,7 +62,7 @@ public static class RealisticSceneBuilder
         ["M_SteelDark"] = new Surface { tex = "rusty_painted_metal", size = 1f, tintMix = .5f },
         ["M_SteelPaintedBlue"] = new Surface { tex = "rusty_painted_metal", size = 1f, tintMix = .7f },
         ["M_Asphalt"] = new Surface { tex = "asphalt_02", size = 4f, tintMix = 0, wet = .6f },
-        ["M_SidewalkTile"] = new Surface { tex = "square_pavers", size = 2f, tintMix = .3f },
+        ["M_SidewalkTile"] = new Surface { tex = "terrazzo_sidewalk", size = 1.6f, tintMix = 0 },
         ["M_FloorTileCream"] = new Surface { tex = "floor_tiles_06", size = 1.2f, tintMix = .3f },
         ["M_FloorTileCreamDark"] = new Surface { tex = "floor_tiles_06", size = 1.2f, tintMix = .5f },
         ["M_FloorTileGray"] = new Surface { tex = "floor_tiles_06", size = 1.2f, tintMix = .4f },
@@ -877,6 +877,7 @@ public static class RealisticSceneBuilder
         var views = new (string name, Vector3 pos, Vector3 rot)[] {
             ("bh_corridor", new Vector3(-2.7f, 11.8f, -41), new Vector3(6, 270, 0)),
             ("mouth_street", new Vector3(0.3f, 1.6f, 6.5f), new Vector3(12, 180, 0)),
+            ("mouth_sidewalk", new Vector3(-3f, 1.6f, 0.6f), new Vector3(50, 250, 0)),
             ("mouth_top", new Vector3(0f, 7f, 5f), new Vector3(60, 180, 0)),
             ("wires_garage", new Vector3(0f, 1.6f, -40f), new Vector3(-32.5f, 166.7f, 0)),
             ("wires_mouth", new Vector3(0.5f, 1.6f, -8f), new Vector3(-37.4f, 342.8f, 0)),
@@ -1320,6 +1321,21 @@ public static class RealisticSceneBuilder
             var mc = f.GetComponent<MeshCollider>(); if (mc != null) { mc.sharedMesh = null; mc.sharedMesh = mesh; }
         }
         return (exact, shifted);
+    }
+
+    public static void PatchSidewalkTile()
+    {
+        var m = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/M_SidewalkTile.mat");
+        if (m == null) { Debug.LogError("REAL_SIDEWALK missing"); EditorApplication.Exit(1); return; }
+        var s = Surfaces["M_SidewalkTile"];
+        m.SetTexture("_BaseMap", SurfaceTex(s.tex, "albedo")); m.SetTexture("_BumpMap", SurfaceTex(s.tex, "normal")); m.EnableKeyword("_NORMALMAP");
+        m.SetTexture("_MetallicGlossMap", SurfaceTex(s.tex, "mask")); m.EnableKeyword("_METALLICSPECGLOSSMAP");
+        m.SetFloat("_Smoothness", Mathf.Clamp01(.85f * s.smooth)); m.SetFloat("_BumpScale", 1.2f);
+        m.SetColor("_BaseColor", Color.white);
+        m.SetTextureScale("_BaseMap", new Vector2(1 / s.size, 1 / s.size));
+        EditorUtility.SetDirty(m); AssetDatabase.SaveAssets();
+        Debug.Log("REAL_SIDEWALK " + AssetDatabase.GetAssetPath(m.GetTexture("_BaseMap")));
+        EditorApplication.Exit(0);
     }
 
     public static void PatchAlleyWires()
