@@ -83,7 +83,7 @@ namespace BaGio12.Persistence
             if (!story.ApplySave(initial)) { Status = "Chưa thể bắt đầu lại màn chơi."; return false; }
             lastStable = null; playing = true;
             if (!Flush()) { startup = true; story.player.SetPaused(true); story.player.PauseMenuLocked = true; return false; }
-            CloseMenu(); return true;
+            CloseMenu(); story.Say("Đừng để ai thấy.", 6); return true;
         }
         public bool DeleteProgress()
         {

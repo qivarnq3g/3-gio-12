@@ -152,6 +152,15 @@ namespace BaGio12.Gameplay
             body.enabled = false; transform.SetPositionAndRotation(point, Quaternion.Euler(0, yaw, 0));
             body.enabled = true; fall = 0; pitch = 0; SetCrouch(false);
         }
+        public void AimAt(Vector3 point, float blend)
+        {
+            Vector3 d = point - eyes.transform.position;
+            float yaw = Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg;
+            float aim = -Mathf.Atan2(d.y, new Vector2(d.x, d.z).magnitude) * Mathf.Rad2Deg;
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, yaw, 0), blend);
+            pitch = Mathf.Clamp(Mathf.LerpAngle(pitch, aim, blend), -80, 80);
+            eyes.transform.localRotation = Quaternion.Euler(pitch, 0, 0);
+        }
         public void RestoreView(float savedPitch, bool crouched)
         {
             SetCrouch(crouched); pitch = Mathf.Clamp(savedPitch, -80, 80);
@@ -166,11 +175,11 @@ namespace BaGio12.Gameplay
             if (paused) return;
             if (!showTestHud)
             {
-                if (!paused && ActivePhone == 0 && !ExternalUI && target != null) GUI.Label(new Rect(Screen.width/2 - 220, Screen.height*.76f, 440, 65), "E — " + target.Prompt, title);
+                if (!paused && ActivePhone == 0 && !ExternalUI && target != null && !string.IsNullOrEmpty(target.Prompt)) GUI.Label(new Rect(Screen.width/2 - 220, Screen.height*.64f, 440, 65), "E - " + target.Prompt, title);
                 return;
             }
             GUI.Box(new Rect(12, 12, 580, 95), "");
-            GUI.Label(new Rect(24, 20, 555, 85), "PHÒNG THỬ #6 — WASD: đi | Shift: chạy | C: cúi\nE: tương tác | 1/2: điện thoại | Esc: đóng / thả chuột\nVật đã nhặt: " + ItemsCollected + (IsCrouched ? "  •  Đang cúi" : ""), text);
+            GUI.Label(new Rect(24, 20, 555, 85), "PHÒNG THỬ #6 - WASD: đi | Shift: chạy | C: cúi\nE: tương tác | 1/2: điện thoại | Esc: đóng / thả chuột\nVật đã nhặt: " + ItemsCollected + (IsCrouched ? "  •  Đang cúi" : ""), text);
             if (ActivePhone != 0)
             {
                 GUI.Box(new Rect(0, 0, Screen.width, Screen.height), "");
@@ -181,7 +190,7 @@ namespace BaGio12.Gameplay
             else
             {
                 GUI.Label(new Rect(Screen.width / 2 - 5, Screen.height / 2 - 12, 20, 30), "+", text);
-                if (target != null) GUI.Label(new Rect(Screen.width / 2 - 180, Screen.height * 0.7f, 360, 60), "E — " + target.Prompt, title);
+                if (target != null && !string.IsNullOrEmpty(target.Prompt)) GUI.Label(new Rect(Screen.width / 2 - 180, Screen.height * 0.7f, 360, 60), "E - " + target.Prompt, title);
             }
             if (Time.time < noticeUntil && ActivePhone == 0) GUI.Label(new Rect(24, 115, 550, 50), notice, text);
         }

@@ -26,7 +26,7 @@ namespace BaGio12.Story
         public List<string> notebook = new List<string>();
         public void Note(string text)
         {
-            if (!notebook.Exists(x => x.EndsWith(" — " + text))) notebook.Add(clock + " — " + text);
+            if (!notebook.Exists(x => x.EndsWith(" - " + text))) notebook.Add(clock + " - " + text);
         }
         public NightOneState Copy() => JsonUtility.FromJson<NightOneState>(JsonUtility.ToJson(this));
     }

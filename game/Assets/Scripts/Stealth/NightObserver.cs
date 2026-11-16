@@ -48,6 +48,8 @@ namespace BaGio12.Stealth
                 torch=lamp.AddComponent<Light>();torch.type=LightType.Spot;torch.range=5;torch.spotAngle=24;torch.intensity=3;torch.enabled=false;
             }
             if (agent != null) { agent.speed = 3.8f; agent.angularSpeed = 360; agent.stoppingDistance = .65f; }
+            if (agent != null && agent.isActiveAndEnabled && !agent.isOnNavMesh) { agent.enabled = false; agent.enabled = true; }
+            if (agent != null && agent.isActiveAndEnabled && !agent.isOnNavMesh) Debug.LogWarning("Observer off NavMesh: " + name);
         }
         void Update()
         {
@@ -55,8 +57,8 @@ namespace BaGio12.Stealth
             float scheduleTime=once && director.State.prologue_beaten==0 ? director.PrologueElapsed : elapsed;
             bool scheduledVisible = IsPresent;
             RefreshPresentation();
-            if (director == null || director.player.IsPaused || director.State.stage != NightStage.Prologue || director.State.phonePlaced || Mode == ObserverMode.Inactive || director.Busy)
-            { Stop(); return; }
+            if (director == null || director.player.IsPaused || director.State.stage != NightStage.Prologue || director.State.phonePlaced || Mode == ObserverMode.Inactive || director.Busy || !director.PrologueDeparted)
+            { if (director != null && !director.PrologueDeparted && ActiveThreat) ReturnHome(); Stop(); return; }
             if (!scheduledVisible)
             {
                 if (ActiveThreat) ReturnHome();
@@ -129,7 +131,7 @@ namespace BaGio12.Stealth
         }
         public bool CanSeePlayer()
         {
-            if (director == null || Mode == ObserverMode.Inactive || director.State.phonePlaced || director.State.stage != NightStage.Prologue) return false;
+            if (director == null || Mode == ObserverMode.Inactive || director.State.phonePlaced || director.State.stage != NightStage.Prologue || !director.PrologueDeparted) return false;
             if (!IsPresent || (!once && elapsed < startDelay)) return false;
             var origin = transform.position + Vector3.up*1.5f;
             var destination = director.player.eyes.transform.position;
@@ -142,9 +144,14 @@ namespace BaGio12.Stealth
             if (director == null || Mode == ObserverMode.Inactive || director.State.stage != NightStage.Prologue || director.State.phonePlaced) return;
             if(stationary) {director.Shout(this);Attention=0;return;}
             if (child)
-            { director.Shout(this); Change(ObserverMode.Inactive); return; }
+            {
+                if (placement || director.InParking) director.Shout(this); else director.Suspect(this, true);
+                Change(ObserverMode.Inactive); return;
+            }
             lastSeen = director.player.transform.position;
-            Change(placement || director.InParking || Mode == ObserverMode.Suspicious ? ObserverMode.Chasing : ObserverMode.Suspicious);
+            bool chase = placement || director.InParking || Mode == ObserverMode.Suspicious;
+            if (!chase && Mode == ObserverMode.Normal) director.Suspect(this, false);
+            Change(chase ? ObserverMode.Chasing : ObserverMode.Suspicious);
         }
         void Change(ObserverMode mode)
         {
@@ -152,7 +159,7 @@ namespace BaGio12.Stealth
             Mode = mode; modeTime = 0;
             if (mode == ObserverMode.Chasing) director.Shout(this);
         }
-        public bool CanHear => director != null && Mode == ObserverMode.Normal && director.State.stage == NightStage.Prologue
+        public bool CanHear => director != null && Mode == ObserverMode.Normal && director.State.stage == NightStage.Prologue && director.PrologueDeparted
             && !director.State.phonePlaced && IsOnSchedule(director.PrologueElapsed, director.PrologueDeparted, director.State.prologue_beaten);
         public void Hear(Vector3 point, bool shout)
         {

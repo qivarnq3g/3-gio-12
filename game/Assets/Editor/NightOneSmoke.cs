@@ -55,9 +55,13 @@ public static class NightOneSmoke
                     story.player.SetPhone(1);Require(story.player.ActivePhone==0,"phone allowed during prologue");
                     var path=new NavMeshPath();
                     Require(NavMesh.CalculatePath(story.alleyStart.position,story.parkingSpawn.position,NavMesh.AllAreas,path)&&path.status==NavMeshPathStatus.PathComplete,"alley to parking nav path disconnected");
+                    foreach(var o in story.observers){var a=o.GetComponent<NavMeshAgent>();Require(a==null||!a.isActiveAndEnabled||a.isOnNavMesh,"observer agent off NavMesh: "+o.name);}
                     var observer=story.observers[0];
+                    story.player.Teleport(story.alleyStart.position,story.alleyStart.eulerAngles.y); observer.startDelay=0; Physics.SyncTransforms();
+                    Require(!story.PrologueDeparted && story.observers.All(x=>!x.CanSeePlayer()),"observer sees player before leaving alley start");
+                    typeof(NightOneDirector).GetProperty("PrologueDeparted").GetSetMethod(true).Invoke(story,new object[]{true});
                     var facing=Vector3.ProjectOnPlane(observer.transform.forward,Vector3.up).normalized;
-                    story.player.Teleport(observer.transform.position+facing*2.5f+Vector3.up*.05f); observer.startDelay=0; Physics.SyncTransforms();
+                    story.player.Teleport(observer.transform.position+facing*2.5f+Vector3.up*.05f); Physics.SyncTransforms();
                     Require(observer.CanSeePlayer(),"observer failed clear line of sight");
                     var obstruction=GameObject.CreatePrimitive(PrimitiveType.Cube);obstruction.transform.SetPositionAndRotation(observer.transform.position+facing*1.25f+Vector3.up*1.5f,Quaternion.LookRotation(facing));obstruction.transform.localScale=new Vector3(2,3,.3f);Physics.SyncTransforms();
                     Require(!observer.CanSeePlayer(),"observer saw through solid wall");
