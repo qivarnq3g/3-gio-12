@@ -140,7 +140,7 @@ public static class NightOneRealisticSetup
         var room = Box("BH_F3_Room7_Mattress", new Vector3(-5.1f, 10.2f, -47.7f), new Vector3(-3.1f, 10.4f, -45.9f));
         story.roomZone = new Bounds(new Vector3(room.center.x - .33f, room.min.y + 1.5f, -44.75f), new Vector3(3.75f, 3.2f, 6.1f));
 
-        Interact("Start street", At(new Vector3(0, 1.1f, 2.6f), new Vector3(2 * AlleyWidth.Half, 2.2f, .2f)), 0, NightAction.ReturnToStart, "Ra đầu hẻm");
+        Interact("Start street", At(new Vector3(0, 1.1f, .15f), new Vector3(2 * AlleyWidth.Half + .6f, 2.2f, .3f)), 0, NightAction.ReturnToStart, "Ra đầu hẻm");
         Interact("Police direction", At(new Vector3(-1.8f, 1.4f, -.4f), new Vector3(.1f, .6f, .6f)), .02f, NightAction.Police, "Nhìn về phía công an phường");
         Interact("Hung shop", Box("Shop_Hung_Counter", new Vector3(1.35f, 0, -3.5f), new Vector3(1.7f, 1, -1)), .05f, NightAction.Shop, "Nói chuyện với chú Hùng");
         var camera = Box("Shop_Hung_Camera", new Vector3(.9f, 2.55f, -2.5f), new Vector3(1.15f, 2.7f, -2.3f));

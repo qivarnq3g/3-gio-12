@@ -876,6 +876,8 @@ public static class RealisticSceneBuilder
     {
         var views = new (string name, Vector3 pos, Vector3 rot)[] {
             ("bh_corridor", new Vector3(-2.7f, 11.8f, -41), new Vector3(6, 270, 0)),
+            ("mouth_street", new Vector3(0.3f, 1.6f, 6.5f), new Vector3(12, 180, 0)),
+            ("mouth_top", new Vector3(0f, 7f, 5f), new Vector3(60, 180, 0)),
             ("wires_garage", new Vector3(0f, 1.6f, -40f), new Vector3(-32.5f, 166.7f, 0)),
             ("wires_mouth", new Vector3(0.5f, 1.6f, -8f), new Vector3(-37.4f, 342.8f, 0)),
             ("bh_door", new Vector3(-7.9f, 11.8f, -40.7f), new Vector3(10, 215, 0)),
