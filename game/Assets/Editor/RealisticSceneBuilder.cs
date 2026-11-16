@@ -1011,6 +1011,7 @@ public static class RealisticSceneBuilder
     const string StreetFrontsRoot = "env_street_fronts";
     const string StreetBikes = "Assets/Art/Models/Environment/env_street_bikes.txt";
     const string RoadBikePrefix = "Road Cub ";
+    static readonly (float x, float y, float yaw)[] MouthBikes = { (2.85f, -1.6f, 0), (3.6f, -1.5f, 0), (4.35f, -1.65f, 0), (5.1f, -1.55f, 0), (-3.0f, -1.55f, 0), (-3.75f, -1.65f, 0), (-6.45f, -1.5f, 0), (-7.2f, -1.6f, 0) };
 
     public static int StreetFronts()
     {
@@ -1026,7 +1027,7 @@ public static class RealisticSceneBuilder
         var old = GameObject.Find("MainRoad_Props"); if (old != null) Object.DestroyImmediate(old);
         foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name.StartsWith(RoadBikePrefix)).ToList()) Object.DestroyImmediate(t.gameObject);
         var bikes = File.ReadAllLines(StreetBikes).Where(l => l.Length > 0).Select(l => l.Split(' ').Select(s => float.Parse(s, System.Globalization.CultureInfo.InvariantCulture)).ToArray());
-        ParkBikes(bikes.Select(v => (v[0], -v[1], v[2])).ToArray(), RoadBikePrefix, 12);
+        ParkBikes(bikes.Select(v => (v[0], -v[1], v[2])).Concat(MouthBikes).ToArray(), RoadBikePrefix, 12);
         return solids.GetComponents<BoxCollider>().Length;
     }
 
