@@ -42,6 +42,9 @@ namespace BaGio12.Gameplay
         void Awake()
         {
             body = GetComponent<CharacterController>();
+#if UNITY_EDITOR || DEVELOPMENT_BUILD || PLAYTEST_BUILD
+            if (GetComponent<PlaytestReadout>() == null) gameObject.AddComponent<PlaytestReadout>();
+#endif
             inputs = Instantiate(inputTemplate);
             var map = inputs.FindActionMap("Player", true);
             move = map.FindAction("Move", true); look = map.FindAction("Look", true);
