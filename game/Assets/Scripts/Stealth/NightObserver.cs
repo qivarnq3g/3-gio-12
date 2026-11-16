@@ -10,7 +10,7 @@ namespace BaGio12.Stealth
     {
         public NightOneDirector director;
         public string displayName;
-        public bool child, flashlight, stationary, startsDormant, irregularLook, once, patrol;
+        public bool child, flashlight, stationary, startsDormant, irregularLook, once, patrol, staysAfterPrologue;
         public float interval = 20, watchDuration = 5, startDelay;
         public float range = 8, fieldOfView = 90;
         public Vector3 patrolOffset = new Vector3(-1.3f, 0, 0);
@@ -31,7 +31,8 @@ namespace BaGio12.Stealth
             || (ActiveThreat && once && director.PrologueDeparted && director.PrologueElapsed >= startDelay));
         void RefreshPresentation()
         {
-            bool present = IsPresent && Mode != ObserverMode.Inactive;
+            bool present = (IsPresent && Mode != ObserverMode.Inactive)
+                || (staysAfterPrologue && director != null && director.State.stage != NightStage.Prologue && director.State.stage != NightStage.Ended);
             foreach (var visual in visuals) visual.enabled = present;
             if (torch != null) torch.enabled = present && Mode == ObserverMode.Chasing && director.State.stage == NightStage.Prologue && !director.State.phonePlaced;
         }

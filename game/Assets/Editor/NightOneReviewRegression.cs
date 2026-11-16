@@ -95,7 +95,7 @@ public static class NightOneReviewRegression
                     story.CloseModal();story.Act(NightAction.Phone);Check(story.AlarmAudible,"picked-up phone alarm did not become audible");story.TogglePower();break;
                 case 5:
                     Check(!story.AlarmAudible,"powered-off alarm still audible");story.StopAlarm();story.CloseModal();story.FinishNight();
-                    story.RestoreCheckpoint();story.State.prologue_beaten=2;story.Act(NightAction.Gate);Check(story.Subtitle.Contains("găng xám"),"Lien glove line missing");
+                    story.RestoreCheckpoint();story.State.prologue_beaten=2;story.State.helpedLien=false;story.Act(NightAction.Gate);Check(story.Conversation.Any(l=>l.Contains("găng xám")),"Lien glove line missing");
                     Check(story.greyGlove.activeSelf,"Lien glove prop missing");
                     var feedback=player.GetComponent<NightInjuryFeedback>();feedback.ProcessMotion(new Vector3(.1f,.1f,0),false);
                     Check(feedback.IsBreathing,"injury breathing missing on stairs after prologue");story.State.prologue_beaten=0;feedback.ProcessMotion(Vector3.zero,false);Check(!feedback.IsBreathing,"uninjured breathing continued");

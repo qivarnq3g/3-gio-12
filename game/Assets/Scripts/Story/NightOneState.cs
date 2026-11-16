@@ -19,7 +19,7 @@ namespace BaGio12.Story
         public bool phonePlaced, bikeParked, hasNganPhone, phoneEverPicked, phone_powered_off;
         public bool saw_shop_camera, found_deposit_slip, asked_lien_keep, helpedLien;
         public bool linh_knows_shop_camera, asked_mom_why_here, timeJumped, numberArrived, night1_slept;
-        public bool bagMoved, bagInspected, bagDisplaced, boughtNoodles, alarm, batchD;
+        public bool bagMoved, bagInspected, bagDisplaced, boughtNoodles, alarm, batchD, number_chosen;
         public List<string> sent = new List<string>();
         public List<string> messages = new List<string>();
         public List<string> pendingMessages = new List<string>();

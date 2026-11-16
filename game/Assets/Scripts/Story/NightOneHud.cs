@@ -75,24 +75,37 @@ namespace BaGio12.Story
             if(s.phone_powered_off) {GUI.Label(new Rect(65,170,900,70),"Máy đã tắt nguồn.",heading);return;}
             if(s.messages.Count!=shownMessages){shownMessages=s.messages.Count;messagesScroll.y=float.MaxValue;}
             messagesScroll=GUI.BeginScrollView(new Rect(65,150,1120,290),messagesScroll,new Rect(0,0,1070,Mathf.Max(280,s.messages.Count*58)));
-            for(int i=0;i<s.messages.Count;i++)GUI.Label(new Rect(12,i*58,1030,58),s.messages[i],normal);
+            for(int i=0;i<s.messages.Count;i++)GUI.Label(new Rect(12,i*58,1030,58),Shown(s.messages[i]),normal);
             GUI.EndScrollView();
             if(story.State.alarm) {if(GUI.Button(new Rect(65,455,1120,60),"DẬY. KIỂM TRA CỬA. ĐỪNG NGỦ LẠI. - Tắt báo thức"))story.StopAlarm();return;}
-            if(GUI.Button(new Rect(65,455,340,45),"Cháu không biết có camera không"))story.Send("camera:unknown","Cháu không biết.");
-            if(GUI.Button(new Rect(425,455,340,45),"Ở nhà xe không có camera"))story.Send("camera:no","Ở nhà xe không có camera.");
-            GUI.enabled=s.saw_shop_camera;
-            if(GUI.Button(new Rect(785,455,400,45),"Có, tiệm đầu hẻm có camera"))story.Send("camera:yes","Có, tiệm đầu hẻm.");
-            GUI.enabled=true;
-            if(GUI.Button(new Rect(65,515,340,45),"Vì sao máy ở nhà xe?"))story.Send("why","Vì sao máy ở nhà xe ạ?");
-            if(GUI.Button(new Rect(425,515,340,45),"Gọi Mẹ"))story.Send("call","[Cuộc gọi không ai nghe]");
+            if(!s.sent.Any(x=>x.StartsWith("camera:")))
+            {
+                if(GUI.Button(new Rect(65,455,340,45),"Cháu không biết có camera không"))story.Send("camera:unknown","Cháu không biết.");
+                if(GUI.Button(new Rect(425,455,340,45),"Ở nhà xe không có camera"))story.Send("camera:no","Ở nhà xe không có camera.");
+                GUI.enabled=s.saw_shop_camera;
+                if(GUI.Button(new Rect(785,455,400,45),"Có, tiệm đầu hẻm có camera"))story.Send("camera:yes","Có, tiệm đầu hẻm.");
+                GUI.enabled=true;
+            }
+            if(!s.sent.Contains("why") && GUI.Button(new Rect(65,515,340,45),"Vì sao máy ở nhà xe?"))story.Send("why","Vì sao máy ở nhà xe ạ?");
+            if(!s.sent.Contains("call") && GUI.Button(new Rect(425,515,340,45),"Gọi Mẹ"))story.Send("call","[Cuộc gọi không ai nghe]");
             if(GUI.Button(new Rect(785,515,400,45),"Đặt mã khóa"))story.Say("Máy người ta, đặt mã lỡ người ta không mở được.");
-            if(s.numberArrived)
+            if(s.numberArrived && !s.number_chosen)
             {
                 if(GUI.Button(new Rect(65,580,340,45),"Chặn số lạ"))story.ChooseNumber("blocked");
                 if(GUI.Button(new Rect(425,580,340,45),"Trả lời / gọi lại số lạ"))story.ChooseNumber("replied");
                 if(GUI.Button(new Rect(785,580,400,45),"Kệ số lạ"))story.ChooseNumber("ignored");
             }
             GUI.Label(new Rect(65,640,1100,65),story.Subtitle??"",small);
+        }
+        string Shown(string message)
+        {
+            const string tag=" · 4 phút trước";
+            if(!message.Contains(tag))return message;
+            var parts=story.State.clock.Split(':');
+            if(parts.Length!=2||!int.TryParse(parts[0],out int h)||!int.TryParse(parts[1],out int m))return message;
+            int now=h*60+m; if(now<20*60)now+=1440;
+            int ago=now-(20*60+56);
+            return message.Replace(tag,ago<60?" · "+Mathf.Max(1,ago)+" phút trước":"");
         }
         bool Button(int row,string label) => GUI.Button(new Rect(310,250+row*65,660,52),label);
         void DrawModal()

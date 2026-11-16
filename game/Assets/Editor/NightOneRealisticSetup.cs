@@ -157,7 +157,7 @@ public static class NightOneRealisticSetup
         Watch("Đứa nhỏ 2", kids + new Vector3(0, 0, -1.5f), 270, 12, 4, 8, story, true).patrol = true;
         var gate = Box("Lien_Gate_PostL", new Vector3(-1.35f, 0, -42), new Vector3(-1.15f, 2.4f, -41.8f));
         var lien = new Vector3(-.85f, 0, gate.center.z - 1.2f);
-        Watch("Cô Liên", lien, 90, 55, 15, 40, story).once = true;
+        var lienWatch = Watch("Cô Liên", lien, 90, 55, 15, 40, story); lienWatch.once = true; lienWatch.staysAfterPrologue = true;
 
         var lights = new List<Light>();
         var doors = new[] { (-1.1f, -6.5f, 90f), (1.1f, -10.8f, 270f), (-1.1f, -17.5f, 90f), (1.1f, -23.8f, 270f) };
@@ -213,8 +213,12 @@ public static class NightOneRealisticSetup
         }
         story.passingBikes = passing.ToArray();
 
-        var pot = Box("Lien_PlantPot_02", new Vector3(-1.2f, 0, -41.1f), new Vector3(-.8f, .25f, -40.7f));
-        Interact("Lien gate plant", pot, .08f, NightAction.Gate, "Phụ cô Liên dựng chậu");
+        var potModel = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None).FirstOrDefault(t => t.name == "planter_pot_clay.002" && t.GetComponent<Renderer>() != null);
+        var potRenderer = potModel == null ? null : potModel.GetComponent<Renderer>();
+        var pot = potRenderer != null ? potRenderer.bounds : Box("Lien_PlantPot_02", new Vector3(-1.2f, 0, -41.1f), new Vector3(-.8f, .25f, -40.7f));
+        if (potRenderer == null) missing.Add("planter_pot_clay.002");
+        else { GameObjectUtility.SetStaticEditorFlags(potModel.gameObject, 0); story.fallenPot = potModel; }
+        Interact("Lien gate plant", pot, .2f, NightAction.Gate, "Phụ cô Liên dựng chậu");
         Interact("Ask Lien keep phone", At(lien + Vector3.up * 1.15f, new Vector3(.4f, .5f, .4f)), 0, NightAction.LienPhone, "Nhờ cô Liên giữ máy");
         story.greyGlove = GameObject.CreatePrimitive(PrimitiveType.Cube); story.greyGlove.name = "Grey glove found by Lien";
         Object.DestroyImmediate(story.greyGlove.GetComponent<Collider>());
@@ -259,6 +263,12 @@ public static class NightOneRealisticSetup
         nav.BuildNavMesh();
         if (nav.navMeshData == null) throw new System.Exception("NavMesh build produced nothing");
         AssetDatabase.DeleteAsset(NavPath); AssetDatabase.CreateAsset(nav.navMeshData, NavPath);
+        var shut = GameObject.CreatePrimitive(PrimitiveType.Cube); shut.name = "Night1 prologue gate shut";
+        shut.transform.SetParent(gameplay, false);
+        shut.transform.position = new Vector3(-1.3f, 1.2f, (gate.min.z - 44.6f) / 2);
+        shut.transform.localScale = new Vector3(.06f, 2.4f, gate.min.z + 44.6f);
+        shut.GetComponent<Renderer>().sharedMaterial = dark;
+        story.prologueGate = shut;
 
         foreach (var w in watchers)
         {

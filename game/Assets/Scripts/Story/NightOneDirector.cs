@@ -35,6 +35,14 @@ namespace BaGio12.Story
         public Bounds parkingZone = new Bounds(new Vector3(0, -499, 527), new Vector3(2000, 1002, 1000));
         public Bounds roomZone = new Bounds(new Vector3(512, 507, 0), new Vector3(1000, 1000, 2000));
         public Transform securityCamera;
+        public GameObject prologueGate;
+        public Transform fallenPot;
+        public string[] Conversation { get; private set; } = new string[0];
+        int conversationId;
+        bool potCached, potApplied, potShownDown;
+        Quaternion potUpright;
+        Vector3 potHome;
+        float potGround;
         public bool InParking => parkingZone.Contains(player.transform.position);
         public bool InRoom => roomZone.Contains(player.transform.position);
         float AlleyProgress => Vector3.Dot(player.transform.position - alleyStart.position, Vector3.ProjectOnPlane(alleyStart.forward, Vector3.up).normalized);
@@ -134,6 +142,23 @@ namespace BaGio12.Story
             SyncWorld();
         }
         public void Say(string text, float duration = 5) { Subtitle = text; subtitleUntil = Time.time + duration; }
+        public void Speak(string[] lines)
+        {
+            Conversation = lines; conversationId++;
+            if (lines.Length == 0) return;
+            if (isActiveAndEnabled) StartCoroutine(SpeakLines(lines, conversationId)); else Say(lines[0]);
+        }
+        static float LineSeconds(string line) => Mathf.Clamp(2.5f + line.Length * .05f, 3, 7);
+        IEnumerator SpeakLines(string[] lines, int id)
+        {
+            foreach (var line in lines)
+            {
+                if (id != conversationId) yield break;
+                float seconds = LineSeconds(line);
+                Say(line, seconds);
+                for (float t = 0; t < seconds; t += player.IsPaused ? 0 : Time.deltaTime) { yield return null; if (id != conversationId || Subtitle != line) yield break; }
+            }
+        }
         public void EmitInternal(string type, string detail) { InternalEvent?.Invoke(type, detail); Debug.Log($"[Night1 internal] {type}: {detail}"); }
         void EmitChoice(string id) { TelemetryProduced?.Invoke(new ChoiceTelemetry(id)); }
         public void HandInPhone()
@@ -199,8 +224,13 @@ namespace BaGio12.Story
                 case NightAction.Police: if (State.hasNganPhone) OpenModal("police"); else Say("Biển Công an phường ở phía đường lớn."); break;
                 case NightAction.Gate:
                     if (State.stage == NightStage.Parking) { Say("Nhặt chiếc máy ở nhà xe trước."); break; }
+                    if (State.helpedLien) { Say("Cô Liên: Mưa gì mà mưa hoài."); break; }
                     State.helpedLien = true;
-                    Say((State.prologue_beaten > 0 ? "Cô Liên: Hồi nãy tụi nó đập một thằng ăn trộm ngoài nhà xe, mà nó vùng chạy mất. " : "") + (State.prologue_beaten>=2 ? "Cô Liên chìa chiếc găng xám nhặt được: Cô cất trong buồng. " : "") + "Cô Liên nhắc căn cước. Bạn phụ dựng chậu rồi lên phòng 7.", 10);
+                    var lines = new System.Collections.Generic.List<string> { "Cô Liên: Phòng 7 hả con? Ừ, đó, để cái đó sát vô tường giùm cô... Mưa gì mà mưa hoài." };
+                    if (State.prologue_beaten > 0) lines.AddRange(new[] { "Cô Liên: Hồi nãy tụi nó đập một thằng ăn trộm ngoài nhà xe, mà nó vùng chạy mất. Con coi xe con có sao không.", "Sinh viên: Dạ... chắc không sao cô." });
+                    if (State.prologue_beaten >= 2) lines.AddRange(new[] { "Cô Liên chìa ra chiếc găng xám: Nó rớt cái này nè. Cô cất trong buồng, ai mất thì kiếm cô.", "Sinh viên: Dạ." });
+                    lines.AddRange(new[] { "Cô Liên: À, cái căn cước. Hôm trước con nói mai đưa. Mai của con là mai nào?", "Sinh viên: Dạ, cái bóp con rớt hôm té xe, mất luôn căn cước. Con đang làm lại.", "Cô Liên: Làm lẹ nghen con. Phường người ta xuống hỏi mà cô không có gì đưa là cô bị phạt đó." });
+                    Speak(lines.ToArray());
                     Objective = "Đi cầu thang lên tầng 3, vào phòng 7."; break;
                 case NightAction.Room: EnterRoom(); break;
                 case NightAction.Deposit: State.found_deposit_slip = true; State.Note("Phòng 7, nhận cọc ngày 22/11, không ghi tên"); Say("Giấy nhận cọc không ghi tên."); break;
@@ -211,7 +241,7 @@ namespace BaGio12.Story
                     Say(State.bagMoved ? "Ủa... mình để nó trên nệm hồi nào ta. Ngăn nhỏ bị kẹt." : contents + (State.bagOpen ? " Ngăn chính mở hé." : "") + " Ngăn nhỏ bị kẹt."); break;
                 case NightAction.MoveBag: State.bagDisplaced = true; bag.transform.position = FromBed(new Vector3(.9f,.3f,0)); State.bagPosition=bag.transform.position;State.hasBagPosition=true; Say("Bạn dời ba lô sang cạnh nệm."); break;
                 case NightAction.Wifi: State.Note("Mật khẩu Wi-Fi sau cửa phòng 7"); Say("Đã ghi Wi-Fi vào Sổ tay."); break;
-                case NightAction.Mirror: Say("Gương mờ quá, soi không ra mặt."); break;
+                case NightAction.Mirror: Say("Sinh viên (nghĩ): Gương gì mờ căm, soi không ra cái mặt."); break;
                 case NightAction.Notice: State.Note("Ai để xe qua đêm tự khóa cổ, mất ráng chịu"); Say("Ai để xe qua đêm tự khóa cổ, mất ráng chịu."); break;
                 case NightAction.Bed:
                     if (State.stage < NightStage.Room) { Say("Vào phòng 7 trước."); break; }
@@ -219,7 +249,10 @@ namespace BaGio12.Story
                     if (!State.numberArrived) ArriveStranger();
                     if (State.stage != NightStage.LateNight) OpenModal("wait"); else OpenModal(State.clock == "03:12" ? "dawn" : "bed"); break;
                 case NightAction.Charge: Say("Bạn cắm sạc máy Ngân."); break;
-                case NightAction.LienPhone: State.asked_lien_keep = true; Say("Cô Liên: Cứ giữ, ai kiếm thì đưa."); break;
+                case NightAction.LienPhone:
+                    State.asked_lien_keep = true;
+                    if (State.hasNganPhone) Speak(new[] { "Sinh viên: Cô ơi, con lượm được cái điện thoại dưới nhà xe, cô giữ giùm được không cô?", "Cô Liên: Điện thoại ai? ... Thôi thôi, cô không giữ đâu. Bữa trước có đứa bỏ quên cái sạc dưới nhà xe, kiếm không ra là nói cô lấy. Con giữ đi, ai kiếm thì đưa." });
+                    else Say("Cô Liên: Mưa gì mà mưa hoài."); break;
             }
             SyncWorld();
         }
@@ -231,7 +264,7 @@ namespace BaGio12.Story
             bag.transform.position = bagAtDoor.position; State.bagPosition=bag.transform.position;State.hasBagPosition=true;
             Checkpoints.Save("n1.room7", State, roomSpawn.position, roomSpawn.eulerAngles.y + 90);
             Objective = "Xem đồ trong phòng. Đọc hoặc gửi tin trên máy Ngân.";
-            Say("Bạn đặt ba lô xuống sàn cạnh cửa.");
+            Speak(new[] { "Bạn đặt ba lô xuống sàn cạnh cửa.", "Sinh viên (nghĩ): Trống trơn. Mai mua cái kệ với cái đèn bàn, chứ ở vầy buồn chết." });
             EmitInternal("area_entered", "n1.room7");
         }
         public void PlacePhone()
@@ -326,9 +359,9 @@ namespace BaGio12.Story
         }
         public void ChooseNumber(string choice)
         {
-            if (!State.numberArrived) return;
+            if (!State.numberArrived || State.number_chosen) return;
             if(choice!="blocked" && choice!="replied" && choice!="ignored")return;
-            State.number_choice = choice; EmitChoice(choice=="blocked" ? "1a" : choice=="replied" ? "1b" : "1c");
+            State.number_choice = choice; State.number_chosen = true; EmitChoice(choice=="blocked" ? "1a" : choice=="replied" ? "1b" : "1c");
             Say(choice == "replied" ? "Một người phụ nữ bắt máy. Bạn im lặng rồi tắt." : choice == "blocked" ? "Đã chặn số lạ." : "Bạn bỏ qua dãy số.");
         }
         public void LeavePhone()
@@ -478,6 +511,19 @@ namespace BaGio12.Story
             }
             if (bag != null) bag.SetActive(State.stage >= NightStage.Room);
             if(greyGlove!=null)greyGlove.SetActive(State.helpedLien && State.prologue_beaten>=2);
+            if (prologueGate != null) prologueGate.SetActive(State.stage == NightStage.Prologue);
+            if (fallenPot != null)
+            {
+                var potRenderer = fallenPot.GetComponent<Renderer>();
+                if (!potCached) { potCached = true; potUpright = fallenPot.rotation; potHome = fallenPot.position; potGround = potRenderer != null ? potRenderer.bounds.min.y : potHome.y; }
+                bool down = !State.helpedLien;
+                if (!potApplied || down != potShownDown)
+                {
+                    potApplied = true; potShownDown = down;
+                    fallenPot.SetPositionAndRotation(potHome, down ? Quaternion.Euler(0, 0, -90) * potUpright : potUpright);
+                    if (down && potRenderer != null) fallenPot.position += Vector3.up * (potGround - potRenderer.bounds.min.y);
+                }
+            }
             if(State.alarm && State.stage!=NightStage.Ended && State.hasNganPhone && !State.phone_powered_off) {if(!sound.isPlaying)sound.Play();}
             else if(sound.isPlaying)sound.Stop();
         }
