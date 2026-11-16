@@ -30,7 +30,9 @@ public static class PlaytestBuild
 
     public static void NightOneReal()
     {
-        bool windows = PreviewPlayer("../BuildNight1/3gio12.exe", BuildTarget.StandaloneWindows64, NightOneRealisticSetup.ScenePath);
+        string path = System.Environment.GetEnvironmentVariable("THREEGIO12_PLAYTEST_EXE");
+        if (string.IsNullOrWhiteSpace(path)) path = "../BuildNight1/3gio12.exe";
+        bool windows = PreviewPlayer(path, BuildTarget.StandaloneWindows64, NightOneRealisticSetup.ScenePath);
         EditorApplication.Exit(windows ? 0 : 1);
     }
 

@@ -281,6 +281,15 @@ namespace BaGio12.Gameplay
             else
             {
                 Add("Tiếp tục", player.ResumeControl);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD || PLAYTEST_BUILD
+                var readout = player.GetComponent<PlaytestReadout>();
+                if (readout != null)
+                    Add(readout.IsVisible ? "Ẩn tọa độ" : "Hiện tọa độ", () =>
+                    {
+                        readout.Toggle();
+                        player.ResumeControl();
+                    });
+#endif
                 if (session != null) Add("Chơi lại Đêm 1", () => session.StartNewGame(), "Nhấn lần nữa để chơi lại từ đầu");
             }
             settingsIndex = items.Count; Add("Cài đặt", null);
