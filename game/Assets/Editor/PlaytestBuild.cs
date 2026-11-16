@@ -28,12 +28,18 @@ public static class PlaytestBuild
         EditorApplication.Exit(linux ? 0 : 1);
     }
 
-    static bool PreviewPlayer(string path, BuildTarget target)
+    public static void NightOneReal()
+    {
+        bool windows = PreviewPlayer("../BuildNight1/3gio12.exe", BuildTarget.StandaloneWindows64, NightOneRealisticSetup.ScenePath);
+        EditorApplication.Exit(windows ? 0 : 1);
+    }
+
+    static bool PreviewPlayer(string path, BuildTarget target, string scene = "Assets/Scenes/RealisticPreview.unity")
     {
         if (SceneMaterialsRegression.CountEmptySlots() != 0) return false;
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
         {
-            scenes = new[] { "Assets/Scenes/RealisticPreview.unity" },
+            scenes = new[] { scene },
             locationPathName = path,
             target = target,
             options = BuildOptions.None,

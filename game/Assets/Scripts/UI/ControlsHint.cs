@@ -36,7 +36,7 @@ namespace BaGio12.Gameplay
             rows = new[]
             {
                 Row(panel, "Đi lại", "W", "A", "S", "D"),
-                Row(panel, "Nhìn quanh", "Chuột"),
+                Row(panel, "Nhìn quanh", "Chuột", "Mũi tên"),
                 Row(panel, "Chạy", "Shift"),
                 Row(panel, "Cúi người", "C"),
                 Row(panel, "Tương tác", "E"),
