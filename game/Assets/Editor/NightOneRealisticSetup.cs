@@ -185,9 +185,18 @@ public static class NightOneRealisticSetup
         Interact("Own bike", Box("Garage_Bike_L02", new Vector3(2.2f, 0, -50.65f), new Vector3(4.1f, 1.1f, -49.95f)), .05f, NightAction.ParkBike, "Dựng xe / xem đồng hồ");
         var wave = Box("Garage_Bike_Wave", new Vector3(-4.1f, 0, -51.45f), new Vector3(-2.2f, 1.1f, -50.75f));
         var slot = Point("PLACE_N1_PhoneUnderWave", new Vector3(-2, 0, -51));
-        var beside = new Vector3(Mathf.Max(wave.max.x + .25f, slot.x), 0, wave.center.z);
-        Interact("Place phone beside bike", At(beside + Vector3.up * .25f, new Vector3(.4f, .5f, .6f)), 0, NightAction.PlacePhone, "Đặt / lấy chiếc máy");
-        story.nganPhone = Interact("Ngan phone", At(beside + Vector3.up * .506f, new Vector3(.08f, .012f, .16f)), 0, NightAction.Phone, "Nhặt chiếc máy", dark);
+        var waveBike = Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.parent == null && t.name.StartsWith("Garage Cub "))
+            .OrderBy(t => (t.position - wave.center).sqrMagnitude).FirstOrDefault();
+        var waveRenderers = waveBike == null ? new Renderer[0] : waveBike.GetComponentsInChildren<Renderer>();
+        var waveBounds = wave;
+        if (waveRenderers.Length == 0) missing.Add("Garage Cub (Wave)");
+        else { waveBounds = waveRenderers[0].bounds; foreach (var r in waveRenderers) waveBounds.Encapsulate(r.bounds); }
+        var beside = new Vector3(Mathf.Max(waveBounds.max.x + .12f, slot.x), 0, waveBounds.center.z);
+        var zone = waveBounds; zone.Encapsulate(beside + new Vector3(.15f, 0, .15f));
+        Interact("Place phone beside bike", zone, .08f, NightAction.PlacePhone, "Đặt / lấy chiếc máy");
+        if (waveBike != null) foreach (var c in waveBike.GetComponents<Collider>()) c.enabled = false;
+        story.nganPhone = Interact("Ngan phone", At(beside + Vector3.up * .007f, new Vector3(.08f, .012f, .16f)), 0, NightAction.Phone, "Nhặt chiếc máy", dark);
+        story.nganPhone.transform.rotation = Quaternion.Euler(0, 28, 0);
         Interact("Parking notice", Box("Garage_Sign_Paper", new Vector3(4.18f, 1.4f, -51.55f), new Vector3(4.19f, 1.8f, -51.25f)), .08f, NightAction.Notice, "Đọc tờ giấy");
         var bulb = Box("Garage_Bulb", new Vector3(-.08f, 2.55f, -53.08f), new Vector3(.08f, 2.7f, -52.92f));
         story.parkingAlertLight = Lamp("Parking alert lamp", bulb.center + Vector3.down * .2f, new Color(1, .85f, .6f), 4, 9); story.parkingAlertLight.enabled = false;
@@ -201,12 +210,15 @@ public static class NightOneRealisticSetup
             float x = i == 0 ? -.3f : .3f;
             bike.from = new Vector3(x, 0, i == 0 ? 2 : -47); bike.to = new Vector3(x, 0, i == 0 ? -47 : 2); bike.departure = 15 + i * 13;
             root.transform.SetPositionAndRotation(bike.from, Quaternion.LookRotation(bike.to - bike.from));
-            var frame = GameObject.CreatePrimitive(PrimitiveType.Cube); frame.name = "Bike placeholder"; Object.DestroyImmediate(frame.GetComponent<Collider>());
-            frame.transform.SetParent(root.transform, false); frame.transform.localPosition = Vector3.up * .5f; frame.transform.localScale = new Vector3(.45f, .7f, 1.3f);
-            frame.GetComponent<Renderer>().sharedMaterial = dark;
-            var rider = GameObject.CreatePrimitive(PrimitiveType.Capsule); rider.name = "Blue raincoat rider"; Object.DestroyImmediate(rider.GetComponent<Collider>());
-            rider.transform.SetParent(root.transform, false); rider.transform.localPosition = new Vector3(0, 1.25f, -.1f); rider.transform.localScale = new Vector3(.55f, .45f, .45f);
-            rider.GetComponent<Renderer>().sharedMaterial = raincoat;
+            var frame = RealisticSceneBuilder.SpawnBike("cub_rider", i == 0 ? 2 : 4, "Passing bike with rider");
+            if (frame == null) missing.Add("Passing bike with rider " + i);
+            else
+            {
+                foreach (var c in frame.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
+                frame.transform.SetParent(root.transform, false); frame.transform.localPosition = Vector3.zero; frame.transform.localRotation = Quaternion.identity;
+                foreach (var r in frame.GetComponentsInChildren<MeshRenderer>())
+                    r.sharedMaterials = r.sharedMaterials.Select(m => m != null && m.name.StartsWith("M_ClothBlue") ? raincoat : m).ToArray();
+            }
             var lamp = new GameObject("Headlight"); lamp.transform.SetParent(root.transform, false); lamp.transform.localPosition = new Vector3(0, .9f, .7f);
             bike.headlight = lamp.AddComponent<Light>(); bike.headlight.type = LightType.Spot; bike.headlight.range = 9; bike.headlight.spotAngle = 50; bike.headlight.intensity = 4; bike.headlight.enabled = false;
             passing.Add(bike);

@@ -457,7 +457,7 @@ public static class RealisticSceneBuilder
     }
 
     const string BikeModelRoot = "Assets/Art/Models/Props/prop_motorbike_";
-    static readonly string[] BikeMix = { "cub", "beat", "bebek", "sh", "cub", "vino", "beat", "cubblack", "bebek", "cub", "sh", "vino" };
+    static readonly string[] BikeMix = { "cub", "bebek", "sh", "vino", "cub", "cubblack", "bebek", "sh", "cub", "vino", "bebek" };
     static readonly (string prefix, int paint)[] BikeGroups = { ("Parked Cub ", 0), ("Garage Cub ", 6), (BoardingHouseBike, 3), (ShallowAlleyBike, 1), (RoadBikePrefix, 12) };
 
     static string BikeModel(string prefix, int k, string slot)
@@ -472,16 +472,18 @@ public static class RealisticSceneBuilder
     static string[] GarageSlots() => Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None)
         .Where(r => r.name.StartsWith("Garage_Bike_")).Select(r => r.name).OrderBy(n => n).ToArray();
 
-    static GameObject PlaceBike(string prefix, int k, int paintOffset, string slot)
+    static GameObject PlaceBike(string prefix, int k, int paintOffset, string slot) =>
+        SpawnBike(BikeModel(prefix, k, slot), (k + paintOffset) % BikePaints.Length, prefix + k);
+
+    internal static GameObject SpawnBike(string model, int paint, string name)
     {
-        var asset = AssetDatabase.LoadAssetAtPath<GameObject>(BikeModelRoot + BikeModel(prefix, k, slot) + ".fbx");
-        if (asset == null) { Debug.LogError("REAL_BIKE missing model " + BikeModel(prefix, k, slot)); return null; }
-        int bike = (k + paintOffset) % BikePaints.Length;
+        var asset = AssetDatabase.LoadAssetAtPath<GameObject>(BikeModelRoot + model + ".fbx");
+        if (asset == null) { Debug.LogError("REAL_BIKE missing model " + model); return null; }
         var go = (GameObject)PrefabUtility.InstantiatePrefab(asset);
         PrefabUtility.UnpackPrefabInstance(go, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
-        go.name = prefix + k;
+        go.name = name;
         foreach (var r in go.GetComponentsInChildren<MeshRenderer>())
-            r.sharedMaterials = r.sharedMaterials.Select(t => BikeMaterial(t, bike)).ToArray();
+            r.sharedMaterials = r.sharedMaterials.Select(t => BikeMaterial(t, paint % BikePaints.Length)).ToArray();
         return go;
     }
 
@@ -506,7 +508,7 @@ public static class RealisticSceneBuilder
 
     static readonly (string name, string tex, bool normal, float metal, float smooth)[] NewBikeMaterials =
     {
-        ("M_BikeBeat", "T_BikeBeat", true, 0, .35f), ("M_BikeSH", "T_BikeSH", true, 0, .35f), ("M_BikeGoa", "T_BikeGoa", true, 0, .35f),
+        ("M_BikeSH", "T_BikeSH", true, 0, .35f), ("M_BikeGoa", "T_BikeGoa", true, 0, .35f),
         ("M_BikeVino", "T_BikeVino", false, 0, .4f), ("M_BikeVinoChrome", "T_BikeVino", false, .85f, .6f),
         ("M_BikeBebek", "T_BikeBebek", false, 0, .4f), ("M_BikeBebekChrome", "T_BikeBebek", false, .85f, .6f), ("M_BikeBebekPaint", null, false, 0, .55f),
         ("M_BikeCubBlack", "T_BikeCubBlack", false, 0, .4f), ("M_BikeCubBlackChrome", "T_BikeCubBlack", false, .85f, .6f),
@@ -541,7 +543,7 @@ public static class RealisticSceneBuilder
         AssetDatabase.SaveAssets();
         foreach (var stray in AssetDatabase.FindAssets("t:Material M_Bike", new[] { "Assets/Art/Models" }).Select(AssetDatabase.GUIDToAssetPath).Where(p => p.EndsWith(".mat")).ToList())
             AssetDatabase.DeleteAsset(stray);
-        foreach (var model in new[] { "beat", "sh", "goa", "vino", "bebek", "cubblack" })
+        foreach (var model in new[] { "sh", "goa", "vino", "bebek", "cubblack" })
             AssetDatabase.ImportAsset(BikeModelRoot + model + ".fbx", ImportAssetOptions.ForceUpdate);
     }
 
@@ -898,11 +900,13 @@ public static class RealisticSceneBuilder
             ("alley_shop", new Vector3(.8f, 1.55f, -4.2f), new Vector3(4, 300, 0)),
             ("alley_up", new Vector3(.2f, 1.6f, -10), new Vector3(-28, 190, 0)),
             ("alley_back", new Vector3(-.3f, 1.6f, -40), new Vector3(4, 0, 0)),
+            ("alley_bike", new Vector3(.9f, 1.4f, -1.2f), new Vector3(14, 330, 0)),
             ("alley_gate", new Vector3(-.6f, 1.6f, -38.5f), new Vector3(6, 150, 0)),
             ("garage", new Vector3(0, 1.6f, -48.5f), new Vector3(10, 180, 0)),
             ("garage_entry", new Vector3(.3f, 1.6f, -45.5f), new Vector3(6, 185, 0)),
             ("garage_back", new Vector3(-.5f, 1.6f, -57.2f), new Vector3(8, 15, 0)),
             ("garage_wave", new Vector3(-.4f, 1.5f, -50.2f), new Vector3(22, 120, 0)),
+            ("garage_phone", new Vector3(-.9f, 1.0f, -51.6f), new Vector3(36, 290, 0)),
             ("garage_left", new Vector3(1.2f, 1.6f, -55.5f), new Vector3(10, 315, 0)),
             ("garage_note", new Vector3(3.55f, 1.6f, -51.0f), new Vector3(4, 100, 0)),
             ("garage_fire", new Vector3(3.3f, 1.65f, -50.4f), new Vector3(6, 62, 0)),
@@ -1427,7 +1431,8 @@ public static class RealisticSceneBuilder
         int i = System.Array.IndexOf(args, "-shots");
         var dir = i >= 0 && i + 1 < args.Length ? args[i + 1] : "Logs";
         int only = System.Array.IndexOf(args, "-only"); if (only >= 0) ShotsOnly = args[only + 1];
-        EditorSceneManager.OpenScene(ScenePath);
+        int scene = System.Array.IndexOf(args, "-scene");
+        EditorSceneManager.OpenScene(scene >= 0 ? args[scene + 1] : ScenePath);
         var cam = Object.FindObjectsByType<Camera>(FindObjectsSortMode.None).First(c => c.CompareTag("MainCamera"));
         if (args.Contains("-flat")) FlatLight();
         Shots(cam, "Real", dir);
