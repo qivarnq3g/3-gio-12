@@ -155,7 +155,7 @@ namespace BaGio12.Story
             {
                 if (id != conversationId) yield break;
                 float seconds = LineSeconds(line);
-                Say(line, seconds);
+                Say(line, seconds + 1);
                 for (float t = 0; t < seconds; t += player.IsPaused ? 0 : Time.deltaTime) { yield return null; if (id != conversationId || Subtitle != line) yield break; }
             }
         }

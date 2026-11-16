@@ -59,7 +59,10 @@ namespace BaGio12.Stealth
             bool scheduledVisible = IsPresent;
             RefreshPresentation();
             if (director == null || director.player.IsPaused || director.State.stage != NightStage.Prologue || director.State.phonePlaced || Mode == ObserverMode.Inactive || director.Busy || !director.PrologueDeparted)
-            { if (director != null && !director.PrologueDeparted && ActiveThreat) ReturnHome(); Stop(); return; }
+            {
+                if (director != null && !director.player.IsPaused && director.State.stage == NightStage.Prologue && !director.PrologueDeparted && ActiveThreat) ReturnHome();
+                Stop(); return;
+            }
             if (!scheduledVisible)
             {
                 if (ActiveThreat) ReturnHome();

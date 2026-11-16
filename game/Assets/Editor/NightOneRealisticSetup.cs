@@ -218,7 +218,7 @@ public static class NightOneRealisticSetup
         var pot = potRenderer != null ? potRenderer.bounds : Box("Lien_PlantPot_02", new Vector3(-1.2f, 0, -41.1f), new Vector3(-.8f, .25f, -40.7f));
         if (potRenderer == null) missing.Add("planter_pot_clay.002");
         else { GameObjectUtility.SetStaticEditorFlags(potModel.gameObject, 0); story.fallenPot = potModel; }
-        Interact("Lien gate plant", pot, .2f, NightAction.Gate, "Phụ cô Liên dựng chậu");
+        Interact("Lien gate plant", pot, .08f, NightAction.Gate, "Phụ cô Liên dựng chậu");
         Interact("Ask Lien keep phone", At(lien + Vector3.up * 1.15f, new Vector3(.4f, .5f, .4f)), 0, NightAction.LienPhone, "Nhờ cô Liên giữ máy");
         story.greyGlove = GameObject.CreatePrimitive(PrimitiveType.Cube); story.greyGlove.name = "Grey glove found by Lien";
         Object.DestroyImmediate(story.greyGlove.GetComponent<Collider>());
