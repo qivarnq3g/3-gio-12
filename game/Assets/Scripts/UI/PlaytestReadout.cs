@@ -16,35 +16,109 @@ namespace BaGio12.Gameplay
         Canvas canvas;
         TextMeshProUGUI text;
         float nextRefresh, smoothedFrame = 1 / 60f;
+        bool visible;
+        GUIStyle boxStyle, labelStyle;
+        string cachedReadout = "";
 
-        public bool IsVisible { get { if (canvas == null) Init(); return canvas != null && canvas.gameObject.activeSelf; } }
-        public void Toggle() { if (canvas == null) Init(); if (canvas != null) canvas.gameObject.SetActive(!canvas.gameObject.activeSelf); }
+        public bool IsVisible => visible;
+        public void Toggle()
+        {
+            visible = !visible;
+            if (canvas != null) canvas.gameObject.SetActive(visible);
+            if (visible)
+            {
+                cachedReadout = Describe();
+                if (text != null) text.text = cachedReadout;
+            }
+            Debug.Log($"[PlaytestReadout] Toggled -> Visible = {visible}");
+        }
         public string GetReadoutText() => Describe();
 
-        void Awake() { player = GetComponent<FirstPersonPlayer>(); }
+        void Awake()
+        {
+            player = GetComponent<FirstPersonPlayer>();
+        }
 
-        void Start() { Init(); }
+        void Start()
+        {
+            Init();
+        }
 
         void Init()
         {
             if (canvas != null) return;
-            canvas = GameUi.Canvas(transform, "Playtest readout", 90);
-            canvas.GetComponent<CanvasGroup>().blocksRaycasts = false;
-            var panel = GameUi.Place(GameUi.Box(canvas.transform, "Panel", new Color(0, 0, 0, .6f)), Vector2.up, Vector2.up, new Vector2(24, -24), new Vector2(760, 206));
-            text = GameUi.Text(panel, "Readout", "", 24, GameUi.Ink);
-            text.alignment = TextAlignmentOptions.TopLeft;
-            GameUi.Place((RectTransform)text.transform, Vector2.up, Vector2.up, new Vector2(16, -12), new Vector2(728, 182));
-            canvas.gameObject.SetActive(false);
+            try
+            {
+                canvas = GameUi.Canvas(transform, "Playtest readout", 90);
+                canvas.GetComponent<CanvasGroup>().blocksRaycasts = false;
+                var panel = GameUi.Place(GameUi.Box(canvas.transform, "Panel", new Color(0, 0, 0, .75f)), Vector2.up, Vector2.up, new Vector2(24, -24), new Vector2(760, 206));
+                text = GameUi.Text(panel, "Readout", "", 24, GameUi.Ink);
+                text.font = GameUi.Font("Fonts/BeVietnamPro-Regular");
+                text.alignment = TextAlignmentOptions.TopLeft;
+                GameUi.Place((RectTransform)text.transform, Vector2.up, Vector2.up, new Vector2(16, -12), new Vector2(728, 182));
+                canvas.gameObject.SetActive(visible);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[PlaytestReadout] Canvas UI init warning: {ex.Message}. Falling back to OnGUI.");
+            }
         }
 
         void Update()
         {
             smoothedFrame = Mathf.Lerp(smoothedFrame, Time.unscaledDeltaTime, .05f);
             var keys = Keyboard.current;
-            if (keys != null && keys.f3Key.wasPressedThisFrame) canvas.gameObject.SetActive(!canvas.gameObject.activeSelf);
-            if (!canvas.gameObject.activeSelf || Time.unscaledTime < nextRefresh) return;
+            if (keys != null)
+            {
+                // Hỗ trợ F3, phím Fn+F3, hoặc phím ~ (Backquote) tiện lợi cho laptop
+                if (keys.f3Key.wasPressedThisFrame || keys.backquoteKey.wasPressedThisFrame || keys.f1Key.wasPressedThisFrame)
+                {
+                    Toggle();
+                }
+            }
+
+            if (!visible || Time.unscaledTime < nextRefresh) return;
             nextRefresh = Time.unscaledTime + RefreshSeconds;
-            text.text = Describe();
+            cachedReadout = Describe();
+            if (text != null) text.text = cachedReadout;
+        }
+
+        void OnGUI()
+        {
+            if (!visible) return;
+
+            // Render lớp phủ OnGUI đảm bảo luôn luôn nhìn thấy trên màn hình
+            if (boxStyle == null)
+            {
+                boxStyle = new GUIStyle(GUI.skin.box);
+                labelStyle = new GUIStyle(GUI.skin.label)
+                {
+                    fontSize = 17,
+                    fontStyle = FontStyle.Bold,
+                    normal = { textColor = Color.white }
+                };
+            }
+
+            var origColor = GUI.color;
+            var origMatrix = GUI.matrix;
+            int origDepth = GUI.depth;
+            try
+            {
+                GUI.depth = -2000;
+                GUI.matrix = Matrix4x4.identity;
+                float w = Mathf.Min(680, Screen.width - 48);
+                var rect = new Rect(24, 24, w, 175);
+                GUI.color = new Color(0, 0, 0, .85f);
+                GUI.Box(rect, GUIContent.none);
+                GUI.color = Color.white;
+                GUI.Label(new Rect(rect.x + 14, rect.y + 10, rect.width - 28, rect.height - 20), cachedReadout, labelStyle);
+            }
+            finally
+            {
+                GUI.color = origColor;
+                GUI.matrix = origMatrix;
+                GUI.depth = origDepth;
+            }
         }
 
         string Describe()
@@ -55,7 +129,7 @@ namespace BaGio12.Gameplay
             float pitch = player != null ? Mathf.DeltaAngle(0, player.ViewPitch) : 0;
             var eye = (player != null && player.eyes != null) ? player.eyes.transform : transform;
             return string.Format(CultureInfo.InvariantCulture,
-                "X {0:F2}   Y {1:F2}   Z {2:F2}\nHướng {3:F0}°   Ngước {4:F0}°\nDưới chân: {5}\nĐang nhìn: {6}\n{7}   {8:F0} FPS   {9}\nV: bay   F5 hẻm, F6 giữa hẻm, F7 cổng, F8 nhà xe, F9 phòng 7",
+                "X {0:F2}   Y {1:F2}   Z {2:F2}\nHướng {3:F0}°   Ngước {4:F0}°\nDưới chân: {5}\nĐang nhìn: {6}\n{7}   {8:F0} FPS   {9}\n[F3 / ~]: Ẩn/Hiện tọa độ  |  V: bay  |  F5-F9: Dịch chuyển",
                 p.x, p.y, p.z, yaw, pitch,
                 Hit(p + Vector3.up * .5f, Vector3.down),
                 Hit(eye.position, eye.forward),
