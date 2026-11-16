@@ -137,43 +137,43 @@ public static class NightOneRealisticSetup
         story.parkingSpawn = Marker("Checkpoint parking", new Vector3(garage.x, .1f, garage.z), 180);
         var floor = Box("Garage_Floor", new Vector3(-4.5f, -.1f, -58), new Vector3(4.5f, 0, -48));
         story.parkingZone = new Bounds(new Vector3(floor.center.x, 0, floor.center.z), new Vector3(floor.size.x, 4, floor.size.z));
-        var room = Box("BH_F3_Room7_Mattress", new Vector3(-4.6f, 10.2f, -47.7f), new Vector3(-2.6f, 10.4f, -45.9f));
-        story.roomZone = new Bounds(new Vector3(-3.33f, room.min.y + 1.5f, -44.75f), new Vector3(3.75f, 3.2f, 6.1f));
+        var room = Box("BH_F3_Room7_Mattress", new Vector3(-5.1f, 10.2f, -47.7f), new Vector3(-3.1f, 10.4f, -45.9f));
+        story.roomZone = new Bounds(new Vector3(room.center.x - .33f, room.min.y + 1.5f, -44.75f), new Vector3(3.75f, 3.2f, 6.1f));
 
-        Interact("Start street", At(new Vector3(0, 1.1f, 2.6f), new Vector3(2.5f, 2.2f, .2f)), 0, NightAction.ReturnToStart, "Ra đầu hẻm");
-        Interact("Police direction", At(new Vector3(-1.3f, 1.4f, -.4f), new Vector3(.1f, .6f, .6f)), .02f, NightAction.Police, "Nhìn về phía công an phường");
-        Interact("Hung shop", Box("Shop_Hung_Counter", new Vector3(.85f, 0, -3.5f), new Vector3(1.2f, 1, -1)), .05f, NightAction.Shop, "Nói chuyện với chú Hùng");
-        var camera = Box("Shop_Hung_Camera", new Vector3(.4f, 2.55f, -2.5f), new Vector3(.65f, 2.7f, -2.3f));
+        Interact("Start street", At(new Vector3(0, 1.1f, 2.6f), new Vector3(2 * AlleyWidth.Half, 2.2f, .2f)), 0, NightAction.ReturnToStart, "Ra đầu hẻm");
+        Interact("Police direction", At(new Vector3(-1.8f, 1.4f, -.4f), new Vector3(.1f, .6f, .6f)), .02f, NightAction.Police, "Nhìn về phía công an phường");
+        Interact("Hung shop", Box("Shop_Hung_Counter", new Vector3(1.35f, 0, -3.5f), new Vector3(1.7f, 1, -1)), .05f, NightAction.Shop, "Nói chuyện với chú Hùng");
+        var camera = Box("Shop_Hung_Camera", new Vector3(.9f, 2.55f, -2.5f), new Vector3(1.15f, 2.7f, -2.3f));
         Interact("Security camera", camera, .1f, NightAction.Camera, "Xem kỹ camera");
         story.securityCamera = Marker("Security camera focus", camera.center);
-        var led = Box("Shop_Hung_Camera_LED", new Vector3(.38f, 2.6f, -2.42f), new Vector3(.4f, 2.64f, -2.38f));
+        var led = Box("Shop_Hung_Camera_LED", new Vector3(.88f, 2.6f, -2.42f), new Vector3(.9f, 2.64f, -2.38f));
         Lamp("Camera red LED", led.center + Vector3.left * .03f, Color.red, .1f, 1);
 
-        var hung = Watch("Chú Hùng", new Vector3(2.1f, .05f, -2.4f), 270, 20, 5, 5, story); hung.flashlight = true;
-        var stool = Box("Dishwasher_Stool", new Vector3(-.95f, 0, -10.5f), new Vector3(-.65f, .35f, -10.2f));
+        var hung = Watch("Chú Hùng", new Vector3(2.6f, .05f, -2.4f), 270, 20, 5, 5, story); hung.flashlight = true;
+        var stool = Box("Dishwasher_Stool", new Vector3(-1.45f, 0, -10.5f), new Vector3(-1.15f, .35f, -10.2f));
         Watch("Người phụ nữ", new Vector3(stool.center.x, 0, stool.center.z), 90, 13, 3, 3, story).irregularLook = true;
-        var kids = new Vector3(.9f, 0, -15);
+        var kids = new Vector3(1.4f, 0, -15);
         Watch("Đứa nhỏ 1", kids, 270, 12, 4, 6, story, true).patrol = true;
         Watch("Đứa nhỏ 2", kids + new Vector3(0, 0, -1.5f), 270, 12, 4, 8, story, true).patrol = true;
-        var gate = Box("Lien_Gate_PostL", new Vector3(-1.35f, 0, -42), new Vector3(-1.15f, 2.4f, -41.8f));
-        var lien = new Vector3(-.85f, 0, gate.center.z - 1.2f);
+        var gate = Box("Lien_Gate_PostL", new Vector3(-1.85f, 0, -42), new Vector3(-1.65f, 2.4f, -41.8f));
+        var lien = new Vector3(gate.center.x + .4f, 0, gate.center.z - 1.2f);
         var lienWatch = Watch("Cô Liên", lien, 90, 55, 15, 40, story); lienWatch.once = true; lienWatch.staysAfterPrologue = true;
 
         var lights = new List<Light>();
-        var doors = new[] { (-1.1f, -6.5f, 90f), (1.1f, -10.8f, 270f), (-1.1f, -17.5f, 90f), (1.1f, -23.8f, 270f) };
+        var doors = new[] { (-1.6f, -6.5f, 90f), (1.6f, -10.8f, 270f), (-1.6f, -17.5f, 90f), (1.6f, -23.8f, 270f) };
         for (int i = 0; i < doors.Length; i++)
         {
             var (x, z, yaw) = doors[i];
-            var l = Lamp("Alert porch " + i, new Vector3(x * .9f, 2.6f, z), new Color(1, .68f, .36f), 3); l.enabled = false; lights.Add(l);
+            var l = Lamp("Alert porch " + i, new Vector3(x - Mathf.Sign(x) * .11f, 2.6f, z), new Color(1, .68f, .36f), 3); l.enabled = false; lights.Add(l);
             var neighbor = Watch("Hàng xóm " + i, new Vector3(x, 0, z), yaw, 1, 1, 0, story); neighbor.stationary = true; neighbor.startsDormant = true;
         }
         story.alertLights = lights.ToArray();
         story.observers = watchers.ToArray();
 
-        var bike02 = Box("Cover_ParkedBike_02", new Vector3(-1.25f, 0, -14.45f), new Vector3(-.6f, 1.1f, -12.55f));
-        var pots = Box("Cover_PlantPots_L", new Vector3(.75f, 0, -27.2f), new Vector3(1.25f, .9f, -26));
-        var cart = Box("Cover_Cart", new Vector3(-1.25f, 0, -30), new Vector3(-.45f, 1, -28.5f));
-        var bike05 = Box("Cover_ParkedBike_05", new Vector3(.6f, 0, -31.95f), new Vector3(1.25f, 1.1f, -30.05f));
+        var bike02 = Box("Cover_ParkedBike_02", new Vector3(-1.75f, 0, -14.45f), new Vector3(-1.1f, 1.1f, -12.55f));
+        var pots = Box("Cover_PlantPots_L", new Vector3(1.25f, 0, -27.2f), new Vector3(1.75f, .9f, -26));
+        var cart = Box("Cover_Cart", new Vector3(-1.75f, 0, -30), new Vector3(-.95f, 1, -28.5f));
+        var bike05 = Box("Cover_ParkedBike_05", new Vector3(1.1f, 0, -31.95f), new Vector3(1.75f, 1.1f, -30.05f));
         story.hidingPoints = new[]
         {
             Marker("Hiding spot", new Vector3(bike02.center.x, .06f, bike02.min.z - .45f)),
@@ -207,7 +207,7 @@ public static class NightOneRealisticSetup
         {
             var root = new GameObject("Passing bike " + i); root.transform.SetParent(gameplay, false);
             var bike = root.AddComponent<NightPassingBike>(); bike.director = story;
-            float x = i == 0 ? -.3f : .3f;
+            float x = i == 0 ? -.55f : .55f;
             bike.from = new Vector3(x, 0, i == 0 ? 2 : -47); bike.to = new Vector3(x, 0, i == 0 ? -47 : 2); bike.departure = 15 + i * 13;
             root.transform.SetPositionAndRotation(bike.from, Quaternion.LookRotation(bike.to - bike.from));
             var frame = RealisticSceneBuilder.SpawnBike("cub_rider", i == 0 ? 2 : 4, "Passing bike with rider");
@@ -227,7 +227,7 @@ public static class NightOneRealisticSetup
 
         var potModel = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None).FirstOrDefault(t => t.name == "planter_pot_clay.002" && t.GetComponent<Renderer>() != null);
         var potRenderer = potModel == null ? null : potModel.GetComponent<Renderer>();
-        var pot = potRenderer != null ? potRenderer.bounds : Box("Lien_PlantPot_02", new Vector3(-1.2f, 0, -41.1f), new Vector3(-.8f, .25f, -40.7f));
+        var pot = potRenderer != null ? potRenderer.bounds : Box("Lien_PlantPot_02", new Vector3(-1.7f, 0, -41.1f), new Vector3(-1.3f, .25f, -40.7f));
         if (potRenderer == null) missing.Add("planter_pot_clay.002");
         else { GameObjectUtility.SetStaticEditorFlags(potModel.gameObject, 0); story.fallenPot = potModel; }
         Interact("Lien gate plant", pot, .08f, NightAction.Gate, "Phụ cô Liên dựng chậu");
@@ -237,15 +237,15 @@ public static class NightOneRealisticSetup
         story.greyGlove.transform.SetParent(gameplay, false); story.greyGlove.transform.position = lien + new Vector3(.25f, 1.1f, 0);
         story.greyGlove.transform.localScale = new Vector3(.1f, .04f, .2f); story.greyGlove.GetComponent<Renderer>().sharedMaterial = Mat("Concrete", new Color(.28f, .32f, .35f));
 
-        var top = Box("BH_F3_Room7_DoorTop", new Vector3(-2.75f, 12.3f, -41.7f), new Vector3(-1.85f, 12.45f, -41.6f));
+        var top = Box("BH_F3_Room7_DoorTop", new Vector3(-3.25f, 12.3f, -41.7f), new Vector3(-2.35f, 12.45f, -41.6f));
         var entry = Interact("Room7 entry", At(new Vector3(top.center.x, (room.min.y + top.min.y) / 2, -41.65f), new Vector3(top.size.x, top.min.y - room.min.y, .22f)), 0, NightAction.Room, "Vào phòng 7");
         var door = entry.AddComponent<NightRoomDoor>();
         var leaf = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None).FirstOrDefault(t => t.name == "env_room7_door");
         if (leaf == null) missing.Add("env_room7_door");
         else { door.leaf = leaf; door.hinge = new Vector3(top.max.x, room.min.y, -41.65f); }
-        var roomPoint = Point("CHECKPOINT_N1_Room7", new Vector3(-3, 10.2f, -44));
+        var roomPoint = Point("CHECKPOINT_N1_Room7", new Vector3(-3.5f, 10.2f, -44));
         story.roomSpawn = Marker("Checkpoint room7", new Vector3(roomPoint.x, room.min.y + .08f, roomPoint.z), 0);
-        var doorBag = Point("PLACE_N1_BackpackDoor", new Vector3(-2, 10.2f, -42));
+        var doorBag = Point("PLACE_N1_BackpackDoor", new Vector3(-2.5f, 10.2f, -42));
         story.bagAtDoor = Marker("Bag beside door", new Vector3(doorBag.x - .3f, room.min.y + .25f, doorBag.z - .45f));
         story.bed = Interact("Mattress", room, .03f, NightAction.Bed, "Ngồi xuống nệm / nghỉ").transform;
         story.bag = Interact("Backpack", At(story.bagAtDoor.position, new Vector3(.4f, .5f, .3f)), 0, NightAction.Bag, "Xem kỹ ba lô", dark);
@@ -254,11 +254,11 @@ public static class NightOneRealisticSetup
         flap.GetComponent<Renderer>().sharedMaterial = Mat("Interact", new Color(.2f, .55f, .5f));
         var presentation = story.bag.AddComponent<NightBagPresentation>(); presentation.director = story; presentation.flap = flap.transform;
         Interact("Move bag", At(story.bagAtDoor.position + new Vector3(0, .32f, 0), new Vector3(.3f, .14f, .3f)), 0, NightAction.MoveBag, "Dời ba lô");
-        var box = Box("BH_F3_Room7_PhoneBox", new Vector3(-3.25f, 10.2f, -45.65f), new Vector3(-3, 10.26f, -45.5f));
+        var box = Box("BH_F3_Room7_PhoneBox", new Vector3(-3.75f, 10.2f, -45.65f), new Vector3(-3.5f, 10.26f, -45.5f));
         Interact("Deposit slip", At(new Vector3(box.center.x - .4f, box.min.y + .005f, box.center.z), new Vector3(.2f, .01f, .15f)), 0, NightAction.Deposit, "Xem giấy nhận cọc", paper);
         Interact("Phone box and charger", box, .06f, NightAction.Charge, "Cắm sạc máy");
-        Interact("Wifi", Box("BH_F3_Room7_WifiSign", new Vector3(-2, 11.6f, -41.73f), new Vector3(-1.82f, 11.9f, -41.71f)), .04f, NightAction.Wifi, "Xem bảng Wi-Fi");
-        Interact("Foggy mirror", Box("BH_F3_WC_Mirror_Fogged", new Vector3(-13.05f, 11.4f, -39.1f), new Vector3(-13, 12.1f, -38.5f)), .04f, NightAction.Mirror, "Xem gương mờ");
+        Interact("Wifi", Box("BH_F3_Room7_WifiSign", new Vector3(-2.5f, 11.6f, -41.73f), new Vector3(-2.32f, 11.9f, -41.71f)), .04f, NightAction.Wifi, "Xem bảng Wi-Fi");
+        Interact("Foggy mirror", Box("BH_F3_WC_Mirror_Fogged", new Vector3(-13.55f, 11.4f, -39.1f), new Vector3(-13.5f, 12.1f, -38.5f)), .04f, NightAction.Mirror, "Xem gương mờ");
 
         foreach (var ghost in new[] { "BH_G_ShoeRack" })
         {
@@ -266,7 +266,7 @@ public static class NightOneRealisticSetup
             if (c != null && c.enabled && (r == null || !r.enabled)) { c.enabled = false; Debug.Log("NIGHT1_REAL_HIDDEN_BLOCKER_OFF " + ghost); }
         }
         var sill = new GameObject("Night1 boarding gate sill").AddComponent<BoxCollider>();
-        sill.transform.position = new Vector3(-1.27f, -.05f, gate.center.z - 1.1f); sill.size = new Vector3(.5f, .1f, 2.2f);
+        sill.transform.position = new Vector3(gate.center.x - .02f, -.05f, gate.center.z - 1.1f); sill.size = new Vector3(.5f, .1f, 2.2f);
         var nav = new GameObject("Night1 navigation").AddComponent<NavMeshSurface>();
         nav.transform.SetParent(gameplay, false);
         nav.collectObjects = CollectObjects.Volume; nav.center = new Vector3(-4, 6, -27); nav.size = new Vector3(24, 16, 68);
@@ -277,7 +277,7 @@ public static class NightOneRealisticSetup
         AssetDatabase.DeleteAsset(NavPath); AssetDatabase.CreateAsset(nav.navMeshData, NavPath);
         var shut = GameObject.CreatePrimitive(PrimitiveType.Cube); shut.name = "Night1 prologue gate shut";
         shut.transform.SetParent(gameplay, false);
-        shut.transform.position = new Vector3(-1.3f, 1.2f, (gate.min.z - 44.6f) / 2);
+        shut.transform.position = new Vector3(gate.center.x - .05f, 1.2f, (gate.min.z - 44.6f) / 2);
         shut.transform.localScale = new Vector3(.06f, 2.4f, gate.min.z + 44.6f);
         shut.GetComponent<Renderer>().sharedMaterial = dark;
         story.prologueGate = shut;
@@ -308,7 +308,7 @@ public static class NightOneRealisticSetup
         {
             var row = new System.Text.StringBuilder($"{z,6:0.0} ");
             for (float x = -4.4f; x <= 4.41f; x += .2f)
-                row.Append(NavMesh.SamplePosition(new Vector3(x, .3f, z), out var hit, .25f, NavMesh.AllAreas) && hit.position.y < 1 ? '#' : Mathf.Abs(x) <= 1.25f ? '.' : ' ');
+                row.Append(NavMesh.SamplePosition(new Vector3(x, .3f, z), out var hit, .25f, NavMesh.AllAreas) && hit.position.y < 1 ? '#' : Mathf.Abs(x) <= AlleyWidth.Half ? '.' : ' ');
             lines.Add(row.ToString());
         }
         var story = Object.FindFirstObjectByType<NightOneDirector>();
@@ -318,10 +318,10 @@ public static class NightOneRealisticSetup
             var blockers = Physics.OverlapCapsule(w.transform.position + Vector3.up * .3f, w.transform.position + Vector3.up * 1.6f, .25f, PlayerGeometry.WorldMask, QueryTriggerInteraction.Ignore);
             lines.Add($"{w.displayName} at {w.transform.position} nearest={(ok ? near.position.ToString() : "none")} blockers={string.Join(",", blockers.Select(b => b.name))}");
         }
-        foreach (var (label, area) in new[] { ("shop", new Bounds(new Vector3(2.5f, 1, -2.5f), new Vector3(5, 2, 5))), ("gate", new Bounds(new Vector3(-1, 1, -43), new Vector3(2, 2, 4))), ("room7door", new Bounds(new Vector3(-2.3f, 11.2f, -41.3f), new Vector3(1.6f, 2, 1.4f))) })
+        foreach (var (label, area) in new[] { ("shop", new Bounds(new Vector3(3f, 1, -2.5f), new Vector3(5, 2, 5))), ("gate", new Bounds(new Vector3(-1.5f, 1, -43), new Vector3(2, 2, 4))), ("room7door", new Bounds(new Vector3(-2.8f, 11.2f, -41.3f), new Vector3(1.6f, 2, 1.4f))) })
             foreach (var c in Physics.OverlapBox(area.center, area.extents, Quaternion.identity, PlayerGeometry.WorldMask, QueryTriggerInteraction.Ignore))
                 lines.Add($"{label}: {c.name} {c.GetType().Name} min={c.bounds.min} max={c.bounds.max}");
-        foreach (var probe in new[] { new Vector3(0, 0, -43), new Vector3(-2, 0, -43), new Vector3(-2.2f, 0, -39.4f), new Vector3(-2.9f, .3f, -38.7f), new Vector3(-5.6f, 1.7f, -39.2f), new Vector3(-3.5f, 3.4f, -39.7f), new Vector3(-5.6f, 5.1f, -39.2f), new Vector3(-3.5f, 6.8f, -39.7f), new Vector3(-5.6f, 8.5f, -39.2f), new Vector3(-3, 10.2f, -39.7f), new Vector3(-2.1f, 10.2f, -41) })
+        foreach (var probe in new[] { new Vector3(0, 0, -43), new Vector3(-2.5f, 0, -43), new Vector3(-2.7f, 0, -39.4f), new Vector3(-3.4f, .3f, -38.7f), new Vector3(-6.1f, 1.7f, -39.2f), new Vector3(-4f, 3.4f, -39.7f), new Vector3(-6.1f, 5.1f, -39.2f), new Vector3(-4f, 6.8f, -39.7f), new Vector3(-6.1f, 8.5f, -39.2f), new Vector3(-3.5f, 10.2f, -39.7f), new Vector3(-2.6f, 10.2f, -41) })
         {
             bool found = NavMesh.SamplePosition(probe, out var at, .6f, NavMesh.AllAreas);
             var route = new NavMeshPath();
@@ -330,7 +330,7 @@ public static class NightOneRealisticSetup
         }
         var rack = Child("BH_G_ShoeRack");
         lines.Add($"shoerack renderer={(rack && rack.GetComponent<Renderer>() ? rack.GetComponent<Renderer>().enabled.ToString() : "none")} collider={(rack && rack.GetComponent<Collider>() ? rack.GetComponent<Collider>().enabled.ToString() : "none")}");
-        foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None).Where(r => r.enabled && r.bounds.Intersects(new Bounds(new Vector3(-1.7f, .5f, -41), new Vector3(.6f, 1, 1.4f)))))
+        foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None).Where(r => r.enabled && r.bounds.Intersects(new Bounds(new Vector3(-2.2f, .5f, -41), new Vector3(.6f, 1, 1.4f)))))
             lines.Add($"visible near rack: {r.name} min={r.bounds.min} max={r.bounds.max}");
         int ghosts = 0;
         foreach (var c in blockout.GetComponentsInChildren<Collider>().Where(c => c.enabled))
@@ -340,7 +340,7 @@ public static class NightOneRealisticSetup
         }
         lines.Add($"hidden blockout colliders in play area: {ghosts}");
         var path = new NavMeshPath();
-        NavMesh.SamplePosition(new Vector3(-2.1f, 10.2f, -41), out var corridor, 1.5f, NavMesh.AllAreas);
+        NavMesh.SamplePosition(new Vector3(-2.6f, 10.2f, -41), out var corridor, 1.5f, NavMesh.AllAreas);
         NavMesh.CalculatePath(story.parkingSpawn.position, corridor.position, NavMesh.AllAreas, path);
         lines.Add($"stairs corridor={corridor.position} status={path.status} corners={path.corners.Length}");
         System.IO.File.WriteAllLines(System.Environment.GetEnvironmentVariable("NAV_OUT"), lines);

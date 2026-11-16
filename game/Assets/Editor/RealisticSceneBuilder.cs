@@ -396,7 +396,7 @@ public static class RealisticSceneBuilder
         var posters = new[] { "D_PosterDrill", "D_PosterSeptic", "D_PosterLoan" };
         foreach (var side in new[] { -1, 1 })
         {
-            var into = new Vector3(side, 0, 0); float x = side * 1.25f;
+            var into = new Vector3(side, 0, 0); float x = side * AlleyWidth.Half;
             void Stick(System.Func<Vector3> spot, Vector2 size, float tilt)
             {
                 for (int t = 0; t < 10; t++) if (Decal(root, posters[rng.Next(3)], spot(), into, size, null, tilt, true)) return;
@@ -405,7 +405,7 @@ public static class RealisticSceneBuilder
                 foreach (var ledge in new[] { 3.25f, 6.65f })
                     if (rng.NextDouble() < .5) { float h = R(1.3f, 2.4f); Decal(root, "D_Leak" + rng.Next(6), new Vector3(x, ledge - h / 2, -y), into, new Vector2(R(.9f, 1.6f), h)); }
             for (float y = 0; y < 48; y += 3) Decal(root, "D_DampBase", new Vector3(x, .5f, -(y + 1.5f)), into, new Vector2(3.1f, 1f));
-            var houses = side < 0 ? LeftHouses : RightHouses;
+            var houses = side > 0 ? LeftHouses : RightHouses;
             for (int k = 0; k < houses.Length; k++)
             {
                 var (y0, y1) = houses[k];
@@ -414,14 +414,14 @@ public static class RealisticSceneBuilder
                 if (rng.NextDouble() < .5) Stick(() => new Vector3(x, R(1.0f, 2.2f), -R(y0 + .6f, y1 - .6f)), new Vector2(.32f, .45f), R(-6, 6));
             }
         }
-        Decal(root, "D_ShopSign", new Vector3(-1.25f, 3.06f, -2.5f), Vector3.left, new Vector2(4.1f, .44f));
-        Decal(root, "D_RoomForRent", new Vector3(1.25f, 1.55f, -44.75f), Vector3.right, new Vector2(.75f, .25f));
-        foreach (var y in new[] { 4.5f, 11f, 17.5f, 26f, 33f, 41f }) Decal(root, "D_Cracks", new Vector3(R(-.6f, .3f), 0, -y), Vector3.down, new Vector2(R(1.2f, 2f), R(1.2f, 2f)), "D_Cracks_normal", R(0, 360));
+        Decal(root, "D_ShopSign", new Vector3(-AlleyWidth.Half, 3.06f, -2.5f), Vector3.left, new Vector2(4.1f, .44f));
+        Decal(root, "D_RoomForRent", new Vector3(AlleyWidth.Half, 1.55f, -44.75f), Vector3.right, new Vector2(.75f, .25f));
+        foreach (var y in new[] { 4.5f, 11f, 17.5f, 26f, 33f, 41f }) Decal(root, "D_Cracks", new Vector3(R(-.84f, .42f), 0, -y), Vector3.down, new Vector2(R(1.2f, 2f), R(1.2f, 2f)), "D_Cracks_normal", R(0, 360));
         foreach (var y in new[] { 18.4f, 37.2f })
             foreach (var shift in new[] { 0, .6f, -.6f, 1.2f, -1.2f, 1.8f, -1.8f, 2.4f, -2.4f })
-                if (Decal(root, "D_Manhole", new Vector3(-.2f, 0, -(y + shift)), Vector3.down, new Vector2(.75f, .75f), "D_Manhole_normal", R(0, 360), true)) break;
+                if (Decal(root, "D_Manhole", new Vector3(-.28f, 0, -(y + shift)), Vector3.down, new Vector2(.75f, .75f), "D_Manhole_normal", R(0, 360), true)) break;
         foreach (var (y, k) in new[] { (3.2f, 0), (9.8f, 1), (14.5f, 2), (23.5f, 0), (28.9f, 1), (35.4f, 2), (45f, 1) })
-            Puddle(root, k, new Vector3(R(-.7f, .5f), .009f, -y), new Vector2(R(.9f, 1.6f), R(.7f, 1.3f)), R(0, 180));
+            Puddle(root, k, new Vector3(R(-.98f, .7f), .009f, -y), new Vector2(R(.9f, 1.6f), R(.7f, 1.3f)), R(0, 180));
     }
 
     static void DressGarage()
@@ -442,7 +442,23 @@ public static class RealisticSceneBuilder
         Decal(root, "D_PosterDrill", new Vector3(-4.5f, 1.5f, -49.6f), Vector3.left, new Vector2(.32f, .45f), null, 3, true);
     }
 
-    static void ParkBikes() => ParkBikes(new[] { (-.925f, 6.5f, 0f), (.925f, 13.5f, 180f), (-.925f, 19f, 0f), (.925f, 22.5f, 180f), (-.925f, 31f, 180f), (.925f, 34.5f, 0f) }, "Parked Cub ", 0);
+    static Bounds MeshWorldBounds(MeshFilter f)
+    {
+        var b = f.sharedMesh.bounds; var t = f.transform;
+        var w = new Bounds(t.TransformPoint(b.center), Vector3.zero);
+        for (int i = 0; i < 8; i++) w.Encapsulate(t.TransformPoint(b.center + Vector3.Scale(b.extents, new Vector3(i & 1, (i >> 1) & 1, (i >> 2) & 1) * 2 - Vector3.one)));
+        return w;
+    }
+
+    static readonly float[] ParkedYaws = { 0f, 180f, 0f, 180f, 180f, 0f };
+
+    static void ParkBikes()
+    {
+        var covers = Object.FindObjectsByType<MeshFilter>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+            .Where(f => f.name.StartsWith("Cover_ParkedBike_") && f.transform.root.name == "night1_3_blockout" && f.sharedMesh != null).OrderBy(f => f.name)
+            .Select(MeshWorldBounds).ToArray();
+        ParkBikes(covers.Select((b, k) => (b.center.x, -b.center.z, ParkedYaws[k % ParkedYaws.Length])).ToArray(), "Parked Cub ", 0);
+    }
 
     static void ParkBikes((float x, float y, float yaw)[] spots, string prefix, int paintOffset, string[] slots = null)
     {
@@ -689,9 +705,9 @@ public static class RealisticSceneBuilder
         var g = new GameObject("Light probes").AddComponent<LightProbeGroup>();
         var pts = new List<Vector3>();
         for (float y = -1; y <= 58; y += 2)
-            foreach (var x in y > 48 ? new[] { -3.5f, 0f, 3.5f } : new[] { -.9f, 0f, .9f })
+            foreach (var x in y > 48 ? new[] { -3.5f, 0f, 3.5f } : new[] { -(AlleyWidth.Half - .35f), 0f, AlleyWidth.Half - .35f })
                 foreach (var h in new[] { .3f, 1.4f, 2.8f }) pts.Add(new Vector3(x, h, -y));
-        for (float y = 38.5f; y < 48; y += 2) for (float x = 2; x < 13; x += 2.5f) foreach (var h in new[] { 1.4f, 4.8f, 8.2f, 11.6f }) pts.Add(new Vector3(-x, h, -y));
+        for (float y = 38.5f; y < 48; y += 2) for (float x = 2 + AlleyWidth.Shift; x < 13 + AlleyWidth.Shift; x += 2.5f) foreach (var h in new[] { 1.4f, 4.8f, 8.2f, 11.6f }) pts.Add(new Vector3(-x, h, -y));
         g.probePositions = pts.ToArray();
     }
 
@@ -714,6 +730,7 @@ public static class RealisticSceneBuilder
         PrepareImports();
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         var envs = Models.Where(File.Exists).Select(Place).ToList();
+        foreach (var e in envs.Where(e => e.name == "env_room7")) e.transform.position = BoardingOffset;
         var street = Place("Assets/Prefabs/Environment/NightStreet.prefab"); envs.Add(street);
         var alley = Place(AlleyModel);
         var blockout = Place("Assets/Art/Blockout/night1_3_blockout.fbx");
@@ -778,7 +795,7 @@ public static class RealisticSceneBuilder
         var volume = new GameObject("Realistic post").AddComponent<Volume>(); volume.isGlobal = true; volume.priority = 50; volume.sharedProfile = profile;
 
         Point("Garage bulb", new Vector3(0, 2.5f, -53), new Color(1f, .72f, .42f), 9, 5f); Halo(new Vector3(0, 2.62f, -53), new Color(1f, .72f, .42f, .5f), .6f);
-        Point("Room7 tube", new Vector3(-3.3f, 12.9f, -44.5f), new Color(.86f, .94f, 1f), 8, 6f);
+        Point("Room7 tube", new Vector3(-3.8f, 12.9f, -44.5f), new Color(.86f, .94f, 1f), 8, 6f);
         foreach (var t in blockout.GetComponentsInChildren<Transform>().Where(t => t.name.Contains("MotionLight")).ToList())
         {
             var r = t.GetComponent<Renderer>();
@@ -786,8 +803,8 @@ public static class RealisticSceneBuilder
         }
         AlleyLights(alley);
         Probe(new Vector3(0, 1.6f, -53), new Vector3(9.5f, 3.6f, 10.5f));
-        Probe(new Vector3(-3.3f, 11.6f, -44.7f), new Vector3(4.2f, 3.5f, 6.4f));
-        for (int i = 0; i < 6; i++) Probe(new Vector3(0, 1.6f, -4 - i * 8), new Vector3(2.6f, 4f, 8.2f));
+        Probe(new Vector3(-3.8f, 11.6f, -44.7f), new Vector3(4.2f, 3.5f, 6.4f));
+        for (int i = 0; i < 6; i++) Probe(new Vector3(0, 1.6f, -4 - i * 8), new Vector3(2 * AlleyWidth.Half + .1f, 4f, 8.2f));
         Probe(new Vector3(0, 3, 10), new Vector3(60, 10, 25));
         Probes();
 
@@ -858,9 +875,9 @@ public static class RealisticSceneBuilder
     static void Shots(Camera cam, string prefix = "Real", string dir = "Logs")
     {
         var views = new (string name, Vector3 pos, Vector3 rot)[] {
-            ("bh_corridor", new Vector3(-2.2f, 11.8f, -41f), new Vector3(6, 270, 0)),
-            ("bh_door", new Vector3(-7.4f, 11.8f, -40.7f), new Vector3(10, 215, 0)),
-            ("bh_stairs", new Vector3(-5.5f, 11.8f, -39.7f), new Vector3(25, 95, 0)),
+            ("bh_corridor", new Vector3(-2.7f, 11.8f, -41), new Vector3(6, 270, 0)),
+            ("bh_door", new Vector3(-7.9f, 11.8f, -40.7f), new Vector3(10, 215, 0)),
+            ("bh_stairs", new Vector3(-6f, 11.8f, -39.7f), new Vector3(25, 95, 0)),
             ("front_near", new Vector3(20f, 1.6f, 2.3f), new Vector3(6, 72, 0)),
             ("front_near2", new Vector3(-30f, 1.6f, 2.3f), new Vector3(6, 288, 0)),
             ("front_far", new Vector3(56f, 1.6f, 13.8f), new Vector3(6, 105, 0)),
@@ -870,16 +887,16 @@ public static class RealisticSceneBuilder
             ("front_trash", new Vector3(-3.6f, 1.4f, 3.2f), new Vector3(14, 243, 0)),
             ("front_tyres", new Vector3(-28.5f, 1.5f, 2.2f), new Vector3(14, 235, 0)),
             ("front_eatery", new Vector3(30.8f, 1.5f, 2.4f), new Vector3(14, 234, 0)),
-            ("bh_corridor_end", new Vector3(-4.6f, 11.8f, -40.95f), new Vector3(10, 262, 0)),
-            ("bh_plate", new Vector3(-3.4f, 11.8f, -40.8f), new Vector3(14, 318, 0)),
-            ("bh_landing", new Vector3(-4.1f, 6.9f, -39.7f), new Vector3(-8, 92, 0)),
-            ("bh_wc_sink", new Vector3(-11.55f, 11.65f, -39.5f), new Vector3(18, 270, 0)),
-            ("bh_room7", new Vector3(-2.3f, 11.8f, -42.4f), new Vector3(14, 165, 0)),
-            ("bh_stairs_up", new Vector3(-2.7f, 7.4f, -38.7f), new Vector3(-20, 270, 0)),
-            ("bh_wc", new Vector3(-11.6f, 11.8f, -39.8f), new Vector3(18, 250, 0)),
-            ("bh_wc_stall", new Vector3(-11.65f, 11.9f, -39.95f), new Vector3(42, 340, 0)),
-            ("bh_lien", new Vector3(-2.4f, 1.6f, -45.2f), new Vector3(12, 245, 0)),
-            ("bh_entry", new Vector3(-1.88f, 1.6f, -38.8f), new Vector3(6, 182, 0)),
+            ("bh_corridor_end", new Vector3(-5.1f, 11.8f, -40.95f), new Vector3(10, 262, 0)),
+            ("bh_plate", new Vector3(-3.9f, 11.8f, -40.8f), new Vector3(14, 318, 0)),
+            ("bh_landing", new Vector3(-4.6f, 6.9f, -39.7f), new Vector3(-8, 92, 0)),
+            ("bh_wc_sink", new Vector3(-12.05f, 11.65f, -39.5f), new Vector3(18, 270, 0)),
+            ("bh_room7", new Vector3(-2.8f, 11.8f, -42.4f), new Vector3(14, 165, 0)),
+            ("bh_stairs_up", new Vector3(-3.2f, 7.4f, -38.7f), new Vector3(-20, 270, 0)),
+            ("bh_wc", new Vector3(-12.1f, 11.8f, -39.8f), new Vector3(18, 250, 0)),
+            ("bh_wc_stall", new Vector3(-12.15f, 11.9f, -39.95f), new Vector3(42, 340, 0)),
+            ("bh_lien", new Vector3(-2.9f, 1.6f, -45.2f), new Vector3(12, 245, 0)),
+            ("bh_entry", new Vector3(-2.38f, 1.6f, -38.8f), new Vector3(6, 182, 0)),
             ("shop_homeware", new Vector3(-154f, 1.7f, 13.5f), new Vector3(6, 0, 0)),
             ("shop_homeware_in", new Vector3(-153.5f, 1.65f, 17.2f), new Vector3(10, 35, 0)),
             ("shop_rice", new Vector3(57f, 1.7f, 3.2f), new Vector3(6, 180, 0)),
@@ -896,21 +913,21 @@ public static class RealisticSceneBuilder
             ("road_west", new Vector3(-20, 1.6f, 9), new Vector3(-6, 270, 0)),
             ("road_up", new Vector3(60, 1.6f, 11), new Vector3(-30, 60, 0)),
             ("alley", new Vector3(0, 1.6f, -1), new Vector3(5, 180, 0)),
-            ("alley_mid", new Vector3(.4f, 1.6f, -30), new Vector3(3, 180, 0)),
-            ("alley_shop", new Vector3(.8f, 1.55f, -4.2f), new Vector3(4, 300, 0)),
-            ("alley_up", new Vector3(.2f, 1.6f, -10), new Vector3(-28, 190, 0)),
-            ("alley_back", new Vector3(-.3f, 1.6f, -40), new Vector3(4, 0, 0)),
-            ("alley_bike", new Vector3(.9f, 1.4f, -1.2f), new Vector3(14, 330, 0)),
-            ("alley_gate", new Vector3(-.6f, 1.6f, -38.5f), new Vector3(6, 150, 0)),
+            ("alley_mid", new Vector3(0.9f, 1.6f, -30), new Vector3(3, 180, 0)),
+            ("alley_shop", new Vector3(1.3f, 1.55f, -4.2f), new Vector3(4, 300, 0)),
+            ("alley_up", new Vector3(0.486f, 1.6f, -10), new Vector3(-28, 190, 0)),
+            ("alley_back", new Vector3(-0.729f, 1.6f, -40), new Vector3(4, 0, 0)),
+            ("alley_bike", new Vector3(1.4f, 1.4f, -1.2f), new Vector3(14, 330, 0)),
+            ("alley_gate", new Vector3(-1.1f, 1.6f, -38.5f), new Vector3(6, 150, 0)),
             ("garage", new Vector3(0, 1.6f, -48.5f), new Vector3(10, 180, 0)),
-            ("garage_entry", new Vector3(.3f, 1.6f, -45.5f), new Vector3(6, 185, 0)),
+            ("garage_entry", new Vector3(0.729f, 1.6f, -45.5f), new Vector3(6, 185, 0)),
             ("garage_back", new Vector3(-.5f, 1.6f, -57.2f), new Vector3(8, 15, 0)),
             ("garage_wave", new Vector3(-.4f, 1.5f, -50.2f), new Vector3(22, 120, 0)),
             ("garage_phone", new Vector3(-.9f, 1.0f, -51.6f), new Vector3(36, 290, 0)),
             ("garage_left", new Vector3(1.2f, 1.6f, -55.5f), new Vector3(10, 315, 0)),
             ("garage_note", new Vector3(3.55f, 1.6f, -51.0f), new Vector3(4, 100, 0)),
             ("garage_fire", new Vector3(3.3f, 1.65f, -50.4f), new Vector3(6, 62, 0)),
-            ("room7", new Vector3(-2.3f, 11.8f, -42.3f), new Vector3(15, 200, 0)) };
+            ("room7", new Vector3(-2.8f, 11.8f, -42.3f), new Vector3(15, 200, 0)) };
         var rt = new RenderTexture(1280, 720, 24, RenderTextureFormat.ARGB32); var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
         Directory.CreateDirectory(dir);
         foreach (var v in views.Where(s => ShotsOnly == null || s.name.StartsWith(ShotsOnly)))
@@ -935,6 +952,7 @@ public static class RealisticSceneBuilder
         EditorApplication.Exit(bounds.after == 0 ? 0 : 1);
     }
 
+    static readonly Vector3 BoardingOffset = new Vector3(-AlleyWidth.Shift, 0, 0);
     const string BoardingHouseModel = "Assets/Art/Models/Environment/env_boarding_house.fbx";
     const string BoardingHouseRoot = "env_boarding_house";
     const string BoardingHouseBike = "Boarding Cub ";
@@ -963,9 +981,9 @@ public static class RealisticSceneBuilder
         {
             var prev = GameObject.Find(name); if (prev != null) Object.DestroyImmediate(prev);
         }
-        var house = Place(BoardingHouseModel); house.name = BoardingHouseRoot;
-        Point(BoardingHouseBulb, new Vector3(-3.6f, 2.75f, -42.4f), new Color(1f, .76f, .48f), 8.5f, 3.8f, false);
-        Point(BoardingEntryBulb, new Vector3(-3.8f, 2.7f, -39.6f), new Color(1f, .78f, .52f), 7f, 3.6f, false);
+        var house = Place(BoardingHouseModel); house.name = BoardingHouseRoot; house.transform.position = BoardingOffset;
+        Point(BoardingHouseBulb, new Vector3(-4.1f, 2.75f, -42.4f), new Color(1f, .76f, .48f), 8.5f, 3.8f, false);
+        Point(BoardingEntryBulb, new Vector3(-4.3f, 2.7f, -39.6f), new Color(1f, .78f, .52f), 7f, 3.6f, false);
         foreach (var r in house.GetComponentsInChildren<MeshRenderer>()) r.sharedMaterials = r.sharedMaterials.Select(ExistingPBR).ToArray();
         return boxes.Count;
     }
@@ -1075,16 +1093,16 @@ public static class RealisticSceneBuilder
         }
         int k = 0;
         foreach (var z in new[] { 1.7f, 5.1f, 8.5f })
-            Point(BoardingLandingLamp + k++, new Vector3(-5.95f, z + 1.36f, -39.2f), new Color(1f, .78f, .52f), 5f, 5.5f, false);
-        Point(BoardingHouseBulb, new Vector3(-3.6f, 2.75f, -42.4f), new Color(1f, .76f, .48f), 8.5f, 3.8f, false);
-        Point(BoardingEntryBulb, new Vector3(-3.8f, 2.7f, -39.6f), new Color(1f, .78f, .52f), 7f, 3.6f, false);
-        Point("Boarding lien bulb", new Vector3(-3.6f, 2.75f, -45.8f), new Color(1f, .76f, .48f), 6.5f, 2.8f, false);
-        Point("Boarding wc bulb", new Vector3(-11.8f, 12.6f, -39.6f), new Color(1f, .82f, .56f), 4.8f, 2.4f, false);
+            Point(BoardingLandingLamp + k++, new Vector3(-6.45f, z + 1.36f, -39.2f), new Color(1f, .78f, .52f), 5f, 5.5f, false);
+        Point(BoardingHouseBulb, new Vector3(-4.1f, 2.75f, -42.4f), new Color(1f, .76f, .48f), 8.5f, 3.8f, false);
+        Point(BoardingEntryBulb, new Vector3(-4.3f, 2.7f, -39.6f), new Color(1f, .78f, .52f), 7f, 3.6f, false);
+        Point("Boarding lien bulb", new Vector3(-4.1f, 2.75f, -45.8f), new Color(1f, .76f, .48f), 6.5f, 2.8f, false);
+        Point("Boarding wc bulb", new Vector3(-12.3f, 12.6f, -39.6f), new Color(1f, .82f, .56f), 4.8f, 2.4f, false);
         var frosted = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/M_GlassFrosted.mat");
         if (frosted != null) { frosted.SetColor("_BaseColor", new Color(.22f, .26f, .30f)); frosted.SetFloat("_Smoothness", .38f); EditorUtility.SetDirty(frosted); }
         var stain = BoardingWall("M_BoardingWallStain", new Color(.78f, .7f, .52f));
         var mold = BoardingWall("M_BoardingWallMold", new Color(.5f, .5f, .4f));
-        var house = new Bounds(new Vector3(-7.25f, 7f, -43f), new Vector3(12.2f, 15f, 10.2f));
+        var house = new Bounds(new Vector3(-7.75f, 7f, -43f), new Vector3(12.2f, 15f, 10.2f));
         foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(r => r.transform.IsChildOf(GameObject.Find(BoardingHouseRoot).transform) || (house.Contains(r.bounds.min) && house.Contains(r.bounds.max))))
             r.sharedMaterials = r.sharedMaterials.Select(m => m == null || m.name == stain.name || m.name == mold.name || !m.HasProperty("_BaseMap") || m.GetTexture("_BaseMap") == null || m.GetTexture("_BaseMap").name != "peeling_painted_wall_albedo" ? m : m.name == "M_WallMoldStain" ? mold : stain).ToArray();
         return dress.GetComponentsInChildren<MeshRenderer>().Length;
@@ -1106,7 +1124,7 @@ public static class RealisticSceneBuilder
             for (int i = 0; i < tris.Length; i += 3)
             {
                 var a = tr.TransformPoint(verts[tris[i]]); var b = tr.TransformPoint(verts[tris[i + 1]]); var c = tr.TransformPoint(verts[tris[i + 2]]);
-                bool inner = Mathf.Abs(a.x + 1.44f) < .03f && Mathf.Abs(b.x + 1.44f) < .03f && Mathf.Abs(c.x + 1.44f) < .03f
+                bool inner = Mathf.Abs(a.x + 1.94f) < .03f && Mathf.Abs(b.x + 1.94f) < .03f && Mathf.Abs(c.x + 1.94f) < .03f
                     && Mathf.Min(a.z, Mathf.Min(b.z, c.z)) > -48.1f && Mathf.Max(a.z, Mathf.Max(b.z, c.z)) < -37.9f
                     && Vector3.Cross(b - a, c - a).x < 0;
                 if (!inner) { keep[s].Add(tris[i]); keep[s].Add(tris[i + 1]); keep[s].Add(tris[i + 2]); continue; }
@@ -1114,7 +1132,7 @@ public static class RealisticSceneBuilder
                 {
                     for (int k = 0; k < 3; k++)
                     {
-                        int v = tris[i + k]; var wp = tr.TransformPoint(verts[v]); wp.x = -1.30f;
+                        int v = tris[i + k]; var wp = tr.TransformPoint(verts[v]); wp.x = -1.80f;
                         verts[v] = tr.InverseTransformPoint(wp);
                     }
                     keep[s].Add(tris[i]); keep[s].Add(tris[i + 1]); keep[s].Add(tris[i + 2]);
@@ -1124,7 +1142,7 @@ public static class RealisticSceneBuilder
                 for (int k = 0; k < 3; k++)
                 {
                     int v = tris[i + k]; moved.Add(verts.Count);
-                    var wp = tr.TransformPoint(verts[v]); wp.x = -1.30f;
+                    var wp = tr.TransformPoint(verts[v]); wp.x = -1.80f;
                     verts.Add(tr.InverseTransformPoint(wp));
                     normals.Add(normals[v]);
                     if (tangents.Count > 0) tangents.Add(tangents[v]);
@@ -1136,9 +1154,9 @@ public static class RealisticSceneBuilder
         for (int vi = 0; vi < verts.Count; vi++)
         {
             var wp = tr.TransformPoint(verts[vi]);
-            if (wp.x < -1.30f && wp.x > -1.48f && wp.y > 3.0f && wp.z > -48.1f && wp.z < -37.9f)
+            if (wp.x < -1.80f && wp.x > -1.98f && wp.y > 3.0f && wp.z > -48.1f && wp.z < -37.9f)
             {
-                wp.x = -1.30f;
+                wp.x = -1.80f;
                 verts[vi] = tr.InverseTransformPoint(wp);
                 shiftedInPlace++;
             }
@@ -1153,9 +1171,9 @@ public static class RealisticSceneBuilder
             for (int vi = 0; vi < gv.Length; vi++)
             {
                 var wp = gt.TransformPoint(gv[vi]);
-                if (wp.x < -1.30f && wp.x > -1.48f && wp.y > 3.0f && wp.z > -48.1f && wp.z < -37.9f)
+                if (wp.x < -1.80f && wp.x > -1.98f && wp.y > 3.0f && wp.z > -48.1f && wp.z < -37.9f)
                 {
-                    wp.x = -1.30f;
+                    wp.x = -1.80f;
                     gv[vi] = gt.InverseTransformPoint(wp);
                     gChanged = true;
                     shiftedInPlace++;
@@ -1246,6 +1264,141 @@ public static class RealisticSceneBuilder
         EditorApplication.Exit(parts > 0 && bounds.after == 0 ? 0 : 1);
     }
 
+    const string BlockoutModel = "Assets/Art/Blockout/night1_3_blockout.fbx";
+    static readonly string[] WidenKeep = { "env_alley", "night1_3_blockout", "PlayBounds", "Player", "Light probes", "Alley dressing", "Garage dressing", "Realistic post",
+        "NightStreet", "Shutter backing", "Street trees", "Shallow alleys", StreetDetailsRoot, StreetFrontsRoot, BoardingDressRoot, "env_garage", "Garage puddles" };
+    static readonly string[] WarpRoots = { "Shutter backing" };
+    static readonly string[] WidenKeepPrefix = { "Parked Cub ", "Garage Cub ", RoadBikePrefix, ShallowAlleyBike, ShopDetailLight };
+
+    static Bounds SolidBounds(GameObject go, out bool any)
+    {
+        var rs = go.GetComponentsInChildren<Renderer>().Where(r => !(r is ParticleSystemRenderer)).ToArray();
+        any = rs.Length > 0;
+        if (!any) return new Bounds(go.transform.position, Vector3.zero);
+        var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds); return b;
+    }
+
+    static int SyncBlockoutEmpties(GameObject blockout)
+    {
+        var src = new Dictionary<string, Transform>();
+        foreach (var t in AssetDatabase.LoadAssetAtPath<GameObject>(BlockoutModel).GetComponentsInChildren<Transform>(true)) if (!src.ContainsKey(t.name)) src[t.name] = t;
+        int n = 0;
+        foreach (var t in blockout.GetComponentsInChildren<Transform>(true))
+            if (t != blockout.transform && t.GetComponent<MeshFilter>() == null && src.TryGetValue(t.name, out var s) && Mathf.Abs(t.localPosition.x - s.localPosition.x) > 1e-4f)
+            { t.localPosition = new Vector3(s.localPosition.x, t.localPosition.y, t.localPosition.z); n++; }
+        return n;
+    }
+
+    static (int exact, int shifted) SyncBlockoutCopies(GameObject blockout)
+    {
+        var src = AssetDatabase.LoadAllAssetsAtPath(BlockoutModel).OfType<Mesh>().GroupBy(m => m.name).ToDictionary(g => g.Key, g => g.First());
+        int exact = 0, shifted = 0;
+        foreach (var f in blockout.GetComponentsInChildren<MeshFilter>(true))
+        {
+            var mesh = f.sharedMesh;
+            if (mesh == null || AssetDatabase.GetAssetPath(mesh) == BlockoutModel || !src.TryGetValue(f.name, out var s)) continue;
+            var dv = mesh.vertices;
+            if (s.vertexCount == mesh.vertexCount)
+            {
+                var sv = s.vertices; bool same = true;
+                for (int i = 0; i < sv.Length && same; i++) same = (sv[i] - dv[i]).sqrMagnitude < 1e-10f;
+                if (same) continue;
+                mesh.vertices = sv; exact++;
+            }
+            else
+            {
+                float dx = s.bounds.center.x - mesh.bounds.center.x;
+                if (Mathf.Abs(dx) < 1e-4f) continue;
+                for (int i = 0; i < dv.Length; i++) dv[i].x += dx;
+                mesh.vertices = dv; shifted++;
+            }
+            mesh.RecalculateBounds(); EditorUtility.SetDirty(mesh);
+            var mc = f.GetComponent<MeshCollider>(); if (mc != null) { mc.sharedMesh = null; mc.sharedMesh = mesh; }
+        }
+        return (exact, shifted);
+    }
+
+    public static void PatchBlockoutCopies()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var (exact, shifted) = SyncBlockoutCopies(GameObject.Find("night1_3_blockout"));
+        var bounds = PlayBoundsBuilder.Generate();
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        AssetDatabase.SaveAssets();
+        Debug.Log($"REAL_BLOCKOUT_COPIES exact={exact} shifted={shifted} walls={bounds.walls} leaks_after={bounds.after}");
+        EditorApplication.Exit(bounds.after == 0 ? 0 : 1);
+    }
+
+    public static void PatchAlleyWidth()
+    {
+        foreach (var path in new[] { BlockoutModel, AlleyModel, GarageModel, BoardingDressModel }) (AssetImporter.GetAtPath(path) as ModelImporter)?.SaveAndReimport();
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var alley = GameObject.Find("env_alley");
+        var ground = alley.transform.Find("Alley_Ground").GetComponent<MeshFilter>();
+        if (MeshWorldBounds(ground).size.x > 2 * AlleyWidth.OldHalf + .3f) { Debug.LogError("REAL_ALLEY_WIDTH already wide " + MeshWorldBounds(ground).size.x); EditorApplication.Exit(1); return; }
+        int verts = 0, props = 0, roots = 0;
+        var warped = new HashSet<Mesh>();
+        void WarpMesh(MeshFilter f)
+        {
+            var mesh = f.sharedMesh; if (mesh == null || !warped.Add(mesh)) return;
+            var v = mesh.vertices; var t = f.transform;
+            for (int i = 0; i < v.Length; i++) v[i] = t.InverseTransformPoint(AlleyWidth.Warp(t.TransformPoint(v[i])));
+            mesh.vertices = v; mesh.RecalculateBounds(); EditorUtility.SetDirty(mesh); verts += v.Length;
+            var mc = f.GetComponent<MeshCollider>(); if (mc != null) { mc.sharedMesh = null; mc.sharedMesh = mesh; }
+        }
+        foreach (Transform child in alley.transform)
+        {
+            var f = child.GetComponent<MeshFilter>();
+            if (child.name.StartsWith("Alley_") && f != null) WarpMesh(f);
+            else { child.position += AlleyWidth.Offset(SolidBounds(child.gameObject, out _).center); props++; }
+        }
+        foreach (var name in WarpRoots)
+        {
+            var go = GameObject.Find(name);
+            if (go == null) { Debug.LogError("REAL_ALLEY_WIDTH missing " + name); continue; }
+            foreach (var f in go.GetComponentsInChildren<MeshFilter>()) WarpMesh(f);
+        }
+        foreach (var root in scene.GetRootGameObjects().Where(g => WidenKeep.Contains(g.name) && !WarpRoots.Contains(g.name) && g.name != "env_alley"))
+        {
+            int inside = 0;
+            foreach (var f in root.GetComponentsInChildren<MeshFilter>().Where(f => f.sharedMesh != null && f.GetComponent<Renderer>() != null && f.GetComponent<Renderer>().enabled))
+                inside += f.sharedMesh.vertices.Count(v => { var w = f.transform.TransformPoint(v); return AlleyWidth.Weight(w) > 0 && Mathf.Abs(AlleyWidth.Offset(w).x) > 1e-4f; });
+            if (inside > 0) Debug.Log($"REAL_ALLEY_WIDTH_UNTOUCHED {root.name} vertices_in_alley={inside}");
+        }
+        foreach (var root in scene.GetRootGameObjects())
+        {
+            if (WidenKeep.Contains(root.name) || WidenKeepPrefix.Any(p => root.name.StartsWith(p))) continue;
+            var b = SolidBounds(root, out bool solid);
+            if (!solid && root.transform.childCount > 0 && root.GetComponent<Light>() == null && root.GetComponent<ReflectionProbe>() == null)
+                foreach (Transform t in root.transform) t.position += AlleyWidth.Offset(t.position);
+            else root.transform.position += AlleyWidth.Offset(b.center);
+            var probe = root.GetComponent<ReflectionProbe>();
+            if (probe != null && Mathf.Abs(probe.transform.position.x) < AlleyWidth.Core && AlleyWidth.Weight(probe.transform.position) > 0 && probe.size.x < 2 * AlleyWidth.Half)
+                probe.size += new Vector3(2 * AlleyWidth.Shift, 0, 0);
+            roots++;
+        }
+        var blockout = GameObject.Find("night1_3_blockout");
+        int empties = SyncBlockoutEmpties(blockout);
+        var (exactCopies, shiftedCopies) = SyncBlockoutCopies(blockout);
+        int lostMeshes = blockout.GetComponentsInChildren<MeshFilter>(true).Count(f => f.sharedMesh == null);
+        foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.parent == null && (t.name == "Light probes" || t.name == "Alley dressing" || t.name.StartsWith("Parked Cub "))).ToList())
+            Object.DestroyImmediate(t.gameObject);
+        Physics.SyncTransforms();
+        ParkBikes();
+        DressAlley();
+        Probes();
+        var (parts, _, _) = RebuildGarage();
+        int dress = BoardingDress();
+        var bounds = PlayBoundsBuilder.Generate();
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        AssetDatabase.SaveAssets();
+        if (System.Environment.GetCommandLineArgs().Contains("-bake")) { Bake(); EditorSceneManager.SaveScene(scene, ScenePath); }
+        Debug.Log($"REAL_ALLEY_WIDTH half={AlleyWidth.Half} verts={verts} props={props} roots={roots} empties={empties} copies={exactCopies}+{shiftedCopies} lost_meshes={lostMeshes} garage_parts={parts} dress={dress} walls={bounds.walls} leaks_after={bounds.after}");
+        EditorApplication.Exit(lostMeshes == 0 && parts > 0 && bounds.after == 0 ? 0 : 1);
+    }
+
     static (int parts, int hidden, int freed) RebuildGarage()
     {
         var imp = AssetImporter.GetAtPath(GarageModel) as ModelImporter;
@@ -1327,7 +1480,7 @@ public static class RealisticSceneBuilder
         for (int i = 0; i < sv.Length; i++)
         {
             var a = tr.TransformPoint(sv[i]); var b = tr.TransformPoint(dv[i]);
-            if (a.x < -1.30f && a.x > -1.48f && a.y > 3f && a.z > -48.1f && a.z < -37.9f) a.x = -1.30f;
+            if (a.x < -1.80f && a.x > -1.98f && a.y > 3f && a.z > -48.1f && a.z < -37.9f) a.x = -1.80f;
             if ((a - b).magnitude > .035f) bad++;
             if ((a - b).sqrMagnitude > 1e-8f) moved++;
             dv[i] = tr.InverseTransformPoint(a);
@@ -1354,9 +1507,9 @@ public static class RealisticSceneBuilder
         var old = GameObject.Find(Room7Stains); if (old != null) Object.DestroyImmediate(old);
         var root = new GameObject(Room7Stains).transform;
         int n = 0;
-        if (Decal(root, "D_Leak1", new Vector3(-2.05f, 12.62f, -47.4f), Vector3.back, new Vector2(1.05f, 1.6f))) n++;
-        if (Decal(root, "D_Leak4", new Vector3(-4.6f, 12.75f, -47.4f), Vector3.back, new Vector2(.8f, 1.3f))) n++;
-        if (Decal(root, "D_Leak3", new Vector3(-1.85f, 11.05f, -44.95f), Vector3.right, new Vector2(1.1f, 1.1f))) n++;
+        if (Decal(root, "D_Leak1", new Vector3(-2.55f, 12.62f, -47.4f), Vector3.back, new Vector2(1.05f, 1.6f))) n++;
+        if (Decal(root, "D_Leak4", new Vector3(-5.1f, 12.75f, -47.4f), Vector3.back, new Vector2(.8f, 1.3f))) n++;
+        if (Decal(root, "D_Leak3", new Vector3(-2.35f, 11.05f, -44.95f), Vector3.right, new Vector2(1.1f, 1.1f))) n++;
         if (n == 0) Object.DestroyImmediate(root.gameObject);
         return n;
     }
