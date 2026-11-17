@@ -643,11 +643,25 @@ public static class RealisticSceneBuilder
             Point("Tube light", center + Vector3.down * .25f, new Color(.85f, .95f, 1f), 7, 3f);
             Halo(center, new Color(.85f, .95f, 1f, .35f), .9f);
         }
-        foreach (var center in Clusters(alley, "M_AltarRedGlow", .5f))
+        AltarLights(alley);
+    }
+
+    static int AltarLights(GameObject alley)
+    {
+        var centers = Clusters(alley, "M_AltarRedGlow", .5f).ToList();
+        int n = 0;
+        foreach (var center in centers.Where(c => c.y >= 1f))
         {
             Point("Altar light", center, new Color(1f, .16f, .08f), 1.4f, .3f, false);
-            Halo(center, new Color(1f, .2f, .1f, .25f), .18f);
+            Halo(center, new Color(1f, .2f, .1f, .25f), .18f); n++;
         }
+        foreach (var g in centers.Where(c => c.y < 1f).GroupBy(c => (Mathf.Round(c.x), Mathf.Round(c.z))))
+        {
+            var center = new Vector3(g.Average(p => p.x), g.Average(p => p.y), g.Average(p => p.z));
+            Point("Altar light", center + Vector3.up * .05f, new Color(1f, .14f, .07f), 2.6f, 1.2f, true);
+            Halo(center, new Color(1f, .2f, .1f, .3f), .14f); n++;
+        }
+        return n;
     }
 
     static IEnumerable<Vector3> Clusters(GameObject root, string material, float cell)
@@ -1342,26 +1356,108 @@ public static class RealisticSceneBuilder
     public static void PatchAlleyWires() => PatchModelMesh(AlleyModel, "Alley_Wires");
     public static void PatchMainRoadSurface() => PatchModelMesh("Assets/Art/Models/Environment/env_main_road.fbx", "MainRoad_Surface");
 
+    static readonly Dictionary<string, (Color color, float smooth)> AltarExtras = new Dictionary<string, (Color, float)> {
+        ["M_Porcelain"] = (new Color(.92f, .9f, .85f), .75f) };
+    static readonly string[] AlleyPropPrefixes = { "Altar_", "Stool_", "MeterPost" };
+    static bool AlleyProp(string n) => AlleyPropPrefixes.Any(n.StartsWith);
+
+    public static void PatchAlleyAltars()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var alley = GameObject.Find("env_alley");
+        var facades = GameObject.Find("Alley_Facades").GetComponent<MeshFilter>();
+        var fr = facades.GetComponent<MeshRenderer>();
+        var mesh = facades.sharedMesh; var verts = mesh.vertices; int cut = 0;
+        for (int s = 0; s < mesh.subMeshCount && s < fr.sharedMaterials.Length; s++)
+        {
+            var mat = fr.sharedMaterials[s]; if (mat == null || !mat.name.StartsWith("M_Altar")) continue;
+            var tris = mesh.GetTriangles(s); var keep = new List<int>(tris.Length);
+            for (int i = 0; i < tris.Length; i += 3)
+            {
+                bool low = Enumerable.Range(0, 3).All(k => facades.transform.TransformPoint(verts[tris[i + k]]).y < .75f);
+                if (low) { cut++; continue; }
+                keep.Add(tris[i]); keep.Add(tris[i + 1]); keep.Add(tris[i + 2]);
+            }
+            mesh.SetTriangles(keep, s);
+        }
+        EditorUtility.SetDirty(mesh);
+        var oldAltars = alley.transform.Find("Alley_Altars"); if (oldAltars) Object.DestroyImmediate(oldAltars.gameObject);
+        var assets = AssetDatabase.LoadAllAssetsAtPath(AlleyModel);
+        var src = assets.OfType<Mesh>().FirstOrDefault(m => m.name == "Alley_Altars");
+        var srcRenderer = assets.OfType<MeshRenderer>().FirstOrDefault(r => r.name == "Alley_Altars");
+        if (src == null || srcRenderer == null) { Debug.LogError("REAL_PATCH_ALTARS missing Alley_Altars in " + AlleyModel); EditorApplication.Exit(1); return; }
+        var go = new GameObject("Alley_Altars"); go.transform.SetParent(alley.transform, false);
+        GameObjectUtility.SetStaticEditorFlags(go, GameObjectUtility.GetStaticEditorFlags(facades.gameObject));
+        var f = go.AddComponent<MeshFilter>(); f.sharedMesh = src;
+        var r = go.AddComponent<MeshRenderer>();
+        r.sharedMaterials = srcRenderer.sharedMaterials.Select(m =>
+        {
+            var path = $"{MatRoot}/{m.name}.mat"; var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat != null) return mat;
+            var (c, sm) = AltarExtras.TryGetValue(m.name, out var e) ? e : (m.color, .3f);
+            mat = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = m.name }; mat.SetColor("_BaseColor", c); mat.SetFloat("_Smoothness", sm);
+            AssetDatabase.CreateAsset(mat, path); return mat;
+        }).ToArray();
+        r.shadowCastingMode = fr.shadowCastingMode; r.receiveGI = fr.receiveGI; r.scaleInLightmap = 1f;
+        BoxUV(f, r, true);
+        foreach (var t in alley.GetComponentsInChildren<Transform>(true).Where(t => AlleyProp(t.name)).ToList()) Object.DestroyImmediate(t.gameObject);
+        var stoolCover = new Vector3(1.525f, 0f, -36.25f);
+        var chairs = alley.GetComponentsInChildren<Transform>(true).Where(t => t.name.StartsWith("plastic_monobloc_chair_01") && Vector3.Distance(Vector3.Scale(t.position, new Vector3(1, 0, 1)), stoolCover) < .5f).ToList();
+        foreach (var t in chairs) Object.DestroyImmediate(t.gameObject);
+        var props = assets.OfType<MeshRenderer>().Where(p => AlleyProp(p.name)).ToList();
+        foreach (var p in props)
+        {
+            var g = new GameObject(p.name); g.transform.SetParent(alley.transform, false);
+            g.transform.localPosition = p.transform.localPosition; g.transform.localRotation = p.transform.localRotation; g.transform.localScale = p.transform.localScale;
+            GameObjectUtility.SetStaticEditorFlags(g, GameObjectUtility.GetStaticEditorFlags(facades.gameObject));
+            g.AddComponent<MeshFilter>().sharedMesh = p.GetComponent<MeshFilter>().sharedMesh;
+            var pr = g.AddComponent<MeshRenderer>(); pr.sharedMaterials = p.sharedMaterials.Select(Convert).ToArray();
+            pr.shadowCastingMode = fr.shadowCastingMode; pr.receiveGI = fr.receiveGI;
+            if (p.name.StartsWith("MeterPost")) g.AddComponent<BoxCollider>();
+        }
+        var ground = ReplaceModelMesh(AlleyModel, "Alley_Ground");
+        if (ground == null) { EditorApplication.Exit(1); return; }
+        var lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(l => l.name == "Altar light").ToList();
+        var halos = Object.FindObjectsByType<ParticleSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+            .Where(p => p.name == "Halo" && lights.Any(l => Vector3.Distance(l.transform.position, p.transform.position) < .1f)).ToList();
+        foreach (var h in halos) Object.DestroyImmediate(h.gameObject);
+        foreach (var l in lights) Object.DestroyImmediate(l.gameObject);
+        int made = AltarLights(alley);
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        AssetDatabase.SaveAssets();
+        Debug.Log($"REAL_PATCH_ALTARS cut_tris={cut} altar_verts={f.sharedMesh.vertexCount} materials={string.Join(",", r.sharedMaterials.Select(m => m.name))} lights_removed={lights.Count} halos_removed={halos.Count} lights_made={made} chairs_removed={chairs.Count} ground={ground} props={props.Count} prop_materials={string.Join(",", props.SelectMany(p => p.sharedMaterials).Select(m => m.name).Distinct())}");
+        EditorApplication.Exit(made > 0 && props.Count > 0 ? 0 : 1);
+    }
+
     static void PatchModelMesh(string model, string name)
     {
         var scene = EditorSceneManager.OpenScene(ScenePath);
+        var log = ReplaceModelMesh(model, name);
+        if (log == null) { EditorApplication.Exit(1); return; }
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        AssetDatabase.SaveAssets();
+        Debug.Log($"REAL_PATCH_MESH {name} {log}");
+        EditorApplication.Exit(0);
+    }
+
+    static string ReplaceModelMesh(string model, string name)
+    {
         var go = Object.FindObjectsByType<MeshFilter>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(m => m.name == name).ToArray();
         var src = AssetDatabase.LoadAllAssetsAtPath(model).OfType<Mesh>().FirstOrDefault(m => m.name == name);
         var srcRenderer = AssetDatabase.LoadAllAssetsAtPath(model).OfType<MeshRenderer>().FirstOrDefault(m => m.name == name);
-        if (go.Length != 1 || src == null || srcRenderer == null) { Debug.LogError($"REAL_PATCH_MESH {name} scene={go.Length} src={src != null}"); EditorApplication.Exit(1); return; }
+        if (go.Length != 1 || src == null || srcRenderer == null) { Debug.LogError($"REAL_PATCH_MESH {name} scene={go.Length} src={src != null}"); return null; }
         var f = go[0]; var r = f.GetComponent<MeshRenderer>();
         var mats = srcRenderer.sharedMaterials.Select(m => AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{m.name}.mat")).ToArray();
-        if (mats.Any(m => m == null)) { Debug.LogError("REAL_PATCH_MESH missing material " + string.Join(",", srcRenderer.sharedMaterials.Where(m => AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{m.name}.mat") == null).Select(m => m.name))); EditorApplication.Exit(1); return; }
+        if (mats.Any(m => m == null)) { Debug.LogError("REAL_PATCH_MESH missing material " + string.Join(",", srcRenderer.sharedMaterials.Where(m => AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{m.name}.mat") == null).Select(m => m.name))); return null; }
         var old = AssetDatabase.GetAssetPath(f.sharedMesh); int before = f.sharedMesh.vertexCount;
+        var prev = string.Join(",", r.sharedMaterials.Select(m => m ? m.name : "null"));
         r.sharedMaterials = mats;
         f.sharedMesh = src;
         BoxUV(f, r, true);
         if (!string.IsNullOrEmpty(old) && old != AssetDatabase.GetAssetPath(f.sharedMesh)) AssetDatabase.DeleteAsset(old);
-        EditorSceneManager.MarkSceneDirty(scene);
-        EditorSceneManager.SaveScene(scene, ScenePath);
-        AssetDatabase.SaveAssets();
-        Debug.Log($"REAL_PATCH_MESH {name} before={before} after={f.sharedMesh.vertexCount} materials={string.Join(",", mats.Select(m => m.name))}");
-        EditorApplication.Exit(0);
+        return $"before={before} after={f.sharedMesh.vertexCount} prev={prev} materials={string.Join(",", mats.Select(m => m.name))}";
     }
 
     public static void PatchBlockoutCopies()
