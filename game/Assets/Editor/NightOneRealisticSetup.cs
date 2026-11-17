@@ -108,6 +108,35 @@ public static class NightOneRealisticSetup
         return w;
     }
 
+    static GameObject MovableCopy(Transform source, string name, Transform parent)
+    {
+        var copy = Object.Instantiate(source.gameObject, parent, true); copy.name = name;
+        foreach (var t in copy.GetComponentsInChildren<Transform>(true)) GameObjectUtility.SetStaticEditorFlags(t.gameObject, 0);
+        foreach (var c in copy.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
+        foreach (var r in copy.GetComponentsInChildren<Renderer>(true)) { r.lightmapIndex = -1; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On; }
+        return copy;
+    }
+    static void PlacePushedBike(Transform bike, Transform player)
+    {
+        bike.localPosition = Vector3.zero; bike.localRotation = Quaternion.identity;
+        var local = LocalBounds(bike, player);
+        if (local.size.x > local.size.z) { bike.localRotation = Quaternion.Euler(0, 90, 0); local = LocalBounds(bike, player); }
+        bike.localPosition = new Vector3(.42f - local.center.x, -local.min.y, .35f + local.extents.z - local.center.z);
+        Debug.Log($"NIGHT1_REAL_PUSH_BIKE size={local.size} offset={bike.localPosition}");
+    }
+    static Bounds LocalBounds(Transform bike, Transform player)
+    {
+        var renderers = bike.GetComponentsInChildren<Renderer>(true);
+        var bounds = new Bounds(player.InverseTransformPoint(renderers[0].bounds.center), Vector3.zero);
+        foreach (var r in renderers)
+        {
+            var b = r.bounds;
+            for (int i = 0; i < 8; i++)
+                bounds.Encapsulate(player.InverseTransformPoint(new Vector3(i % 2 == 0 ? b.min.x : b.max.x, i / 2 % 2 == 0 ? b.min.y : b.max.y, i / 4 == 0 ? b.min.z : b.max.z)));
+        }
+        return bounds;
+    }
+
     [MenuItem("3 Gio 12/Night 1/Create Realistic (overwrites scene)")]
     public static void Create()
     {
@@ -157,7 +186,7 @@ public static class NightOneRealisticSetup
         Watch("Đứa nhỏ 2", kids + new Vector3(0, 0, -1.5f), 270, 12, 4, 8, story, true).patrol = true;
         var gate = Box("Lien_Gate_PostL", new Vector3(-1.85f, 0, -42), new Vector3(-1.65f, 2.4f, -41.8f));
         var lien = new Vector3(gate.center.x + .4f, 0, gate.center.z - 1.2f);
-        var lienWatch = Watch("Cô Liên", lien, 90, 55, 15, 40, story); lienWatch.once = true; lienWatch.staysAfterPrologue = true;
+        var lienWatch = Watch("Cô Liên", lien, 180, 16, 5, 12, story); lienWatch.staysAfterPrologue = true; lienWatch.range = 10;
 
         var lights = new List<Light>();
         var doors = new[] { (-1.6f, -6.5f, 90f), (1.6f, -10.8f, 270f), (-1.6f, -17.5f, 90f), (1.6f, -23.8f, 270f) };
@@ -182,7 +211,26 @@ public static class NightOneRealisticSetup
             Marker("Hiding spot", new Vector3(bike05.center.x, .06f, bike05.min.z - .45f)),
         };
 
-        Interact("Own bike", Box("Garage_Bike_L02", new Vector3(2.2f, 0, -50.65f), new Vector3(4.1f, 1.1f, -49.95f)), .05f, NightAction.ParkBike, "Dựng xe / xem đồng hồ");
+        var ownSlot = Box("Garage_Bike_L02", new Vector3(2.2f, 0, -50.65f), new Vector3(4.1f, 1.1f, -49.95f));
+        Interact("Own bike", ownSlot, .05f, NightAction.ParkBike, "Dựng xe / xem đồng hồ");
+        var roots = Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.parent == null).ToArray();
+        var ownBike = roots.Where(t => t.name.StartsWith("Garage Cub ")).OrderBy(t => (t.position - ownSlot.center).sqrMagnitude).FirstOrDefault();
+        var roadBike = roots.Where(t => t.name.StartsWith("Road Cub ")).OrderBy(t => (t.position - story.alleyStart.position).sqrMagnitude).FirstOrDefault();
+        if (ownBike == null) missing.Add("Garage Cub (own bike)");
+        else
+        {
+            story.ownBike = ownBike.gameObject;
+            if (roadBike != null)
+            {
+                story.mouthBike = MovableCopy(ownBike, "Linh bike at alley mouth", gameplay);
+                story.mouthBike.transform.SetPositionAndRotation(roadBike.position, roadBike.rotation);
+                roadBike.gameObject.SetActive(false);
+            }
+            else missing.Add("Road Cub (alley mouth)");
+            story.pushBike = MovableCopy(ownBike, "Pushed bike", controller.transform);
+            PlacePushedBike(story.pushBike.transform, controller.transform);
+            story.pushBike.SetActive(false);
+        }
         var wave = Box("Garage_Bike_Wave", new Vector3(-4.1f, 0, -51.45f), new Vector3(-2.2f, 1.1f, -50.75f));
         var slot = Point("PLACE_N1_PhoneUnderWave", new Vector3(-2, 0, -51));
         var waveBike = Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.parent == null && t.name.StartsWith("Garage Cub "))

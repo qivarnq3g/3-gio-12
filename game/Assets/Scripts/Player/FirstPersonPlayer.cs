@@ -18,6 +18,13 @@ namespace BaGio12.Gameplay
         public bool InvertY { get; set; }
         public float ViewPitch => pitch;
         public float RunMultiplier { get; set; } = 1f;
+        public float WalkMultiplier { get; set; } = 1f;
+        public bool SprintAllowed { get; set; } = true;
+        public bool CrouchAllowed { get; set; } = true;
+        public bool StaminaLimited { get; set; }
+        public float staminaSeconds = 3.2f, staminaRecovery = .22f, staminaResume = .4f;
+        public float Stamina { get; private set; } = 1f;
+        public bool Winded { get; private set; }
         public bool IsRunning { get; private set; }
         public bool IsPaused => paused;
         public uint PoseRevision { get; private set; }
@@ -99,14 +106,19 @@ namespace BaGio12.Gameplay
                 transform.Rotate(0, turn.x, 0);
                 pitch = Mathf.Clamp(pitch - turn.y * .7f, -80, 80);
                 eyes.transform.localRotation = Quaternion.Euler(pitch, 0, 0);
-                if (crouch.WasPressedThisFrame()) SetCrouch(!IsCrouched);
+                if (crouch.WasPressedThisFrame() && (CrouchAllowed || IsCrouched)) SetCrouch(!IsCrouched);
                 if (Physics.Raycast(eyes.transform.position, eyes.transform.forward, out var hit, reach, PlayerGeometry.WorldMask, QueryTriggerInteraction.Ignore))
                     target = hit.collider.GetComponentInParent<WorldInteractable>();
                 if (target != null) target.HandleInput(this, interact.WasPressedThisFrame(), interact.IsPressed());
             }
             var axis = control ? Vector2.ClampMagnitude(move.ReadValue<Vector2>(), 1) : Vector2.zero;
-            IsRunning = control && !IsCrouched && sprint.IsPressed() && axis.sqrMagnitude > .01f;
-            float speed = IsCrouched ? crouchSpeed : sprint.IsPressed() ? runSpeed * RunMultiplier : walkSpeed;
+            IsRunning = control && SprintAllowed && !IsCrouched && !Winded && sprint.IsPressed() && axis.sqrMagnitude > .01f;
+            if (StaminaLimited && IsRunning) Stamina = Mathf.Max(0, Stamina - Time.deltaTime / staminaSeconds);
+            else Stamina = Mathf.Min(1, Stamina + Time.deltaTime * staminaRecovery);
+            if (!StaminaLimited) Stamina = 1;
+            if (Stamina <= 0) { Winded = true; IsRunning = false; }
+            else if (Winded && Stamina >= staminaResume) Winded = false;
+            float speed = IsCrouched ? crouchSpeed : IsRunning ? runSpeed * RunMultiplier : walkSpeed * WalkMultiplier * (Winded ? .8f : 1);
             if (body.isGrounded && fall < 0) fall = -2;
             fall = Mathf.Max(fall + Physics.gravity.y * Time.deltaTime, -30);
             body.Move((transform.TransformDirection(new Vector3(axis.x, 0, axis.y)) * speed + Vector3.up * fall) * Time.deltaTime);
@@ -129,6 +141,7 @@ namespace BaGio12.Gameplay
             eyes.transform.localPosition = Vector3.up * (value ? PlayerGeometry.CrouchedEye : PlayerGeometry.StandingEye);
             return true;
         }
+        public void RestoreStamina() { Stamina = 1; Winded = false; }
         public void SetPaused(bool value)
         {
             if (paused == value) return;

@@ -35,6 +35,14 @@ namespace BaGio12.Story
         public Bounds parkingZone = new Bounds(new Vector3(0, -499, 527), new Vector3(2000, 1002, 1000));
         public Bounds roomZone = new Bounds(new Vector3(512, 507, 0), new Vector3(1000, 1000, 2000));
         public Transform securityCamera;
+        public GameObject ownBike, mouthBike, pushBike;
+        public float Fade { get; private set; }
+        public float RedFlash { get; private set; }
+        public float Daze { get; private set; }
+        public bool Pushing => State.stage == NightStage.Parking && !State.bikeArrived && pushBike != null;
+        float stillSeconds;
+        Vector3 lastPlayerPoint;
+        AudioSource sfx, ringSource;
         public GameObject prologueGate;
         public Transform fallenPot;
         public string[] Conversation { get; private set; } = new string[0];
@@ -83,6 +91,8 @@ namespace BaGio12.Story
             Clock = new StoryClock(State);
             Dialogue = JsonUtility.FromJson<NightDialogue>(Resources.Load<TextAsset>("Story/night-one-dialogue").text);
             sound = gameObject.AddComponent<AudioSource>(); sound.loop = true; sound.volume = .13f;
+            sfx = gameObject.AddComponent<AudioSource>(); sfx.volume = .7f;
+            ringSource = gameObject.AddComponent<AudioSource>(); ringSource.volume = .5f;
             alarmClip = AudioClip.Create("Graybox alarm", 22050, 1, 22050, false);
             var samples = new float[22050];
             for (int i=0;i<samples.Length;i++) samples[i] = i % 11025 < 5500 ? Mathf.Sin(2*Mathf.PI*880*i/22050f)*.2f : 0;
@@ -113,6 +123,11 @@ namespace BaGio12.Story
             if(player.IsPaused)return;
             if (Time.time > subtitleUntil) Subtitle = "";
             if (HoldProgress > 0) HoldProgress = Mathf.Max(0, HoldProgress - Time.deltaTime * .1f);
+            var flat = Vector3.ProjectOnPlane(player.transform.position - lastPlayerPoint, Vector3.up);
+            stillSeconds = flat.magnitude < Time.deltaTime * .3f ? stillSeconds + Time.deltaTime : 0;
+            lastPlayerPoint = player.transform.position;
+            if (!Busy) { RedFlash = Mathf.Max(0, RedFlash - Time.deltaTime * 2); Daze = Mathf.Max(0, Daze - Time.deltaTime / 7); }
+            if (Pushing && !Busy && InParking) StartCoroutine(ArriveWithBike());
             if (State.stage == NightStage.Prologue && !Busy)
             {
                 if (!PrologueDeparted && AlleyProgress > 1.4f) PrologueDeparted=true;
@@ -127,10 +142,10 @@ namespace BaGio12.Story
                 if (player.IsRunning)
                     observers.Where(o => o.CanHear && Vector3.Distance(o.transform.position, player.transform.position) <= 5)
                         .OrderBy(o => Vector3.Distance(o.transform.position, player.transform.position)).FirstOrDefault()?.Hear(player.transform.position, false);
-                if (State.prologue_beaten >= 2 && Hidden)
+                if ((State.prologue_beaten >= 2 || player.Winded) && Hidden)
                     foreach (var observer in observers.Where(o => o.CanHearBreathing && Vector3.Distance(o.transform.position, player.transform.position) <= 3))
                         observer.HearBreathing(player.transform.position);
-                if (leftStart && State.phonePlaced && AlleyProgress < 2.4f) StartCoroutine(CompletePrologue());
+                if (leftStart && State.phonePlaced && AlleyProgress < 2.4f && !observers.Any(o => o.Mode == ObserverMode.Chasing)) StartCoroutine(CompletePrologue());
                 else if (leftStart && AlleyProgress < -.4f && !State.phonePlaced) ResetPrologue();
             }
             if (State.stage == NightStage.Room && !Busy)
@@ -189,10 +204,11 @@ namespace BaGio12.Story
             if (Busy || State.stage == NightStage.Ended) return;
             if (State.stage == NightStage.Prologue)
             {
-                if (action == NightAction.ReturnToStart && State.phonePlaced) StartCoroutine(CompletePrologue());
+                if (action == NightAction.ReturnToStart && State.phonePlaced && !observers.Any(o => o.Mode == ObserverMode.Chasing)) StartCoroutine(CompletePrologue());
                 else Say(State.phonePlaced ? "Quay ra đầu hẻm." : "Đừng để ai thấy.");
                 return;
             }
+            if (Pushing) { Say("Dắt xe vào nhà xe đã."); return; }
             switch (action)
             {
                 case NightAction.ParkBike:
@@ -271,8 +287,7 @@ namespace BaGio12.Story
         {
             if (!CanPlace || !player.IsCrouched) return;
             State.phonePlaced = true; HoldProgress = 0;
-            foreach (var o in observers) o.ResetObserver(true);
-            Objective = "Quay ra đầu hẻm.";
+            Objective = "Quay ra đầu hẻm. Đừng để ai thấy.";
             Say("Chiếc máy đã nằm dưới chân xe.");
             EmitInternal("phone_placed", "n1.parking");
         }
@@ -285,18 +300,58 @@ namespace BaGio12.Story
         IEnumerator CompletePrologue()
         {
             if (Busy) yield break;
-            Busy = true; player.SetOverlay(true);
+            Busy = true; player.SetOverlay(true); HoldProgress = 0;
             // First-person glance at the security camera, without moving the body.
             var lens = securityCamera != null ? securityCamera.position : new Vector3(-2.1f,2.8f,5);
             for (float t = 0; t < 2; t += Time.deltaTime) { player.AimAt(lens, Mathf.Clamp01(Time.deltaTime * 5)); yield return null; }
-            BlackTitle = "3 GIỜ 12"; yield return new WaitForSeconds(1.5f);
+            float master = AudioListener.volume;
+            if (mouthBike != null)
+            {
+                var parts = mouthBike.GetComponentsInChildren<Renderer>();
+                Vector3 seat = mouthBike.transform.position + Vector3.up * .8f;
+                if (parts.Length > 0) { var b = parts[0].bounds; foreach (var r in parts) b.Encapsulate(r.bounds); seat = b.center; }
+                for (float t = 0; t < 1.4f; t += Time.deltaTime) { player.AimAt(seat, Mathf.Clamp01(Time.deltaTime * 3)); yield return null; }
+                // The body stops; the world drains away before the cut.
+                for (float t = 0; t < 3.2f; t += Time.deltaTime)
+                {
+                    AudioListener.volume = master * (1 - Mathf.SmoothStep(0, 1, t / 3.2f));
+                    Fade = Mathf.SmoothStep(0, 1, (t - 1.4f) / 1.8f);
+                    yield return null;
+                }
+                Fade = 1; yield return new WaitForSeconds(1);
+            }
+            BlackTitle = "3 GIỜ 12"; yield return new WaitForSeconds(2f);
             State.stage = NightStage.Parking; Clock.Set("21:00");
-            player.Teleport(parkingSpawn.position,parkingSpawn.eulerAngles.y);
-            BlackTitle = ""; Busy = false; player.SetOverlay(false);
-            player.RunMultiplier = 1;
-            Checkpoints.Save("n1.parking", State, parkingSpawn.position,parkingSpawn.eulerAngles.y);
+            player.RunMultiplier = 1; player.RestoreStamina(); Daze = 0; RedFlash = 0;
+            if (pushBike != null)
+            {
+                BlackTitle = "21:00"; yield return new WaitForSeconds(1.6f);
+                State.bikeArrived = false;
+                player.Teleport(alleyStart.position, StartYaw);
+                Checkpoints.Save("n1.arrival", State, alleyStart.position, StartYaw);
+                Objective = "Dắt xe vào nhà xe cuối hẻm.";
+            }
+            else
+            {
+                State.bikeArrived = true;
+                player.Teleport(parkingSpawn.position,parkingSpawn.eulerAngles.y);
+                Checkpoints.Save("n1.parking", State, parkingSpawn.position,parkingSpawn.eulerAngles.y);
+                Objective = "Dựng xe, tắt máy và xem số đồng hồ.";
+            }
+            SyncWorld();
+            BlackTitle = ""; AudioListener.volume = master;
+            for (float t = 0; t < 1.2f; t += Time.deltaTime) { Fade = 1 - t / 1.2f; yield return null; }
+            Fade = 0; Busy = false; player.SetOverlay(false);
+        }
+        IEnumerator ArriveWithBike()
+        {
+            Busy = true; player.SetOverlay(true);
+            for (float t = 0; t < .35f; t += Time.deltaTime) { Fade = t / .35f; yield return null; }
+            State.bikeArrived = true; SyncWorld();
+            Checkpoints.Save("n1.parking", State, parkingSpawn.position, parkingSpawn.eulerAngles.y);
             Objective = "Dựng xe, tắt máy và xem số đồng hồ.";
-
+            for (float t = 0; t < .5f; t += Time.deltaTime) { Fade = 1 - t / .5f; yield return null; }
+            Fade = 0; Busy = false; player.SetOverlay(false);
         }
         public void JumpTime(bool concealed = false)
         {
@@ -432,6 +487,7 @@ namespace BaGio12.Story
             observers.Where(x=>x.startsDormant).ElementAtOrDefault(shoutCount-1)?.Activate();
             if (shoutCount <= alertLights.Length) alertLights[shoutCount-1].enabled = true;
             foreach (var o in observers) if (o != source && Vector3.Distance(o.transform.position,source.transform.position) <= 15) o.Hear(source.transform.position, true);
+            foreach (var o in observers.Where(x => x.flashlight && x != source)) o.GuardExit(ExitGuardPoint);
             Say(source.child ? "Mẹ ơi! Có ăn trộm!" : source.stationary ? "Đâu? Nó chạy đâu rồi?" : "Trộm! Trộm xe bà con ơi!", 2.5f);
         }
         public void Suspect(NightObserver source, bool call)
@@ -441,33 +497,87 @@ namespace BaGio12.Story
             Say(line, 3);
             if (call) foreach (var o in observers) if (o != source && Vector3.Distance(o.transform.position,source.transform.position) <= 15) o.Hear(source.transform.position, true);
         }
+        Vector3 ExitGuardPoint => alleyStart.position + Vector3.ProjectOnPlane(alleyStart.forward, Vector3.up).normalized * 1.6f;
+        public float Conspicuousness(NightObserver observer)
+        {
+            float dim = Dark ? .6f : 1;
+            if (InParking) return (player.IsRunning ? 1.6f : player.IsCrouched ? 1.1f : .55f) * dim;
+            float distance = Vector3.Distance(observer.transform.position, player.transform.position);
+            float factor = player.IsRunning ? 1.3f : player.IsCrouched ? .7f : Hidden ? .8f
+                : stillSeconds > 2.5f && distance < 6 ? .5f : State.prologue_beaten > 0 ? .3f : 0;
+            return factor * dim;
+        }
         public void Caught()
         {
-            if (Busy || Time.time < immuneUntil || State.phonePlaced || State.stage != NightStage.Prologue) return;
-            TelemetryProduced?.Invoke(new CaughtTelemetry(InParking?"n1.parking":"n1.alley","n1.alley_start",player.transform.position));
+            if (Busy || Time.time < immuneUntil || State.stage != NightStage.Prologue) return;
             StartCoroutine(CaptureSequence());
         }
+        static readonly string[][] CaptureBeats =
+        {
+            new[] { "Bắt được rồi! Nó đây nè!", "Áo mưa rách toạc." },
+            new[] { "Đánh chết nó đi!", "Chiếc găng tuột khỏi tay." },
+            new[] { "Giữ nó lại! Gọi công an đi!", "Không vùng ra được." },
+        };
         IEnumerator CaptureSequence()
         {
-            Busy = true; player.SetOverlay(true); BlackTitle = State.prologue_beaten == 0 ? "Tiếng xô đẩy. Áo mưa rách." : State.prologue_beaten == 1 ? "Đánh chết nó đi!" : "Giữ nó lại! Gọi công an đi!";
-            yield return new WaitForSeconds(1.5f);
-            State.prologue_beaten++;
-            if (State.prologue_beaten >= 3) ResetPrologue();
-            else
+            Busy = true; player.SetOverlay(true); HoldProgress = 0;
+            Vector3 caughtAt = player.transform.position;
+            TelemetryProduced?.Invoke(new CaughtTelemetry(InParking?"n1.parking":"n1.alley","n1.alley_start",caughtAt));
+            var hunters = observers.Where(o => o.ActiveThreat).ToArray();
+            var grabber = hunters.OrderBy(o => Vector3.Distance(o.transform.position, caughtAt)).FirstOrDefault();
+            sfx.PlayOneShot(NightSfx.Grab); RedFlash = 1;
+            for (float t = 0; t < .55f; t += Time.deltaTime)
             {
-                var nearest = hidingPoints.OrderBy(x => Vector3.Distance(x.position, player.transform.position)).First();
-                player.Teleport(nearest.position,nearest.eulerAngles.y); player.SetCrouch(true);
-                foreach (var o in observers) o.ResetObserver(false);
-                foreach (var l in alertLights.Take(State.prologue_beaten+1)) l.enabled = true;
-                if(parkingAlertLight!=null)parkingAlertLight.enabled=true;
-                player.RunMultiplier = State.prologue_beaten >= 2 ? 2f/3 : 1;
+                Vector3 face = grabber != null ? grabber.transform.position + Vector3.up * 1.5f : player.eyes.transform.position + player.transform.forward;
+                player.AimAt(face + UnityEngine.Random.insideUnitSphere * .25f * (1 - t / .55f), Mathf.Clamp01(Time.deltaTime * 16));
+                yield return null;
             }
-            BlackTitle = ""; Busy = false; player.SetOverlay(false); immuneUntil = Time.time + 5; hidingSeconds = 0; hideAnchor = player.transform.position;
+            player.SetCrouch(true); sfx.PlayOneShot(NightSfx.Scuffle);
+            for (float t = 0; t < .5f; t += Time.deltaTime)
+            {
+                player.AimAt(player.transform.position + player.transform.forward * .5f + UnityEngine.Random.insideUnitSphere * .2f, Mathf.Clamp01(Time.deltaTime * 9));
+                Fade = t / .5f; yield return null;
+            }
+            Fade = 1;
+            int level = Mathf.Clamp(State.prologue_beaten, 0, 2);
+            var beats = CaptureBeats[level];
+            int hits = 2 + level * 2;
+            BlackTitle = beats[0];
+            for (int i = 0; i < hits; i++) { sfx.PlayOneShot(NightSfx.Thump, .7f + .15f * level); yield return new WaitForSeconds(UnityEngine.Random.Range(.28f, .5f)); }
+            BlackTitle = beats[1];
+            sfx.PlayOneShot(level == 0 ? NightSfx.Rip : NightSfx.Scuffle);
+            yield return new WaitForSeconds(level == 2 ? 2.6f : 1.6f);
+            State.prologue_beaten++;
+            if (State.prologue_beaten >= 3)
+            {
+                BlackTitle = ""; ResetPrologue(); Fade = 0; RedFlash = 0; Daze = 0;
+                Busy = false; player.SetOverlay(false); immuneUntil = Time.time + 5; yield break;
+            }
+            var nearest = hidingPoints.OrderBy(x => Vector3.Distance(x.position, caughtAt)).First();
+            player.Teleport(nearest.position,nearest.eulerAngles.y); player.SetCrouch(true);
+            foreach (var o in observers) o.ResetObserver(false);
+            foreach (var hunter in hunters) hunter.SearchFrom(caughtAt);
+            foreach (var l in alertLights.Take(State.prologue_beaten+1)) l.enabled = true;
+            if(parkingAlertLight!=null)parkingAlertLight.enabled=true;
+            player.RunMultiplier = State.prologue_beaten >= 2 ? 2f/3 : 1;
+            player.RestoreStamina();
+            BlackTitle = ""; Daze = 1; immuneUntil = Time.time + 6; hidingSeconds = 0; hideAnchor = player.transform.position;
+            float master = AudioListener.volume;
+            ringSource.clip = NightSfx.Ring; ringSource.Play();
+            for (float t = 0; t < 2.4f; t += Time.deltaTime)
+            {
+                Fade = 1 - Mathf.SmoothStep(0, 1, t / 2.4f);
+                AudioListener.volume = master * Mathf.Lerp(.15f, 1, t / 2.4f);
+                if (t > 1.2f && Busy) { Busy = false; player.SetOverlay(false); }
+                yield return null;
+            }
+            Fade = 0; AudioListener.volume = master; Busy = false; player.SetOverlay(false);
+            Say(State.prologue_beaten == 1 ? "Nó chạy đâu rồi? Kiếm coi!" : "Còn ở quanh đây. Rọi đèn coi!", 3);
         }
         public void ResetPrologue()
         {
             State = new NightOneState(); Clock = new StoryClock(State);
-            player.Teleport(alleyStart.position, StartYaw); player.RunMultiplier = 1;
+            player.Teleport(alleyStart.position, StartYaw); player.RunMultiplier = 1; player.RestoreStamina();
             foreach (var o in observers) o.ResetObserver(false);
             foreach (var l in alertLights) l.enabled = false;
             leftStart = false; shoutCount = 0; hidingSeconds = 0; hideAnchor = player.transform.position; PrologueDeparted=false;PrologueElapsed=0;
@@ -480,7 +590,7 @@ namespace BaGio12.Story
             if(State.stage==NightStage.Prologue)
             {
                 // A safety recovery must never clear persistent capture penalties.
-                player.Teleport(alleyStart.position, StartYaw);player.RunMultiplier=State.prologue_beaten>=2?2f/3:1;
+                player.Teleport(alleyStart.position, StartYaw);player.RunMultiplier=State.prologue_beaten>=2?2f/3:1;player.RestoreStamina();
                 foreach(var observer in observers)observer.ResetObserver(State.phonePlaced);
                 foreach(var light in alertLights)light.enabled=false;
                 foreach(var light in alertLights.Take(State.prologue_beaten>0?State.prologue_beaten+1:0))light.enabled=true;
@@ -502,6 +612,14 @@ namespace BaGio12.Story
         }
         void SyncWorld()
         {
+            if (State.stage > NightStage.Prologue && (State.bikeParked || State.phoneEverPicked || pushBike == null)) State.bikeArrived = true;
+            bool pushing = Pushing;
+            if (pushBike != null) pushBike.SetActive(pushing);
+            if (ownBike != null) ownBike.SetActive(State.stage != NightStage.Prologue && !pushing);
+            if (mouthBike != null) mouthBike.SetActive(State.stage == NightStage.Prologue);
+            player.SprintAllowed = !pushing; player.CrouchAllowed = !pushing;
+            player.WalkMultiplier = pushing ? .5f : 1;
+            player.StaminaLimited = State.stage == NightStage.Prologue;
             if (nganPhone != null) nganPhone.SetActive(State.phonePlaced && !State.hasNganPhone);
             if (nganPhone != null && nganPhone.transform.Find("Screen glow") == null)
             {

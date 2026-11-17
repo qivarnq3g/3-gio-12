@@ -54,13 +54,39 @@ namespace BaGio12.Story
                 if(story.player.enabled)GUI.Label(new Rect(24,675,1200,35),state.stage==NightStage.Prologue?"WASD đi · Shift chạy · C cúi · Giữ E để đặt máy · Esc tạm dừng":"WASD đi · Shift chạy · C cúi · E tương tác · 1/2 điện thoại · N Sổ tay · Esc tạm dừng",small);
                 if(story.Subtitle!="")
                 { Panel(new Rect(440,548,800,84),new Color(0,0,0,.8f));GUI.Label(new Rect(460,558,760,70),story.Subtitle,normal); }
+                if(state.stage==NightStage.Prologue && story.player.Stamina<.99f)
+                { Panel(new Rect(565,640,150,5),new Color(0,0,0,.6f));Panel(new Rect(565,640,150*story.player.Stamina,5),story.player.Winded?new Color(.75f,.3f,.25f,.9f):new Color(.85f,.85f,.8f,.75f)); }
                 if(story.HoldProgress>.01f)
                 { Panel(new Rect(450,510,380,8),Color.gray);Panel(new Rect(450,510,380*story.HoldProgress,8),new Color(.25f,.75f,.65f)); }
                 if(state.alarm)
                 { GUI.Label(new Rect(300,200,750,100),"DẬY. KIỂM TRA CỬA. ĐỪNG NGỦ LẠI.",heading); if(GUI.Button(new Rect(470,330,340,55),"Tắt báo thức"))story.StopAlarm(); }
             }
+            DrawImpact();
             GUI.matrix=original;
         }
+        Texture2D vignette;
+        void DrawImpact()
+        {
+            var full=new Rect(0,0,1280,720);
+            if(story.RedFlash>.01f)Panel(full,new Color(.5f,0,0,story.RedFlash*.5f));
+            if(story.Daze>.01f)
+            {
+                if(vignette==null)
+                {
+                    vignette=new Texture2D(128,128,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Clamp};
+                    for(int y=0;y<128;y++)for(int x=0;x<128;x++)
+                    {
+                        float d=new Vector2((x-63.5f)/63.5f,(y-63.5f)/63.5f).magnitude;
+                        vignette.SetPixel(x,y,new Color(.08f,0,0,Mathf.SmoothStep(0,1,(d-.35f)/.75f)));
+                    }
+                    vignette.Apply();
+                }
+                float pulse=.85f+.15f*Mathf.Sin(Time.time*5.5f);
+                GUI.color=new Color(1,1,1,Mathf.Clamp01(story.Daze*1.2f)*pulse);GUI.DrawTexture(full,vignette);GUI.color=Color.white;
+            }
+            if(story.Fade>.01f && story.BlackTitle=="")Panel(full,new Color(0,0,0,story.Fade));
+        }
+        void OnDestroy(){if(vignette!=null)Destroy(vignette);}
         void DrawPhone()
         {
             var s=story.State;
