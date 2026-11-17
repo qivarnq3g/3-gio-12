@@ -284,7 +284,8 @@ public static class RealisticSceneBuilder
     {
         var key = "Decal_" + tex; if (Cache.TryGetValue(key, out var done)) return done;
         var saved = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{key}.mat"); if (saved != null) return Cache[key] = saved;
-        var m = new Material(Shader.Find("Shader Graphs/Decal")) { name = key, enableInstancing = true };
+        var shader = Shader.Find("Shader Graphs/Decal") ?? AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/Decal_D_Cracks.mat").shader;
+        var m = new Material(shader) { name = key, enableInstancing = true };
         var t = Tex($"{DecalRoot}/{tex}.png", max: 1024);
         var imp = (TextureImporter)AssetImporter.GetAtPath($"{DecalRoot}/{tex}.png");
         if (imp.wrapMode != TextureWrapMode.Clamp) { imp.wrapMode = TextureWrapMode.Clamp; imp.SaveAndReimport(); }
@@ -320,7 +321,10 @@ public static class RealisticSceneBuilder
     {
         var forward = rotation * Vector3.forward; var right = rotation * Vector3.right * size.x / 2; var top = rotation * Vector3.up * size.y / 2;
         var depths = new List<float>();
-        foreach (var (a, b) in new[] { (0f, 0f), (-.9f, -.9f), (.9f, -.9f), (-.9f, .9f), (.9f, .9f), (-.9f, 0f), (.9f, 0f), (0f, -.9f), (0f, .9f) })
+        var grid = strict
+            ? (from i in Enumerable.Range(0, 9) from j in Enumerable.Range(0, 7) select (-.95f + i * 1.9f / 8, -.95f + j * 1.9f / 6)).ToArray()
+            : new[] { (0f, 0f), (-.9f, -.9f), (.9f, -.9f), (-.9f, .9f), (.9f, .9f), (-.9f, 0f), (.9f, 0f), (0f, -.9f), (0f, .9f) };
+        foreach (var (a, b) in grid)
         {
             var d = SkinDepth(at - forward * .5f + right * a + top * b, forward, strict);
             if (d != null) depths.Add(d.Value); else if (strict) return null;
@@ -336,6 +340,65 @@ public static class RealisticSceneBuilder
         go.transform.SetPositionAndRotation(at + forward * plane.Value, rotation);
         var d = go.AddComponent<DecalProjector>(); d.material = DecalMat(tex, normal); d.size = new Vector3(size.x, size.y, DecalDepth); d.pivot = Vector3.zero; d.drawDistance = 60;
         return true;
+    }
+    static void SignBoard(Transform parent, string tex, Vector3 at, Vector3 forward, Vector2 size)
+    {
+        var rotation = Quaternion.LookRotation(forward, Vector3.up);
+        var top = rotation * Vector3.up * size.y / 2;
+        float Probe(Vector3 o) { float d = 1f; foreach (var hit in Physics.RaycastAll(o - forward * .5f, forward, 1f)) d = Mathf.Min(d, hit.distance); return d; }
+        var wall = Enumerable.Range(0, 11).Select(i => Probe(at + rotation * Vector3.right * (i - 5) * .1f)).OrderBy(d => d).ElementAt(5);
+        bool Clear(float w) { var r = rotation * Vector3.right * w / 2; for (int i = 0; i <= 10; i++) for (int j = 0; j <= 4; j++) if (Probe(at + r * (-1 + i * .2f) + top * (-1 + j * .5f)) < wall - .03f) return false; return true; }
+        float full = size.x;
+        while (size.x > 1f && !Clear(size.x)) size.x -= .1f;
+        size.y *= size.x / full;
+        float near = wall; string blocker = $"width {full:F2}->{size.x:F2}";
+        const float thick = .04f;
+        var board = GameObject.CreatePrimitive(PrimitiveType.Cube); Object.DestroyImmediate(board.GetComponent<Collider>());
+        board.name = "Sign board " + tex; board.transform.SetParent(parent, false);
+        board.transform.SetPositionAndRotation(at - forward * (.5f - near + thick / 2 + .01f), rotation);
+        board.transform.localScale = new Vector3(size.x, size.y, thick);
+        var frame = MatFor("M_SignFrame", new Color(.18f, .17f, .16f), .25f);
+        board.GetComponent<MeshRenderer>().sharedMaterial = frame;
+        var face = GameObject.CreatePrimitive(PrimitiveType.Quad); Object.DestroyImmediate(face.GetComponent<Collider>());
+        face.name = "Sign face " + tex; face.transform.SetParent(board.transform, false);
+        face.transform.localPosition = new Vector3(0, 0, -.5f - .002f / thick); face.transform.localRotation = Quaternion.identity;
+        var m = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/Sign_{tex}.mat");
+        if (m == null) { m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = "Sign_" + tex }; AssetDatabase.CreateAsset(m, $"{MatRoot}/Sign_{tex}.mat"); }
+        var t = Tex($"{DecalRoot}/{tex}.png", max: 2048);
+        m.SetTexture("_BaseMap", t); m.SetColor("_BaseColor", Color.white); m.SetFloat("_Smoothness", .35f);
+        EditorUtility.SetDirty(m);
+        face.GetComponent<MeshRenderer>().sharedMaterial = m;
+        foreach (var r in board.GetComponentsInChildren<MeshRenderer>()) r.shadowCastingMode = ShadowCastingMode.On;
+        Debug.Log($"REAL_SIGN {tex} wall_offset={near - .5f:F3} blocker={blocker}");
+    }
+    static Material MatFor(string name, Color c, float smooth)
+    {
+        var path = $"{MatRoot}/{name}.mat"; var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (m == null) { m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = name }; AssetDatabase.CreateAsset(m, path); }
+        m.SetColor("_BaseColor", c); m.SetFloat("_Smoothness", smooth); EditorUtility.SetDirty(m); return m;
+    }
+    public static void PatchAlleyAds()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var alley = GameObject.Find("env_alley");
+        var logs = new[] { "Alley_Facades", "Alley_Ironwork" }.Select(n => ReplaceModelMesh(AlleyModel, n)).ToList();
+        if (logs.Any(l => l == null)) { EditorApplication.Exit(1); return; }
+        var lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(l => l.name == "Altar light").ToList();
+        var halos = Object.FindObjectsByType<ParticleSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+            .Where(p => p.name == "Halo" && lights.Any(l => Vector3.Distance(l.transform.position, p.transform.position) < .1f)).ToList();
+        foreach (var h in halos) Object.DestroyImmediate(h.gameObject);
+        foreach (var l in lights) Object.DestroyImmediate(l.gameObject);
+        int made = AltarLights(alley);
+        foreach (var name in new[] { "Alley dressing", "Garage dressing" }) { var old = GameObject.Find(name); if (old) Object.DestroyImmediate(old); }
+        Physics.SyncTransforms();
+        DressAlley();
+        DressGarage();
+        var decals = Object.FindObjectsByType<DecalProjector>(FindObjectsSortMode.None).Where(d => d.name.StartsWith("Decal D_Ad")).GroupBy(d => d.name).Select(g => $"{g.Key}={g.Count()}");
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        AssetDatabase.SaveAssets();
+        Debug.Log($"REAL_PATCH_ADS meshes=[{string.Join(" | ", logs)}] lights_removed={lights.Count} lights_made={made} ads={string.Join(",", decals)}");
+        EditorApplication.Exit(0);
     }
     static Material Additive(string tex, Color c)
     {
@@ -393,13 +456,13 @@ public static class RealisticSceneBuilder
         var root = new GameObject("Alley dressing").transform;
         var rng = new System.Random(312);
         float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
-        var posters = new[] { "D_PosterDrill", "D_PosterSeptic", "D_PosterLoan" };
+        var stencils = new[] { ("D_AdStencilA", new Vector2(1.05f, .39f)), ("D_AdStencilB", new Vector2(.68f, .47f)), ("D_AdStencilC", new Vector2(.62f, .17f)) };
         foreach (var side in new[] { -1, 1 })
         {
             var into = new Vector3(side, 0, 0); float x = side * AlleyWidth.Half;
-            void Stick(System.Func<Vector3> spot, Vector2 size, float tilt)
+            void Stick(string tex, System.Func<Vector3> spot, Vector2 size, float tilt)
             {
-                for (int t = 0; t < 10; t++) if (Decal(root, posters[rng.Next(3)], spot(), into, size, null, tilt, true)) return;
+                for (int t = 0; t < 40; t++) if (Decal(root, tex, spot(), into, size, null, tilt, true)) return;
             }
             for (float y = .6f; y < 47.5f; y += R(1.2f, 2.4f))
                 foreach (var ledge in new[] { 3.25f, 6.65f })
@@ -410,11 +473,11 @@ public static class RealisticSceneBuilder
             {
                 var (y0, y1) = houses[k];
                 Decal(root, "D_Plate" + ((k * 2 + (side > 0 ? 1 : 0)) % 13), new Vector3(x, 2.35f, -(y0 + .11f)), into, new Vector2(.22f, .14f));
-                if (rng.NextDouble() < .7) Stick(() => new Vector3(x, R(1.25f, 1.9f), -(y1 - R(.11f, .9f))), new Vector2(.2f, .28f), R(-4, 4));
-                if (rng.NextDouble() < .5) Stick(() => new Vector3(x, R(1.0f, 2.2f), -R(y0 + .6f, y1 - .6f)), new Vector2(.32f, .45f), R(-6, 6));
+                if (rng.NextDouble() < .35) Stick("D_AdFlyer", () => new Vector3(x, R(1.3f, 1.8f), -R(y0 + .3f, y1 - .3f)), new Vector2(.42f, .24f), R(-2, 2));
+                if (rng.NextDouble() < .7) { var (tex, size) = stencils[rng.Next(3)]; Stick(tex, () => new Vector3(x, R(.55f, 2.3f), -R(y0 + .1f + size.x / 2, y1 - .1f - size.x / 2)), size, R(-1.5f, 1.5f)); }
             }
         }
-        Decal(root, "D_ShopSign", new Vector3(-AlleyWidth.Half, 3.06f, -2.5f), Vector3.left, new Vector2(4.1f, .44f));
+        SignBoard(root, "D_ShopSign", new Vector3(-AlleyWidth.Half, 3.03f, -2.0f), Vector3.left, new Vector2(3.4f, .315f));
         Decal(root, "D_RoomForRent", new Vector3(AlleyWidth.Half, 1.55f, -44.75f), Vector3.right, new Vector2(.75f, .25f));
         foreach (var y in new[] { 4.5f, 11f, 17.5f, 26f, 33f, 41f }) Decal(root, "D_Cracks", new Vector3(R(-.84f, .42f), 0, -y), Vector3.down, new Vector2(R(1.2f, 2f), R(1.2f, 2f)), "D_Cracks_normal", R(0, 360));
         foreach (var y in new[] { 18.4f, 37.2f })
@@ -439,7 +502,7 @@ public static class RealisticSceneBuilder
         for (float x = -4f; x < 4.2f; x += R(1.2f, 2f))
             if (rng.NextDouble() < .7) { float h = R(1.2f, 2.2f); Decal(root, "D_Leak" + rng.Next(6), new Vector3(x, 2.8f - h / 2, -57.8f), Vector3.back, new Vector2(R(.8f, 1.5f), h)); }
         for (float x = -4.2f; x < 4.3f; x += 3f) Decal(root, "D_DampBase", new Vector3(x + 1.5f, .45f, -57.8f), Vector3.back, new Vector2(3.1f, .9f));
-        Decal(root, "D_PosterDrill", new Vector3(-4.5f, 1.5f, -49.6f), Vector3.left, new Vector2(.32f, .45f), null, 3, true);
+        Decal(root, "D_AdFlyer", new Vector3(-4.5f, 1.55f, -49.6f), Vector3.left, new Vector2(.42f, .24f), null, 1, true);
     }
 
     static Bounds MeshWorldBounds(MeshFilter f)
@@ -933,6 +996,11 @@ public static class RealisticSceneBuilder
             ("road_up", new Vector3(60, 1.6f, 11), new Vector3(-30, 60, 0)),
             ("alley", new Vector3(0, 1.6f, -1), new Vector3(5, 180, 0)),
             ("alley_mid", new Vector3(0.9f, 1.6f, -30), new Vector3(3, 180, 0)),
+            ("ads_sign", new Vector3(1.3f, 1.6f, -2.5f), new Vector3(-22, 270, 0)),
+            ("ads_walk_r", new Vector3(1.2f, 1.6f, -6), new Vector3(6, 212, 0)),
+            ("ads_walk_r2", new Vector3(1.2f, 1.6f, -24), new Vector3(6, 212, 0)),
+            ("ads_walk_l", new Vector3(-1.2f, 1.6f, -6), new Vector3(6, 148, 0)),
+            ("ads_walk_l2", new Vector3(-1.2f, 1.6f, -24), new Vector3(6, 148, 0)),
             ("alley_shop", new Vector3(1.3f, 1.55f, -4.2f), new Vector3(4, 300, 0)),
             ("alley_up", new Vector3(0.486f, 1.6f, -10), new Vector3(-28, 190, 0)),
             ("alley_back", new Vector3(-0.729f, 1.6f, -40), new Vector3(4, 0, 0)),

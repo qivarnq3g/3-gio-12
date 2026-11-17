@@ -50,6 +50,8 @@ Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** c
 | `TexturesPBR/rusty_metal_sheet` | Ảnh vân quét rusty_metal_sheet của Poly Haven (polyhaven.com), bản 2K, đổi định dạng ảnh mặt nạ cho URP Lit; dùng cho tôn và xà gồ nhà xe | CC0 1.0 | 08/11/2026 |
 | `Models/Environment/env_garage.fbx`, `Textures/T_NoteGarage.png`, `Textures/T_FireRules.png` | Nhóm tự dựng nhà xe bằng script trong Blender 5.2 (51.138 tam giác, có đồ vật Poly Haven ở dòng trên). Chữ trên tờ giấy viết bằng phông Patrick Hand (Google Fonts, giấy phép SIL Open Font License 1.1), chữ biển cấm lửa, cấm hút thuốc và nhãn bình chữa cháy bằng Arial, hình minh họa nhóm tự vẽ (16/11/2026), tất cả chỉ in thành ảnh, không kèm tệp phông. Bảng tiêu lệnh chữa cháy ở dòng dưới | Của nhóm | 08/11/2026, 16/11/2026 |
 | `Textures/T_FireRules.png` (nửa trên, bảng tiêu lệnh chữa cháy) | Ảnh "Tiêu lệnh chữa cháy.jpg" của Lê Huỳnh Bộ trên Wikimedia Commons (https://commons.wikimedia.org/wiki/File:Ti%C3%AAu_l%E1%BB%87nh_ch%E1%BB%AFa_ch%C3%A1y.jpg); nhóm đã cắt, nắn phối cảnh cho phẳng, chỉnh tương phản. Phần đã sửa này phát hành cùng giấy phép CC BY-SA 4.0 | CC BY-SA 4.0 | 16/11/2026 |
+| `Decals/D_AdStencilA.png`, `D_AdStencilC.png`, `D_AdFlyer.png` (quảng cáo sơn và tờ rơi dán tường hẻm) | Ảnh "Hanoi - Wall advertisement" của HoangP trên Flickr (https://www.flickr.com/photos/25336133@N02/3829499671); nhóm cắt từng mẫu, tách lớp sơn và giấy khỏi nền tường | CC BY 2.0 | 17/11/2026 |
+| `Decals/D_AdStencilB.png` (quảng cáo sơn tường) | Ảnh của michale trên Flickr (https://www.flickr.com/photos/95286689@N00/188382754); nhóm cắt, tách lớp sơn khỏi nền tường | CC BY 2.0 | 17/11/2026 |
 
 # Phông chữ
 
