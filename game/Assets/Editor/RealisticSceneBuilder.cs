@@ -341,35 +341,58 @@ public static class RealisticSceneBuilder
         var d = go.AddComponent<DecalProjector>(); d.material = DecalMat(tex, normal); d.size = new Vector3(size.x, size.y, DecalDepth); d.pivot = Vector3.zero; d.drawDistance = 60;
         return true;
     }
-    static void SignBoard(Transform parent, string tex, Vector3 at, Vector3 forward, Vector2 size)
+    static void SignBoard(Transform parent, string tex, Vector3 at, Vector3 forward, Vector2 size, float standoff = .12f, int lamps = 0)
     {
         var rotation = Quaternion.LookRotation(forward, Vector3.up);
-        var top = rotation * Vector3.up * size.y / 2;
+        var up = rotation * Vector3.up; var side = rotation * Vector3.right;
         float Probe(Vector3 o) { float d = 1f; foreach (var hit in Physics.RaycastAll(o - forward * .5f, forward, 1f)) d = Mathf.Min(d, hit.distance); return d; }
-        var wall = Enumerable.Range(0, 11).Select(i => Probe(at + rotation * Vector3.right * (i - 5) * .1f)).OrderBy(d => d).ElementAt(5);
-        bool Clear(float w) { var r = rotation * Vector3.right * w / 2; for (int i = 0; i <= 10; i++) for (int j = 0; j <= 4; j++) if (Probe(at + r * (-1 + i * .2f) + top * (-1 + j * .5f)) < wall - .03f) return false; return true; }
+        var wall = Enumerable.Range(0, 11).Select(i => Probe(at + side * (i - 5) * .1f + up * size.y * .45f)).OrderBy(d => d).ElementAt(5);
+        bool Clear(Vector2 s) { for (int i = 0; i <= 10; i++) for (int j = 0; j <= 4; j++) if (Probe(at + side * s.x / 2 * (-1 + i * .2f) + up * s.y / 2 * (-1 + j * .5f)) < wall - standoff + .01f) return false; return true; }
         float full = size.x;
-        while (size.x > 1f && !Clear(size.x)) size.x -= .1f;
-        size.y *= size.x / full;
-        float near = wall; string blocker = $"width {full:F2}->{size.x:F2}";
+        while (size.x > 1f && !Clear(size)) { size.y *= (size.x - .1f) / size.x; size.x -= .1f; }
         const float thick = .04f;
-        var board = GameObject.CreatePrimitive(PrimitiveType.Cube); Object.DestroyImmediate(board.GetComponent<Collider>());
-        board.name = "Sign board " + tex; board.transform.SetParent(parent, false);
-        board.transform.SetPositionAndRotation(at - forward * (.5f - near + thick / 2 + .01f), rotation);
-        board.transform.localScale = new Vector3(size.x, size.y, thick);
-        var frame = MatFor("M_SignFrame", new Color(.18f, .17f, .16f), .25f);
-        board.GetComponent<MeshRenderer>().sharedMaterial = frame;
+        var board = new GameObject("Sign board " + tex).transform; board.SetParent(parent, false);
+        board.SetPositionAndRotation(at - forward * (.5f - wall + standoff - thick / 2), rotation);
+        var frame = MatFor("M_SignFrame", new Color(.42f, .43f, .44f), .3f);
+        var steel = MatFor("M_SignBracket", new Color(.16f, .14f, .13f), .15f);
+        void Box(string n, Vector3 local, Vector3 scale, Material mat)
+        {
+            var b = GameObject.CreatePrimitive(PrimitiveType.Cube); Object.DestroyImmediate(b.GetComponent<Collider>());
+            b.name = n; b.transform.SetParent(board, false); b.transform.localPosition = local; b.transform.localScale = scale;
+            b.GetComponent<MeshRenderer>().sharedMaterial = mat;
+        }
+        const float trim = .045f;
+        Box("Back", new Vector3(0, 0, thick * .25f), new Vector3(size.x, size.y, thick * .5f), steel);
+        Box("Trim top", new Vector3(0, size.y / 2 - trim / 2, 0), new Vector3(size.x, trim, thick), frame);
+        Box("Trim bottom", new Vector3(0, -size.y / 2 + trim / 2, 0), new Vector3(size.x, trim, thick), frame);
+        Box("Trim left", new Vector3(-size.x / 2 + trim / 2, 0, 0), new Vector3(trim, size.y, thick), frame);
+        Box("Trim right", new Vector3(size.x / 2 - trim / 2, 0, 0), new Vector3(trim, size.y, thick), frame);
+        foreach (var u in new[] { -.38f, .38f }) foreach (var v in new[] { -.3f, .3f })
+            Box("Bracket", new Vector3(u * size.x, v * size.y, thick / 2 + (standoff - thick) / 2), new Vector3(.04f, .04f, standoff - thick), steel);
         var face = GameObject.CreatePrimitive(PrimitiveType.Quad); Object.DestroyImmediate(face.GetComponent<Collider>());
-        face.name = "Sign face " + tex; face.transform.SetParent(board.transform, false);
-        face.transform.localPosition = new Vector3(0, 0, -.5f - .002f / thick); face.transform.localRotation = Quaternion.identity;
+        face.name = "Sign face " + tex; face.transform.SetParent(board, false);
+        face.transform.localPosition = new Vector3(0, -.004f, -thick * .1f); face.transform.localScale = new Vector3(size.x - trim * 1.6f, size.y - trim * 1.6f, 1);
         var m = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/Sign_{tex}.mat");
         if (m == null) { m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = "Sign_" + tex }; AssetDatabase.CreateAsset(m, $"{MatRoot}/Sign_{tex}.mat"); }
         var t = Tex($"{DecalRoot}/{tex}.png", max: 2048);
-        m.SetTexture("_BaseMap", t); m.SetColor("_BaseColor", Color.white); m.SetFloat("_Smoothness", .35f);
+        m.SetTexture("_BaseMap", t); m.SetColor("_BaseColor", Color.white); m.SetFloat("_Smoothness", .22f);
         EditorUtility.SetDirty(m);
         face.GetComponent<MeshRenderer>().sharedMaterial = m;
+        for (int k = 0; k < lamps; k++)
+        {
+            float u = lamps == 1 ? 0 : (-.3f + .6f * k / (lamps - 1)) * size.x;
+            var arm = new Vector3(u, size.y / 2 + .08f, 0);
+            Box("Lamp arm", arm + new Vector3(0, 0, (-.55f + standoff - thick / 2) / 2), new Vector3(.025f, .025f, .55f + standoff - thick / 2), steel);
+            Box("Lamp head", arm + new Vector3(0, -.02f, -.57f), new Vector3(.16f, .05f, .1f), steel);
+            var l = new GameObject("Sign lamp").AddComponent<Light>(); l.transform.SetParent(board, false);
+            l.type = LightType.Spot; l.color = new Color(1f, .93f, .82f); l.intensity = 1.1f; l.range = 3.5f; l.spotAngle = 110; l.innerSpotAngle = 40;
+            l.shadows = LightShadows.Soft; l.lightmapBakeType = LightmapBakeType.Mixed;
+            l.transform.localPosition = arm + new Vector3(0, -.05f, -.57f);
+            l.transform.LookAt(board.TransformPoint(new Vector3(u, -size.y * .15f, 0)));
+            NightStreetBuilder.SetShadowTier(l, UniversalAdditionalLightData.AdditionalLightsShadowResolutionTierLow);
+        }
         foreach (var r in board.GetComponentsInChildren<MeshRenderer>()) r.shadowCastingMode = ShadowCastingMode.On;
-        Debug.Log($"REAL_SIGN {tex} wall_offset={near - .5f:F3} blocker={blocker}");
+        Debug.Log($"REAL_SIGN {tex} wall={wall - .5f:F3} width {full:F2}->{size.x:F2} height={size.y:F2} lamps={lamps}");
     }
     static Material MatFor(string name, Color c, float smooth)
     {
@@ -477,7 +500,7 @@ public static class RealisticSceneBuilder
                 if (rng.NextDouble() < .7) { var (tex, size) = stencils[rng.Next(3)]; Stick(tex, () => new Vector3(x, R(.55f, 2.3f), -R(y0 + .1f + size.x / 2, y1 - .1f - size.x / 2)), size, R(-1.5f, 1.5f)); }
             }
         }
-        SignBoard(root, "D_ShopSign", new Vector3(-AlleyWidth.Half, 3.03f, -2.0f), Vector3.left, new Vector2(3.4f, .315f));
+        SignBoard(root, "D_ShopSign", new Vector3(-AlleyWidth.Half, 3.34f, -2.0f), Vector3.left, new Vector2(3.5f, .95f), .12f, 2);
         Decal(root, "D_RoomForRent", new Vector3(AlleyWidth.Half, 1.55f, -44.75f), Vector3.right, new Vector2(.75f, .25f));
         foreach (var y in new[] { 4.5f, 11f, 17.5f, 26f, 33f, 41f }) Decal(root, "D_Cracks", new Vector3(R(-.84f, .42f), 0, -y), Vector3.down, new Vector2(R(1.2f, 2f), R(1.2f, 2f)), "D_Cracks_normal", R(0, 360));
         foreach (var y in new[] { 18.4f, 37.2f })
@@ -996,6 +1019,10 @@ public static class RealisticSceneBuilder
             ("road_up", new Vector3(60, 1.6f, 11), new Vector3(-30, 60, 0)),
             ("alley", new Vector3(0, 1.6f, -1), new Vector3(5, 180, 0)),
             ("alley_mid", new Vector3(0.9f, 1.6f, -30), new Vector3(3, 180, 0)),
+            ("signs_homeware", new Vector3(-154f, 1.6f, 7f), new Vector3(-14, 0, 0)),
+            ("signs_rice", new Vector3(57f, 1.6f, 9.5f), new Vector3(-14, 180, 0)),
+            ("signs_row_a", new Vector3(30f, 1.6f, 6f), new Vector3(-8, 35, 0)),
+            ("signs_row_b", new Vector3(-30f, 1.6f, 8f), new Vector3(-8, 325, 0)),
             ("ads_sign", new Vector3(1.3f, 1.6f, -2.5f), new Vector3(-22, 270, 0)),
             ("ads_walk_r", new Vector3(1.2f, 1.6f, -6), new Vector3(6, 212, 0)),
             ("ads_walk_r2", new Vector3(1.2f, 1.6f, -24), new Vector3(6, 212, 0)),
@@ -1017,7 +1044,7 @@ public static class RealisticSceneBuilder
             ("room7", new Vector3(-2.8f, 11.8f, -42.3f), new Vector3(15, 200, 0)) };
         var rt = new RenderTexture(1280, 720, 24, RenderTextureFormat.ARGB32); var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
         Directory.CreateDirectory(dir);
-        foreach (var v in views.Where(s => ShotsOnly == null || s.name.StartsWith(ShotsOnly)))
+        foreach (var v in views.Where(s => ShotsOnly == null || ShotsOnly.Split(',').Any(p => s.name.StartsWith(p))))
         {
             cam.transform.SetPositionAndRotation(v.pos, Quaternion.Euler(v.rot));
             cam.targetTexture = rt; for (int i = 0; i < 8; i++) cam.Render(); RenderTexture.active = rt;
