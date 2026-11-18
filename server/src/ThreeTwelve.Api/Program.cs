@@ -18,6 +18,8 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ITelemetryIngestService, TelemetryIngestService>();
 builder.Services.AddScoped<IPuzzleSubmissionService, PuzzleSubmissionService>();
 builder.Services.AddScoped<IAdminAccountService, AdminAccountService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<ICsvExportService, CsvExportService>();
 builder.Services.AddAdminAuth();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ServiceExceptionHandler>();

@@ -17,9 +17,9 @@ public static class TelemetryPayloads
     public static JsonObject SessionStarted(DateTimeOffset? occurredAt = null) =>
         Event("session_started", occurredAt);
 
-    public static JsonObject SessionEnded(string reason, int durationSeconds, int? night = null, string? areaId = null)
+    public static JsonObject SessionEnded(string reason, int durationSeconds, int? night = null, string? areaId = null, DateTimeOffset? occurredAt = null)
     {
-        var e = Event("session_ended");
+        var e = Event("session_ended", occurredAt);
         e["reason"] = reason;
         e["durationSeconds"] = durationSeconds;
         if (night is not null) e["night"] = night;
@@ -27,43 +27,43 @@ public static class TelemetryPayloads
         return e;
     }
 
-    public static JsonObject NightStarted(int night)
+    public static JsonObject NightStarted(int night, DateTimeOffset? occurredAt = null)
     {
-        var e = Event("night_started");
+        var e = Event("night_started", occurredAt);
         e["night"] = night;
         e["isReplay"] = false;
         return e;
     }
 
-    public static JsonObject NightCompleted(int night, int durationSeconds, bool isReplay = false)
+    public static JsonObject NightCompleted(int night, int durationSeconds, bool isReplay = false, DateTimeOffset? occurredAt = null)
     {
-        var e = Event("night_completed");
+        var e = Event("night_completed", occurredAt);
         e["night"] = night;
         e["isReplay"] = isReplay;
         e["durationSeconds"] = durationSeconds;
         return e;
     }
 
-    public static JsonObject PlayerCaught(int night, string areaId, string checkpointId)
+    public static JsonObject PlayerCaught(int night, string areaId, string checkpointId, DateTimeOffset? occurredAt = null)
     {
-        var e = Event("player_caught");
+        var e = Event("player_caught", occurredAt);
         e["night"] = night;
         e["areaId"] = areaId;
         e["checkpointId"] = checkpointId;
         return e;
     }
 
-    public static JsonObject ChoiceMade(int night, string choiceId)
+    public static JsonObject ChoiceMade(int night, string choiceId, DateTimeOffset? occurredAt = null)
     {
-        var e = Event("choice_made");
+        var e = Event("choice_made", occurredAt);
         e["night"] = night;
         e["choiceId"] = choiceId;
         return e;
     }
 
-    public static JsonObject EndingReached(int night, string endingId)
+    public static JsonObject EndingReached(int night, string endingId, DateTimeOffset? occurredAt = null)
     {
-        var e = Event("ending_reached");
+        var e = Event("ending_reached", occurredAt);
         e["night"] = night;
         e["endingId"] = endingId;
         return e;

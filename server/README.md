@@ -63,6 +63,7 @@ dotnet ef migrations add <TenMigration> -p src/ThreeTwelve.Api -o Data/Migration
 | `POST /api/v1/telemetry/batches`, `DELETE /api/v1/telemetry/installations/{installationId}` | #25 |
 | `POST /api/v1/puzzles/{puzzleId}/submissions` | #26 |
 | `/api/admin/auth/...` (đăng nhập, đăng xuất, tài khoản đang đăng nhập, đổi mật khẩu), `/api/admin/accounts/...` | #27 |
+| `GET /api/admin/dashboard`, `GET /api/admin/exports/{dataset}` | #28 |
 
 Giới hạn tần suất theo địa chỉ IP: API thống kê 60 yêu cầu mỗi phút (biến `RateLimits__Telemetry__PermitLimit`), API gửi bằng chứng 20 yêu cầu mỗi phút (biến `RateLimits__PuzzleSubmit__PermitLimit`). Địa chỉ IP chỉ nằm trong bộ nhớ, không ghi vào cơ sở dữ liệu.
 
