@@ -35,7 +35,7 @@ Năm màn, chơi khoảng 30 đến 45 phút. Màn 3.3 là nhánh phụ, vào ha
 | 3.4 Nhà trọ và phòng 7 | 21:20 đến khoảng 22:30 | Cổng nhà trọ, cầu thang, hành lang tầng 3, phòng 7 | Lên phòng, đọc tin, chọn cách xử lý dãy số lạ | Lựa chọn trong chat | Phòng 7 |
 | 3.5 Khuya | 22:30 đến 06:30 | Phòng 7, hành lang | Đi ngủ hay thức canh | Lựa chọn ngủ, tua thời gian | Phòng 7 |
 
-Bố cục hẻm 12 (hẻm khu Bàn Cờ, rộng khoảng 2,5 m, nhà ống hai bên, dây điện, mái tôn), từ đường lớn đi vào:
+Bố cục hẻm 12 (hẻm khu Bàn Cờ, rộng khoảng 3,5 m, nhà ống hai bên, dây điện, mái tôn), từ đường lớn đi vào:
 
 1. Đầu hẻm, nhìn ra đường lớn thấy biển "Công an phường" cách khoảng hai trăm mét.
 2. Tiệm tạp hóa chú Hùng, camera an ninh gắn mái hiên quay ra hẻm, có đèn đỏ nhỏ nhấp nháy.
@@ -220,7 +220,7 @@ Biến còn lại cần lưu cho đêm 2: `odo_2100`, `saw_shop_camera`, `found_
 
 ## 8. Model cho Tiên (đêm 1)
 
-Phong cách: hình cách điệu, màu phẳng, đường nét rõ, giống cách vẽ của Wuthering Waves, Genshin Impact. Ảnh mẫu đưa vào Tripo: một nhân vật hoặc một đồ vật đủ người, nền trơn, trông như ảnh dựng 3D có khối, không vẽ phẳng 2D, không vẽ viền; viền và màu phẳng do shader trong Unity làm.
+Phong cách: hình cách điệu, màu phẳng, đường nét rõ, giống cách vẽ của Wuthering Waves, Genshin Impact. Nhóm tự dựng model trong Blender theo `CONTRIBUTING.md`; viền và màu phẳng do shader trong Unity làm.
 
 Ưu tiên A cần cho bản thô chơi được; B làm sau khi bản khối xám chạy. Bối cảnh (hẻm, nhà trọ, phòng 7) là phần của Quang ở task #15.
 

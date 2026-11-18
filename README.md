@@ -34,3 +34,12 @@ File gốc nặng (`.blend`, `.psd`, ảnh AI gốc) để trên Drive, không �
 
 - 16/11/2026 09:07: thuyết minh thiết kế (kiến trúc, use case, lược đồ lớp).
 - 03/12/2026 09:07: dự án hoàn chỉnh (đêm 1-3 chơi được, máy chủ, trang quản trị, báo cáo, thuyết trình).
+
+## Tài liệu thiết kế
+
+- [Kiến trúc hệ thống](docs/thiet-ke/kien-truc-he-thong.md)
+- [Lược đồ lớp phần game](docs/thiet-ke/luoc-do-lop-game.md)
+
+## Bản quyền
+
+Kho này không phải mã nguồn mở. Nhóm giữ toàn quyền với mã nguồn, kịch bản, hình ảnh, âm thanh và bản build; không được sao chép hay dùng lại khi chưa được phép. Chi tiết ở [LICENSE](LICENSE). Tài sản của bên thứ ba theo giấy phép riêng, liệt kê ở [NGUON.md](game/Assets/Art/_Source/NGUON.md).
