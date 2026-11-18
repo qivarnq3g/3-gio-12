@@ -25,7 +25,7 @@ namespace BaGio12.Gameplay
             canvas = GameUi.Canvas(transform, "Playtest readout", 90);
             canvas.GetComponent<CanvasGroup>().blocksRaycasts = false;
             var panel = GameUi.Place(GameUi.Box(canvas.transform, "Panel", new Color(0, 0, 0, .6f)),
-                Vector2.one, Vector2.one, new Vector2(-24, -24), new Vector2(760, 158));
+                Vector2.one, Vector2.one, new Vector2(-24, -24), new Vector2(760, 182));
 
             coordinates = GameUi.Text(panel, "Coordinates", "", 24, GameUi.Ink, TextAlignmentOptions.TopLeft);
             coordinates.enableAutoSizing = true;
@@ -35,7 +35,7 @@ namespace BaGio12.Gameplay
 
             diagnostics = GameUi.Text(panel, "Diagnostics", "", 18, GameUi.Ink, TextAlignmentOptions.TopLeft);
             diagnostics.overflowMode = TextOverflowModes.Ellipsis;
-            GameUi.Place(diagnostics.rectTransform, Vector2.up, Vector2.up, new Vector2(16, -50), new Vector2(728, 96));
+            GameUi.Place(diagnostics.rectTransform, Vector2.up, Vector2.up, new Vector2(16, -50), new Vector2(728, 120));
             canvas.gameObject.SetActive(false);
         }
 
