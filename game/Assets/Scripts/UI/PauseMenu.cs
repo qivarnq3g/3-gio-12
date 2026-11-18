@@ -462,7 +462,11 @@ namespace BaGio12.Gameplay
             lightsOn = on;
             clicks.pitch = on ? 1 : .82f;
             clicks.PlayOneShot(MenuSounds.Relay, on ? 1f : .7f);
-            if (on) { flickerAt = Time.unscaledTime; if (!hum.isPlaying) hum.Play(); }
+            if (on)
+            {
+                flickerAt = Time.unscaledTime;
+                if (AtStart && !hum.isPlaying) hum.Play();
+            }
         }
 
         void SaveIfDirty()
@@ -663,7 +667,7 @@ namespace BaGio12.Gameplay
             dim.color = new Color(Night.r, Night.g, Night.b, Damp(dim.color.a, dimTarget, lightsOn ? 6 : 1.2f, dt));
             bool haveBackdrop = backdrop.texture != null && !backdropStale;
             backdrop.color = new Color(1, 1, 1, Damp(backdrop.color.a, haveBackdrop ? 1 : 0, 5, dt));
-            hum.volume = Mathf.MoveTowards(hum.volume, lightsOn && shown ? .08f : 0, dt * .5f);
+            hum.volume = Mathf.MoveTowards(hum.volume, AtStart && lightsOn && shown ? .08f : 0, dt * .5f);
             if (!lightsOn && hum.volume <= 0 && hum.isPlaying) hum.Stop();
 
             float mark = OutCubic(since / .7f);
