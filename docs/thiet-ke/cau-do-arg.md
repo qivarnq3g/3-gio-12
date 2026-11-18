@@ -13,7 +13,7 @@ Website tĩnh của Ngân thực hiện issue #30. Bài ngày 28/10 dùng ảnh 
 
 | Tệp | Nguồn và mục đích |
 |---|---|
-| `arg-site/assets/img/hoang-hon-song-sai-gon.png` | Ảnh hồ Bán Nguyệt của @jack_long304 dùng minh họa cho bài 28/10 và trang chủ. [Phụ Nữ Online](https://tuoitre.vn/phunuonline/bo-tui-nhung-diem-san-hoang-hon-tuyet-dep-o-sai-gon-1101410746.htm) |
+| `arg-site/assets/img/hoang-hon-song-sai-gon.png` | Ảnh hồ Bán Nguyệt của @jack_long304, tải từ bài viết trên [Phụ Nữ Online](https://tuoitre.vn/phunuonline/bo-tui-nhung-diem-san-hoang-hon-tuyet-dep-o-sai-gon-1101410746.htm) |
 | `arg-site/assets/img/be-na.jpg` | Tranh minh họa nhân vật hư cấu tạo bằng ImageGen |
 | `arg-site/assets/img/theu-ca-bong.jpg` | Ảnh minh họa miếng vải thêu cá bống, tự tạo bằng AI cho dự án. |
 | `cover-2026-11-08.jpg` | Ảnh hoàng hôn riêng, tạo bằng ImageGen để đóng gói tại `/drop/` |
