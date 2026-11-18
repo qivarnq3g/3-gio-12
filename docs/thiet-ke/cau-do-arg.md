@@ -13,9 +13,9 @@ Website tĩnh của Ngân thực hiện issue #30. Bài ngày 28/10 dùng ảnh 
 
 | Tệp | Nguồn và mục đích |
 |---|---|
-| `arg-site/assets/img/hoang-hon-song-sai-gon.jpg` | Ảnh minh họa tạo bằng ImageGen cho bài 28/10 và trang chủ |
+| `arg-site/assets/img/hoang-hon-song-sai-gon.png` | Ảnh hồ Bán Nguyệt của @jack_long304 dùng minh họa cho bài 28/10 và trang chủ. [Phụ Nữ Online](https://tuoitre.vn/phunuonline/bo-tui-nhung-diem-san-hoang-hon-tuyet-dep-o-sai-gon-1101410746.htm) |
 | `arg-site/assets/img/be-na.jpg` | Tranh minh họa nhân vật hư cấu tạo bằng ImageGen |
-| `arg-site/assets/img/theu-ca-bong.jpg` | Ảnh minh họa mẫu thêu tạo bằng ImageGen |
+| `arg-site/assets/img/theu-ca-bong.jpg` | Ảnh mẫu thêu gốc từ commit `83b99cf`. Nguồn ngoài repo chưa xác minh. |
 | `cover-2026-11-08.jpg` | Ảnh hoàng hôn riêng, tạo bằng ImageGen để đóng gói tại `/drop/` |
 | `red-thread-sandal.jpg` | Ảnh bằng chứng hư cấu tạo bằng ImageGen, lưu riêng dưới dạng JPEG cố định |
 | `missing-child-notice.jpg` | Tờ tìm trẻ dựng từ tranh minh họa bé Na và chữ theo kịch bản |
