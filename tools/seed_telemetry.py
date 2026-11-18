@@ -6,9 +6,9 @@ Gửi sự kiện ẩn danh qua API tiêu chuẩn: POST /api/v1/telemetry/batche
 
 Cách dùng:
   python tools/seed_telemetry.py         # Nạp 15 người chơi mẫu vào máy chủ
-  python tools/seed_telemetry.py --clear # Xóa sạch dữ liệu về 0
 """
 
+import argparse
 import json
 import sys
 import urllib.error
@@ -18,7 +18,6 @@ from datetime import datetime, timezone, timedelta
 
 SERVER_URL = "http://localhost:8080"
 BATCH_ENDPOINT = f"{SERVER_URL}/api/v1/telemetry/batches"
-CLEAR_ENDPOINT = f"{SERVER_URL}/api/admin/dev/clear-telemetry"
 
 def make_event(evt_type, session_id, seq, time_dt, **kwargs):
     time_str = time_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -138,24 +137,6 @@ def generate_sample_players(num_players=15):
 
     return batches
 
-def clear_data():
-    sys.stdout.reconfigure(encoding="utf-8")
-    print(f"[*] Đang yêu cầu xóa sạch dữ liệu telemetry về 0...")
-    req = urllib.request.Request(
-        CLEAR_ENDPOINT,
-        data=b"{}",
-        headers={"Content-Type": "application/json; charset=utf-8"}
-    )
-    try:
-        with urllib.request.urlopen(req) as resp:
-            if resp.status == 200:
-                print("[OK] Đã xóa sạch dữ liệu telemetry về 0!")
-                print("[*] Mở http://localhost:5173/admin/ sẽ thấy trạng thái ban đầu (0 người chơi).")
-                return True
-    except urllib.error.URLError as e:
-        print(f"[!] Lỗi kết nối máy chủ: {e}")
-        return False
-
 def send_batches(batches):
     sys.stdout.reconfigure(encoding="utf-8")
     print(f"[*] Đang gửi {len(batches)} lô sự kiện mẫu tới {BATCH_ENDPOINT}...")
@@ -184,8 +165,6 @@ def send_batches(batches):
     return True
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--clear":
-        clear_data()
-    else:
-        batches = generate_sample_players(num_players=15)
-        send_batches(batches)
+    parser = argparse.ArgumentParser(description="Nạp sự kiện thống kê mẫu vào máy chủ cục bộ")
+    parser.parse_args()
+    raise SystemExit(0 if send_batches(generate_sample_players(num_players=15)) else 1)

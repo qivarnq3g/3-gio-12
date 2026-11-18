@@ -236,27 +236,27 @@ export function DashboardPage() {
             </div>
 
             {data.nights.length === 0 ? (
-              <div className="empty-card">Chưa ghi nhận người chơi nào bắt đầu các đêm trong khoảng thời gian này.</div>
+              <div className="empty-card">Chưa ghi nhận lượt bắt đầu hoặc hoàn thành đêm trong khoảng thời gian này.</div>
             ) : (
               <div className="funnel-grid">
                 {data.nights.map((night) => {
                   const rate =
                     night.playersStarted > 0
-                      ? Math.round((night.playersCompleted / night.playersStarted) * 100)
-                      : 0;
+                      ? Math.min(100, Math.round((night.playersCompleted / night.playersStarted) * 100))
+                      : null;
                   const dropoff = Math.max(0, night.playersStarted - night.playersCompleted);
 
                   return (
                     <div key={night.night} className="funnel-card">
                       <div className="funnel-card-header">
                         <span className={`night-badge night-${night.night}`}>Đêm {night.night}</span>
-                        <span className="funnel-rate-badge">{rate}% Hoàn thành</span>
+                        <span className="funnel-rate-badge">{rate === null ? "—" : rate + "% Hoàn thành"}</span>
                       </div>
 
                       <div className="funnel-bar-track">
                         <div
                           className={`funnel-bar-fill fill-night-${night.night}`}
-                          style={{ width: `${Math.min(100, Math.max(4, rate))}%` }}
+                          style={{ width: `${rate ?? 0}%` }}
                         />
                       </div>
 

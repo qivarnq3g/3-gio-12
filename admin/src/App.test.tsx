@@ -383,6 +383,29 @@ test("DashboardPage: loads and renders summary metrics, funnel, hotspots, ending
   expect(calls).toContain("GET /api/admin/dashboard");
 });
 
+test("DashboardPage caps completion rates when players started before the date range", async () => {
+  serve({
+    "GET /api/admin/auth/me": () => ({ status: 200, body: account }),
+    "GET /api/admin/dashboard": () => ({
+      status: 200,
+      body: {
+        ...mockDashboardData,
+        nights: [
+          { night: 1, playersStarted: 1, playersCompleted: 2, averageDurationSeconds: 300 },
+          { night: 2, playersStarted: 0, playersCompleted: 1, averageDurationSeconds: 600 },
+        ],
+      },
+    }),
+  });
+
+  renderAt("/");
+
+  expect(await screen.findByText("100% Hoàn thành")).toBeInTheDocument();
+  expect(screen.getAllByText("Hoàn thành")).toHaveLength(2);
+  expect(screen.queryByText("200% Hoàn thành")).not.toBeInTheDocument();
+  expect(screen.queryByText("0% Hoàn thành")).not.toBeInTheDocument();
+});
+
 test("DashboardPage: toggles between caught and quit locations", async () => {
   serve({
     "GET /api/admin/auth/me": () => ({ status: 200, body: account }),
@@ -474,7 +497,7 @@ test("DashboardPage: displays clean empty state when database has 0 events", asy
   expect(zeroValues.length).toBeGreaterThanOrEqual(2);
 
   // Empty cards for each section
-  expect(screen.getByText("Chưa ghi nhận người chơi nào bắt đầu các đêm trong khoảng thời gian này.")).toBeInTheDocument();
+  expect(screen.getByText("Chưa ghi nhận lượt bắt đầu hoặc hoàn thành đêm trong khoảng thời gian này.")).toBeInTheDocument();
   expect(screen.getByText("Không có dữ liệu người chơi bị bắt.")).toBeInTheDocument();
   expect(screen.getByText("Chưa có người chơi nào hoàn thành kết thúc.")).toBeInTheDocument();
   expect(screen.getByText("Không có lựa chọn nào được ghi nhận.")).toBeInTheDocument();

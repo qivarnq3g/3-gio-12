@@ -9,18 +9,20 @@ public sealed class DashboardService(AppDbContext db) : IDashboardService
 {
     public async Task<DashboardSummary> GetSummaryAsync(DateRange range, CancellationToken ct = default)
     {
-        var players = await db.TelemetryEvents
-            .Where(e => e.ReceivedAt >= range.From && e.ReceivedAt <= range.To)
+        var events = db.TelemetryEvents
+            .Where(e => e.ReceivedAt >= range.From && e.ReceivedAt < range.To);
+
+        var players = await events
             .Select(e => e.InstallationId)
             .Distinct()
             .CountAsync(ct);
 
-        var sessions = await db.TelemetryEvents
-            .Where(e => e.ReceivedAt >= range.From && e.ReceivedAt <= range.To && e.Type == "session_started")
+        var sessions = await events
+            .Where(e => e.Type == "session_started")
             .CountAsync(ct);
 
-        var endedStats = await db.TelemetryEvents
-            .Where(e => e.ReceivedAt >= range.From && e.ReceivedAt <= range.To && e.Type == "session_ended" && e.DurationSeconds != null)
+        var endedStats = await events
+            .Where(e => e.Type == "session_ended" && e.DurationSeconds != null)
             .GroupBy(_ => 1)
             .Select(g => new
             {
@@ -33,8 +35,8 @@ public sealed class DashboardService(AppDbContext db) : IDashboardService
         var totalSeconds = endedStats is not null ? (int)Math.Min(endedStats.Total, int.MaxValue) : 0;
         var avgSessionSeconds = endedStats?.Count > 0 ? endedStats.Average : null;
 
-        var startedNights = await db.TelemetryEvents
-            .Where(e => e.ReceivedAt >= range.From && e.ReceivedAt <= range.To && e.Type == "night_started" && e.Night != null && e.IsReplay == false)
+        var startedNights = await events
+            .Where(e => e.Type == "night_started" && e.Night != null && e.IsReplay == false)
             .GroupBy(e => e.Night!.Value)
             .Select(g => new
             {
@@ -43,8 +45,8 @@ public sealed class DashboardService(AppDbContext db) : IDashboardService
             })
             .ToListAsync(ct);
 
-        var completedNights = await db.TelemetryEvents
-            .Where(e => e.ReceivedAt >= range.From && e.ReceivedAt <= range.To && e.Type == "night_completed" && e.Night != null && e.IsReplay == false)
+        var completedNights = await events
+            .Where(e => e.Type == "night_completed" && e.Night != null && e.IsReplay == false)
             .GroupBy(e => e.Night!.Value)
             .Select(g => new
             {
@@ -54,23 +56,24 @@ public sealed class DashboardService(AppDbContext db) : IDashboardService
             })
             .ToListAsync(ct);
 
+        var startedLookup = startedNights.ToDictionary(s => s.Night);
         var completedLookup = completedNights.ToDictionary(c => c.Night);
-        var nights = startedNights
-            .OrderBy(s => s.Night)
-            .Select(s =>
+        var nights = startedLookup.Keys.Union(completedLookup.Keys)
+            .OrderBy(night => night)
+            .Select(night =>
             {
-                completedLookup.TryGetValue(s.Night, out var comp);
+                startedLookup.TryGetValue(night, out var started);
+                completedLookup.TryGetValue(night, out var completed);
                 return new NightStats(
-                    Night: s.Night,
-                    PlayersStarted: s.PlayersStarted,
-                    PlayersCompleted: comp?.PlayersCompleted ?? 0,
-                    AverageDurationSeconds: comp?.AverageDurationSeconds
-                );
+                    Night: night,
+                    PlayersStarted: started?.PlayersStarted ?? 0,
+                    PlayersCompleted: completed?.PlayersCompleted ?? 0,
+                    AverageDurationSeconds: completed?.AverageDurationSeconds);
             })
             .ToList();
 
-        var caughtLocations = await db.TelemetryEvents
-            .Where(e => e.ReceivedAt >= range.From && e.ReceivedAt <= range.To && e.Type == "player_caught" && e.Night != null && e.AreaId != null)
+        var caughtLocations = await events
+            .Where(e => e.Type == "player_caught" && e.Night != null && e.AreaId != null)
             .GroupBy(e => new { Night = e.Night!.Value, AreaId = e.AreaId! })
             .Select(g => new
             {
@@ -83,8 +86,8 @@ public sealed class DashboardService(AppDbContext db) : IDashboardService
             .ThenBy(x => x.AreaId)
             .ToListAsync(ct);
 
-        var quitLocations = await db.TelemetryEvents
-            .Where(e => e.ReceivedAt >= range.From && e.ReceivedAt <= range.To && e.Type == "session_ended" && e.Night != null && e.AreaId != null)
+        var quitLocations = await events
+            .Where(e => e.Type == "session_ended" && e.Night != null && e.AreaId != null)
             .GroupBy(e => new { Night = e.Night!.Value, AreaId = e.AreaId! })
             .Select(g => new
             {
@@ -97,8 +100,8 @@ public sealed class DashboardService(AppDbContext db) : IDashboardService
             .ThenBy(x => x.AreaId)
             .ToListAsync(ct);
 
-        var endings = await db.TelemetryEvents
-            .Where(e => e.ReceivedAt >= range.From && e.ReceivedAt <= range.To && e.Type == "ending_reached" && e.EndingId != null)
+        var endings = await events
+            .Where(e => e.Type == "ending_reached" && e.EndingId != null)
             .GroupBy(e => e.EndingId!)
             .Select(g => new
             {
@@ -109,8 +112,8 @@ public sealed class DashboardService(AppDbContext db) : IDashboardService
             .ThenBy(x => x.EndingId)
             .ToListAsync(ct);
 
-        var choices = await db.TelemetryEvents
-            .Where(e => e.ReceivedAt >= range.From && e.ReceivedAt <= range.To && e.Type == "choice_made" && e.Night != null && e.ChoiceId != null)
+        var choices = await events
+            .Where(e => e.Type == "choice_made" && e.Night != null && e.ChoiceId != null)
             .GroupBy(e => new { Night = e.Night!.Value, ChoiceId = e.ChoiceId! })
             .Select(g => new
             {

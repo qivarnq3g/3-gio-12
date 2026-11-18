@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Time.Testing;
 using ThreeTwelve.Api.Contracts;
 using ThreeTwelve.Api.Domain;
@@ -76,54 +76,73 @@ public sealed class AdminDashboardTests(AdminApiFactory factory) : IClassFixture
         using var client = factory.CreateClient();
         using var admin = await factory.LoginAsync();
 
-        var now = factory.Clock.GetUtcNow();
+        async Task IngestAsync(Guid installation, params JsonObject[] events)
+        {
+            using var response = await client.PostAsJsonAsync(BatchUrl, TelemetryPayloads.Batch(installation, events));
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var result = await response.Content.ReadFromJsonAsync<TelemetryBatchResponse>();
+            Assert.NotNull(result);
+            Assert.Equal(events.Length, result.Accepted);
+            Assert.Empty(result.Rejected);
+        }
+
+        var occurredAt = factory.Clock.GetUtcNow().AddMinutes(-20);
+        await IngestAsync(Guid.NewGuid(), TelemetryPayloads.NightStarted(2, occurredAt));
+        factory.Clock.Advance(TimeSpan.FromSeconds(1));
+        var from = factory.Clock.GetUtcNow();
+
         var installationId = Guid.NewGuid();
-        var batch = TelemetryPayloads.Batch(installationId,
-            TelemetryPayloads.SessionStarted(now.AddMinutes(-20)),
-            TelemetryPayloads.NightStarted(1, now.AddMinutes(-18)),
-            TelemetryPayloads.PlayerCaught(1, "n1.parking", "n1.alley_start", now.AddMinutes(-15)),
-            TelemetryPayloads.ChoiceMade(1, "1a", now.AddMinutes(-12)),
-            TelemetryPayloads.NightCompleted(1, durationSeconds: 300, isReplay: false, occurredAt: now.AddMinutes(-10)),
-            TelemetryPayloads.EndingReached(1, "bystander", now.AddMinutes(-8)),
-            TelemetryPayloads.SessionEnded(reason: "quit_to_menu", durationSeconds: 450, night: 1, areaId: "n1.parking", occurredAt: now.AddMinutes(-5))
-        );
+        var replayStart = TelemetryPayloads.NightStarted(3, occurredAt);
+        replayStart["isReplay"] = true;
+        await IngestAsync(installationId,
+            TelemetryPayloads.SessionStarted(occurredAt),
+            TelemetryPayloads.NightStarted(1, occurredAt),
+            TelemetryPayloads.NightStarted(1, occurredAt),
+            TelemetryPayloads.PlayerCaught(1, "n1.parking", "n1.alley_start", occurredAt),
+            TelemetryPayloads.ChoiceMade(1, "1a", occurredAt),
+            TelemetryPayloads.NightCompleted(1, 300, occurredAt: occurredAt),
+            TelemetryPayloads.NightCompleted(1, 500, occurredAt: occurredAt),
+            TelemetryPayloads.NightCompleted(1, 30, isReplay: true, occurredAt: occurredAt),
+            TelemetryPayloads.NightCompleted(2, 600, occurredAt: occurredAt),
+            replayStart,
+            TelemetryPayloads.NightCompleted(3, 25, isReplay: true, occurredAt: occurredAt),
+            TelemetryPayloads.EndingReached(1, "bystander", occurredAt),
+            TelemetryPayloads.SessionEnded("quit_to_menu", 450, 1, "n1.parking", occurredAt));
 
-        var batchRes = await client.PostAsJsonAsync(BatchUrl, batch);
-        Assert.Equal(HttpStatusCode.OK, batchRes.StatusCode);
+        factory.Clock.Advance(TimeSpan.FromSeconds(1));
+        var to = factory.Clock.GetUtcNow();
+        var atEnd = TelemetryPayloads.SessionStarted(occurredAt);
+        await IngestAsync(Guid.NewGuid(), atEnd);
+        var range = $"from={Uri.EscapeDataString(from.ToString("O"))}&to={Uri.EscapeDataString(to.ToString("O"))}";
 
-        var batchBody = await batchRes.Content.ReadFromJsonAsync<TelemetryBatchResponse>();
-        Assert.NotNull(batchBody);
-        Assert.Equal(7, batchBody.Accepted);
-        Assert.Empty(batchBody.Rejected);
-
-        factory.Clock.Advance(TimeSpan.FromSeconds(5));
-
-        var response = await admin.GetAsync(DashboardUrl);
+        using var response = await admin.GetAsync($"{DashboardUrl}?{range}");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var summary = await response.Content.ReadFromJsonAsync<DashboardSummary>();
+        Assert.NotNull(summary);
+        Assert.Equal(1, summary.Players);
+        Assert.Equal(1, summary.Sessions);
+        Assert.Equal(new PlaytimeStats(450, 450), summary.Playtime);
+        Assert.Collection(summary.Nights,
+            n => Assert.Equal(new NightStats(1, 1, 1, 400), n),
+            n => Assert.Equal(new NightStats(2, 0, 1, 600), n));
+        Assert.Equal(new LocationCount(1, "n1.parking", 1), Assert.Single(summary.CaughtLocations));
+        Assert.Equal(new LocationCount(1, "n1.parking", 1), Assert.Single(summary.QuitLocations));
+        Assert.Equal(new EndingStats("bystander", 1), Assert.Single(summary.Endings));
+        Assert.Equal(new ChoiceStats(1, "1a", 1), Assert.Single(summary.Choices));
 
-        var summary = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var csv = await admin.GetStringAsync($"{ExportsUrl}/summary?{range}");
+        Assert.Equal(new[]
+        {
+            "metric,night,key,value", "players,,,1", "sessions,,,1",
+            "playtime_total_seconds,,,450", "playtime_average_seconds,,,450",
+            "night_started,1,,1", "night_completed,1,,1", "night_duration_seconds,1,,400",
+            "night_started,2,,0", "night_completed,2,,1", "night_duration_seconds,2,,600",
+            "caught,1,n1.parking,1", "quit,1,n1.parking,1", "ending,,bystander,1", "choice,1,1a,1"
+        }, csv.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
 
-        Assert.True(summary.GetProperty("players").GetInt32() >= 1);
-        Assert.True(summary.GetProperty("sessions").GetInt32() >= 1);
-        Assert.True(summary.GetProperty("playtime").GetProperty("totalSeconds").GetInt32() >= 450);
-
-        var nights = summary.GetProperty("nights").EnumerateArray().ToList();
-        var n1 = nights.FirstOrDefault(n => n.GetProperty("night").GetInt32() == 1);
-        Assert.True(n1.ValueKind != JsonValueKind.Undefined);
-        Assert.True(n1.GetProperty("playersStarted").GetInt32() >= 1);
-        Assert.True(n1.GetProperty("playersCompleted").GetInt32() >= 1);
-
-        var caught = summary.GetProperty("caughtLocations").EnumerateArray().ToList();
-        Assert.Contains(caught, c => c.GetProperty("areaId").GetString() == "n1.parking");
-
-        var quits = summary.GetProperty("quitLocations").EnumerateArray().ToList();
-        Assert.Contains(quits, q => q.GetProperty("areaId").GetString() == "n1.parking");
-
-        var endings = summary.GetProperty("endings").EnumerateArray().ToList();
-        Assert.Contains(endings, e => e.GetProperty("endingId").GetString() == "bystander");
-
-        var choices = summary.GetProperty("choices").EnumerateArray().ToList();
-        Assert.Contains(choices, c => c.GetProperty("choiceId").GetString() == "1a");
+        var rawCsv = await admin.GetStringAsync($"{ExportsUrl}/events?{range}");
+        Assert.DoesNotContain(atEnd["eventId"]!.GetValue<string>(), rawCsv);
+        Assert.Equal(14, rawCsv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length);
     }
 
     [Fact]

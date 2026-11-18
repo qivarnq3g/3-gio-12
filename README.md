@@ -72,9 +72,10 @@ python tools/seed_telemetry.py
 
 Lệnh này sẽ gửi 15 lượt người chơi với 135 sự kiện thống kê mẫu (Đêm 1-3, vị trí bị bắt, nhánh lựa chọn, các kết thúc) qua API `POST /api/v1/telemetry/batches`.
 
-Khi muốn xóa sạch dữ liệu quay về trạng thái rỗng ban đầu:
+Để đưa cơ sở dữ liệu thử nghiệm cục bộ về trạng thái rỗng, chạy lệnh sau trong thư mục dự án. Lệnh xóa toàn bộ sự kiện trong bảng `telemetry_events` của PostgreSQL cục bộ.
+
 ```bash
-python tools/seed_telemetry.py --clear
+docker compose exec postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "TRUNCATE TABLE telemetry_events;"'
 ```
 
 ### 3. Chạy trang quản trị Admin (#27, #28)

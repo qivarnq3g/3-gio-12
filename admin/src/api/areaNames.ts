@@ -87,14 +87,8 @@ export const CHOICE_DESCRIPTIONS: Record<string, string> = {
   "1a": "Chặn dãy số lạ (Đêm 1)",
   "1b": "Trả lời dãy số / gọi lại (Đêm 1)",
   "1c": "Kệ, không xử lý dãy số (Đêm 1)",
-  "sleep": "Đi ngủ sớm",
-  "watch": "Thức canh tới sáng",
   "0a": "Đi thẳng tới công an phường",
   "0b": "Vứt điện thoại tại bãi xe",
-  "follow_girl": "Đi theo bóng cô gái trong hẻm",
-  "hide_corner": "Nấp sau góc tường quan sát",
-  "call_police": "Gọi báo công an phường",
-  "confront": "Đối mặt với kẻ bám đuôi",
 };
 
 export function getAreaName(areaId: string): string {
