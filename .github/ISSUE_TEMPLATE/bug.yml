@@ -23,7 +23,7 @@ body:
     id: actual
     attributes:
       label: Kết quả thực tế
-      description: Kèm ảnh chụp hoặc video nếu có.
+      description: Kèm ảnh chụp hoặc video nếu có. Bật F3 để lấy tọa độ người chơi (X, Y, Z) nếu lỗi liên quan vị trí hoặc bản đồ.
     validations:
       required: true
   - type: input

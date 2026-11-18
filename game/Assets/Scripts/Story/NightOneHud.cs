@@ -52,6 +52,9 @@ namespace BaGio12.Story
                 GUI.Label(new Rect(38,25,600,35),state.clock+"  •  "+(state.stage==NightStage.Prologue?"Hẻm 12":"Đêm 1"),heading);
                 GUI.Label(new Rect(38,70,620,55),story.Objective,normal);
                 GUI.Label(new Rect(24,675,1200,35),state.stage==NightStage.Prologue?"WASD đi · Shift chạy · C cúi · Giữ E để đặt máy · Esc tạm dừng":"WASD đi · Shift chạy · C cúi · E tương tác · 1/2 điện thoại · N Sổ tay · Esc tạm dừng",small);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD || PLAYTEST_BUILD
+                GUI.Label(new Rect(1010,675,250,35),"F3 / Esc → Tọa độ",small);
+#endif
                 if(story.Subtitle!="")
                 { Panel(new Rect(440,548,800,84),new Color(0,0,0,.8f));GUI.Label(new Rect(460,558,760,70),story.Subtitle,normal); }
                 if(story.HoldProgress>.01f)
