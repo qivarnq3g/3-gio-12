@@ -37,6 +37,29 @@ Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** c
 | `TexturesPBR/rusty_metal_sheet` | Ảnh vân quét rusty_metal_sheet của Poly Haven (polyhaven.com), bản 2K, đổi định dạng ảnh mặt nạ cho URP Lit; dùng cho tôn và xà gồ nhà xe | CC0 1.0 | 08/11/2026 |
 | `Models/Environment/env_garage.fbx`, `Textures/T_NoteGarage.png`, `Textures/T_FireRules.png` | Nhóm tự dựng nhà xe bằng script trong Blender 5.2 (46.654 tam giác, có đồ vật Poly Haven ở dòng trên). Chữ trên tờ giấy viết bằng phông Patrick Hand (Google Fonts, giấy phép SIL Open Font License 1.1), chữ bảng tiêu lệnh bằng Arial, cả hai chỉ in thành ảnh, không kèm tệp phông | Của nhóm | 08/11/2026 |
 
+# Model dựng lại cho issue #96
+
+Ngày dựng: 18/11/2026. Nhóm tự dựng lưới bằng script Python `tools/generate_issue96_props.py` trong Blender 5.2.3 LTS; không dùng model tải sẵn. Đơn vị mét, vật đứng tại gốc giữa đáy, trục Y hướng lên sau khi xuất FBX. Giấy phép lưới: của nhóm. Kích thước dưới đây là kích thước thiết kế; số đo bao toàn bộ phụ kiện và thống kê lưới sau khi nhập lại FBX nằm trong `tools/issue96_props_report.json`.
+
+| Tệp trong `Models/Props/` | Nguồn kích thước | Ảnh hoặc mô tả tham chiếu | Chi tiết dựng lại |
+|---|---|---|---|
+| `prop_utility_pole_10m.fbx` | Đặc tả issue #96: dài 10,50 m, đường kính ngọn 0,190 m, gốc 0,330 m; đối chiếu bảng thông số nhà sản xuất ở dưới | `_Source/ref_utility_pole.jpg`, ảnh do người dùng cung cấp và duyệt | Thân bê tông ly tâm thuôn, ba xà U thép có giằng và sứ nhiều tầng, cần đèn chéo có chóa nghiêng, hai công tơ có ô kính và đai, cuộn cáp, giấy dán và mã sơn trắng 07 |
+| `prop_utility_pole_8m.fbx` | Đặc tả issue #96: dài 8,50 m, đường kính ngọn 0,160 m, gốc 0,255 m; đối chiếu bảng thông số nhà sản xuất ở dưới | `_Source/ref_utility_pole.jpg` | Phiên bản hẻm, hai xà và cần đèn ngắn hơn; giữ hai công tơ và các chi tiết phụ |
+| `prop_collapsible_gate_shop.fbx` | Đặc tả issue #96: bộ cửa vừa ô 3,20 × 2,60 m; bước thanh U 0,10 m; ba dải nan cao 0,18 m | `_Source/ref_collapsible_gate_nguyenmode.jpg`, cửa Nguyễn Mode tại 173 Nguyễn An Ninh do người dùng duyệt | Tiết diện U thực, nan chéo ngắn hai lớp, đinh tán, ray trên/dưới, bánh dẫn, hai đố giữa, tay nắm, bát khóa và khóa; không dựng biển hoặc nhãn hiệu cửa hàng |
+| `prop_collapsible_gate_small.fbx` | Đặc tả issue #96: bộ cửa vừa ô 1,20 × 2,20 m; bước U 0,10 m, dải nan 0,18 m | `_Source/ref_collapsible_gate_nguyenmode.jpg` | Cùng kết cấu; khung và hai cánh trượt là ba lưới riêng |
+| `prop_curb_ramp_concrete_a.fbx` | Đặc tả issue #96: rộng 1,20 m, sâu 0,50 m, cao 0,15 m | Mô tả trong issue #96; không có ảnh bê tông riêng | Mặt khía quả trám sâu 3 mm, hai góc sứt bất đối xứng, rãnh thông ngang dưới đáy rộng 55 mm, cao 26 mm |
+| `prop_curb_ramp_concrete_b.fbx` | Đặc tả issue #96: rộng 2,00 m, sâu 0,55 m, cao 0,15 m | Mô tả trong issue #96 | Cùng kết cấu bê tông bản a, tăng chiều rộng và chiều sâu |
+| `prop_curb_ramp_concrete_c.fbx` | Đặc tả issue #96: rộng 3,00 m, sâu 0,60 m, cao 0,15 m | Mô tả trong issue #96 | Cùng kết cấu, lưới mặt khía vẫn dưới 1.000 tam giác |
+| `prop_curb_ramp_rubber.fbx` | Đặc tả issue #96: rộng 0,50 m, sâu 0,25 m, cao 0,15 m | Mô tả trong issue #96; không có ảnh cao su riêng | Khối cao su bo mép, hai lỗ neo, ba vạch vàng và gờ chống trượt |
+| `prop_curb_ramp_steel.fbx` | Đặc tả issue #96: rộng 0,80 m, sâu 0,60 m, cao 0,15 m | `_Source/ref_curb_ramp_steel.jpg`, ảnh do người dùng cung cấp và duyệt | Khung thép hở, 17 thanh song song theo chiều dốc, gờ mối hàn, giằng dưới và chân đỡ phía cao |
+| `prop_mattress_room7.fbx` | Mẫu A đã duyệt trong issue #96: thân nệm rộng 1,20 m, dài 1,90 m, dày 0,10 m | Mô tả của người dùng: nệm mút trải sàn bọc ga trơn và một gối; không có ảnh riêng | Ga xanh một màu, viền bo và đường may cùng màu, một gối trắng; vùng mặt phẳng trống 0,80 × 0,85 m. Bao gồm gối thì chiều cao toàn model là 0,205 m |
+
+Nguồn tra cứu cột điện: [trang thông số cột điện ly tâm tiền áp của Thủ Đức - Long An](https://www.thuduclongan.com/productservice/detail/thong-so-ky-thuat-cot-dien-ly-tam-tien-ap-1), liên kết [ảnh catalogue trang 15](https://www.thuduclongan.com/uploads/files/2017/07/04/TDCLA-Catalogue-P15-Pole-Specifications.jpg). Trang HTML đọc được nhưng ảnh bảng gốc chưa tải được trong phiên dựng này. Số liệu triển khai lấy đúng đặc tả người dùng và được đối chiếu với [bảng công bố của Bê tông Thủ Đức 1](https://betongthuduc1.vn/cot-dien-be-tong-cot-thep-ly-tam), có dòng 8.5-200 (8.500 mm, ngọn 160 mm, gốc 255 mm) và 10.5-350 (10.500 mm, ngọn 190 mm, gốc 330 mm). Không coi hai doanh nghiệp là cùng một nguồn.
+
+Ba ảnh JPG được dùng để quan sát hình học, không nhúng vào FBX hoặc vật liệu trong game. Chưa có thông tin tác giả hoặc giấy phép ảnh gốc từ người cung cấp; việc duyệt ảnh tham chiếu không xác lập quyền phân phối ảnh. Phần giấy quảng cáo và mã cột là hình học tự dựng, không sao chép chữ, số điện thoại hoặc thương hiệu thật. Chỉ dùng các vật liệu `M_...` đã có trong `Materials/`.
+
+Script có tùy chọn `--save-blend` để lưu bản Blender tái dựng tại `art-source/issue96/` (đã được Git bỏ qua); người giữ nguồn có thể chuyển các tệp này lên Drive của nhóm. Ảnh kiểm tra từ FBX đã nhập lại nằm tại `tools/out/issue96/` khi chạy với `--render`. Chưa xác nhận đạt `ArtPipelineCheck` trong Unity; Anti thực hiện bước này sau khi nhập asset.
+
 # Phông chữ
 
 | Tệp | Nguồn | Giấy phép | Ngày |

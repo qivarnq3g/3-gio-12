@@ -1,0 +1,499 @@
+{
+  "blender": "5.2.3 LTS",
+  "axis": "Unity X width, Y height, Z depth; metres",
+  "vertices": "Blender mesh vertices after FBX reimport; Unity may split at UV/normal seams",
+  "unity_art_pipeline_check": "Pending Anti's Unity execution",
+  "models": [
+    {
+      "file": "prop_utility_pole_10m.fbx",
+      "vertices": 5072,
+      "triangles": 9444,
+      "dimensions_unity_m": [
+        1.7,
+        10.5,
+        2.457055
+      ],
+      "bounds_min_unity_m": [
+        -0.85,
+        0.0,
+        -1.228527
+      ],
+      "materials": [
+        "M_BulbWarmGlow",
+        "M_ConcretePole",
+        "M_GlassFrosted",
+        "M_MetalHandle",
+        "M_MeterBoxGray",
+        "M_PaperWhite",
+        "M_SteelDark",
+        "M_WireBlack"
+      ],
+      "mesh_objects": 1,
+      "triangle_limit_exclusive": 10000,
+      "checks": {
+        "uv_non_degenerate": true,
+        "uv_in_0_1": true,
+        "all_nodes_identity": true,
+        "floor_y_zero": true,
+        "centered_xz": true,
+        "fbx_round_trip": true,
+        "serialized_y_up_metres": true
+      },
+      "details": {
+        "shaft_m": [
+          0.33,
+          10.5,
+          0.19
+        ],
+        "crossarm_rows": 3,
+        "meter_count": 2,
+        "reference": "ref_utility_pole.jpg"
+      },
+      "authoring_center_offset_blender_m": [
+        0.0,
+        -1.0635273456573486,
+        0.0
+      ],
+      "sha256": "b8987d9090fb206f0dec69d0392c8c4ba59b20ae136efee1aa3d29f9f70e0cac",
+      "bytes": 784732
+    },
+    {
+      "file": "prop_utility_pole_8m.fbx",
+      "vertices": 4186,
+      "triangles": 7728,
+      "dimensions_unity_m": [
+        1.2,
+        8.5,
+        1.979055
+      ],
+      "bounds_min_unity_m": [
+        -0.6,
+        0.0,
+        -0.989527
+      ],
+      "materials": [
+        "M_BulbWarmGlow",
+        "M_ConcretePole",
+        "M_GlassFrosted",
+        "M_MetalHandle",
+        "M_MeterBoxGray",
+        "M_PaperWhite",
+        "M_SteelDark",
+        "M_WireBlack"
+      ],
+      "mesh_objects": 1,
+      "triangle_limit_exclusive": 10000,
+      "checks": {
+        "uv_non_degenerate": true,
+        "uv_in_0_1": true,
+        "all_nodes_identity": true,
+        "floor_y_zero": true,
+        "centered_xz": true,
+        "fbx_round_trip": true,
+        "serialized_y_up_metres": true
+      },
+      "details": {
+        "shaft_m": [
+          0.255,
+          8.5,
+          0.16
+        ],
+        "crossarm_rows": 2,
+        "meter_count": 2,
+        "reference": "ref_utility_pole.jpg"
+      },
+      "authoring_center_offset_blender_m": [
+        0.0,
+        -0.852527379989624,
+        0.0
+      ],
+      "sha256": "72b5b9c01d3f44678c8d3022d09a2e3a750d45094355e6c4c037e0c3630d6ced",
+      "bytes": 674508
+    },
+    {
+      "file": "prop_collapsible_gate_shop.fbx",
+      "vertices": 5768,
+      "triangles": 9460,
+      "dimensions_unity_m": [
+        3.2,
+        2.6,
+        0.156497
+      ],
+      "bounds_min_unity_m": [
+        -1.6,
+        0.0,
+        -0.078248
+      ],
+      "materials": [
+        "M_MetalHandle",
+        "M_ShutterBlue",
+        "M_SteelDark"
+      ],
+      "mesh_objects": 3,
+      "triangle_limit_exclusive": 10000,
+      "checks": {
+        "uv_non_degenerate": true,
+        "uv_in_0_1": true,
+        "all_nodes_identity": true,
+        "floor_y_zero": true,
+        "centered_xz": true,
+        "fbx_round_trip": true,
+        "serialized_y_up_metres": true
+      },
+      "details": {
+        "opening_m": [
+          3.2,
+          2.6
+        ],
+        "upright_pitch_m": 0.1,
+        "diamond_band_height_m": 0.18,
+        "diamond_bands": 3,
+        "reference": "ref_collapsible_gate_nguyenmode.jpg"
+      },
+      "authoring_center_offset_blender_m": [
+        0.0,
+        -0.028248494490981102,
+        0.0
+      ],
+      "sha256": "20a2316049db035328f6079c63ef8bab9b690e8e919fbb12d62a1eb4f6bed5fc",
+      "bytes": 519228
+    },
+    {
+      "file": "prop_collapsible_gate_small.fbx",
+      "vertices": 2208,
+      "triangles": 3644,
+      "dimensions_unity_m": [
+        1.2,
+        2.2,
+        0.156497
+      ],
+      "bounds_min_unity_m": [
+        -0.6,
+        0.0,
+        -0.078248
+      ],
+      "materials": [
+        "M_MetalHandle",
+        "M_ShutterBlue",
+        "M_SteelDark"
+      ],
+      "mesh_objects": 3,
+      "triangle_limit_exclusive": 10000,
+      "checks": {
+        "uv_non_degenerate": true,
+        "uv_in_0_1": true,
+        "all_nodes_identity": true,
+        "floor_y_zero": true,
+        "centered_xz": true,
+        "fbx_round_trip": true,
+        "serialized_y_up_metres": true
+      },
+      "details": {
+        "opening_m": [
+          1.2,
+          2.2
+        ],
+        "upright_pitch_m": 0.1,
+        "diamond_band_height_m": 0.18,
+        "diamond_bands": 3,
+        "reference": "ref_collapsible_gate_nguyenmode.jpg"
+      },
+      "authoring_center_offset_blender_m": [
+        0.0,
+        -0.028248494490981102,
+        0.0
+      ],
+      "sha256": "31ab29381abd5073ae4f5b711bb8f119df4a63c53ae6dd0507b1504d25ef7a0c",
+      "bytes": 254684
+    },
+    {
+      "file": "prop_curb_ramp_concrete_a.fbx",
+      "vertices": 193,
+      "triangles": 366,
+      "dimensions_unity_m": [
+        1.2,
+        0.15,
+        0.5
+      ],
+      "bounds_min_unity_m": [
+        -0.6,
+        0.0,
+        -0.25
+      ],
+      "materials": [
+        "M_ConcreteFloor"
+      ],
+      "mesh_objects": 1,
+      "triangle_limit_exclusive": 1000,
+      "checks": {
+        "uv_non_degenerate": true,
+        "uv_in_0_1": true,
+        "all_nodes_identity": true,
+        "floor_y_zero": true,
+        "centered_xz": true,
+        "fbx_round_trip": true,
+        "serialized_y_up_metres": true
+      },
+      "details": {
+        "nominal_m": [
+          1.2,
+          0.15,
+          0.5
+        ],
+        "groove_depth_m": 0.003,
+        "bottom_drain_width_m": 0.055,
+        "bottom_drain_height_m": 0.026,
+        "reference": "Issue #96 dimensions (no photo supplied)"
+      },
+      "authoring_center_offset_blender_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "1a159ba9a557236b661656af7152bec8cdddca1a84f7fee02182429bda851908",
+      "bytes": 39612
+    },
+    {
+      "file": "prop_curb_ramp_concrete_b.fbx",
+      "vertices": 317,
+      "triangles": 606,
+      "dimensions_unity_m": [
+        2.0,
+        0.15,
+        0.55
+      ],
+      "bounds_min_unity_m": [
+        -1.0,
+        0.0,
+        -0.275
+      ],
+      "materials": [
+        "M_ConcreteFloor"
+      ],
+      "mesh_objects": 1,
+      "triangle_limit_exclusive": 1000,
+      "checks": {
+        "uv_non_degenerate": true,
+        "uv_in_0_1": true,
+        "all_nodes_identity": true,
+        "floor_y_zero": true,
+        "centered_xz": true,
+        "fbx_round_trip": true,
+        "serialized_y_up_metres": true
+      },
+      "details": {
+        "nominal_m": [
+          2.0,
+          0.15,
+          0.55
+        ],
+        "groove_depth_m": 0.003,
+        "bottom_drain_width_m": 0.055,
+        "bottom_drain_height_m": 0.026,
+        "reference": "Issue #96 dimensions (no photo supplied)"
+      },
+      "authoring_center_offset_blender_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "1ab7526da151290c125b65cf86f007691833e1c35eababd86b568023efddedd7",
+      "bytes": 55532
+    },
+    {
+      "file": "prop_curb_ramp_concrete_c.fbx",
+      "vertices": 379,
+      "triangles": 734,
+      "dimensions_unity_m": [
+        3.0,
+        0.15,
+        0.6
+      ],
+      "bounds_min_unity_m": [
+        -1.5,
+        0.0,
+        -0.3
+      ],
+      "materials": [
+        "M_ConcreteFloor"
+      ],
+      "mesh_objects": 1,
+      "triangle_limit_exclusive": 1000,
+      "checks": {
+        "uv_non_degenerate": true,
+        "uv_in_0_1": true,
+        "all_nodes_identity": true,
+        "floor_y_zero": true,
+        "centered_xz": true,
+        "fbx_round_trip": true,
+        "serialized_y_up_metres": true
+      },
+      "details": {
+        "nominal_m": [
+          3.0,
+          0.15,
+          0.6
+        ],
+        "groove_depth_m": 0.003,
+        "bottom_drain_width_m": 0.055,
+        "bottom_drain_height_m": 0.026,
+        "reference": "Issue #96 dimensions (no photo supplied)"
+      },
+      "authoring_center_offset_blender_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "3f6a7e22ef6da8a5eba01ff3a4e6069bb93f1bf69aa6bf7e94736771a5f20668",
+      "bytes": 61820
+    },
+    {
+      "file": "prop_curb_ramp_rubber.fbx",
+      "vertices": 116,
+      "triangles": 154,
+      "dimensions_unity_m": [
+        0.5,
+        0.15,
+        0.25
+      ],
+      "bounds_min_unity_m": [
+        -0.25,
+        0.0,
+        -0.125
+      ],
+      "materials": [
+        "M_CurbYellow",
+        "M_Rubber"
+      ],
+      "mesh_objects": 1,
+      "triangle_limit_exclusive": 1000,
+      "checks": {
+        "uv_non_degenerate": true,
+        "uv_in_0_1": true,
+        "all_nodes_identity": true,
+        "floor_y_zero": true,
+        "centered_xz": true,
+        "fbx_round_trip": true,
+        "serialized_y_up_metres": true
+      },
+      "details": {
+        "nominal_m": [
+          0.5,
+          0.15,
+          0.25
+        ],
+        "anchor_holes": 2,
+        "reference": "Issue #96 dimensions (no photo supplied)"
+      },
+      "authoring_center_offset_blender_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "0d79226d0a9e4ebe5ab799d44800b6edbabcbb8c90c1c6330f33519c610cfb11",
+      "bytes": 26796
+    },
+    {
+      "file": "prop_curb_ramp_steel.fbx",
+      "vertices": 388,
+      "triangles": 560,
+      "dimensions_unity_m": [
+        0.8,
+        0.15,
+        0.6
+      ],
+      "bounds_min_unity_m": [
+        -0.4,
+        0.0,
+        -0.3
+      ],
+      "materials": [
+        "M_SteelDark"
+      ],
+      "mesh_objects": 1,
+      "triangle_limit_exclusive": 1000,
+      "checks": {
+        "uv_non_degenerate": true,
+        "uv_in_0_1": true,
+        "all_nodes_identity": true,
+        "floor_y_zero": true,
+        "centered_xz": true,
+        "fbx_round_trip": true,
+        "serialized_y_up_metres": true
+      },
+      "details": {
+        "nominal_m": [
+          0.8,
+          0.15,
+          0.6
+        ],
+        "parallel_bars": 17,
+        "reference": "ref_curb_ramp_steel.jpg"
+      },
+      "authoring_center_offset_blender_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "4a092bb6689dcc4c0d0ba378e7b127896d4765d28084f8108d3b4456f16d983d",
+      "bytes": 42828
+    },
+    {
+      "file": "prop_mattress_room7.fbx",
+      "vertices": 1530,
+      "triangles": 3052,
+      "dimensions_unity_m": [
+        1.2,
+        0.205,
+        1.9
+      ],
+      "bounds_min_unity_m": [
+        -0.6,
+        0.0,
+        -0.95
+      ],
+      "materials": [
+        "M_ClothBlue",
+        "M_PaperWhite"
+      ],
+      "mesh_objects": 1,
+      "triangle_limit_exclusive": 10000,
+      "checks": {
+        "uv_non_degenerate": true,
+        "uv_in_0_1": true,
+        "all_nodes_identity": true,
+        "floor_y_zero": true,
+        "centered_xz": true,
+        "fbx_round_trip": true,
+        "serialized_y_up_metres": true
+      },
+      "details": {
+        "mattress_body_m": [
+          1.2,
+          0.1,
+          1.9
+        ],
+        "pillow_count": 1,
+        "flat_clear_patch_blender_xy_m": [
+          [
+            -0.4,
+            -0.65
+          ],
+          [
+            0.4,
+            0.2
+          ]
+        ],
+        "flat_patch_height_m": 0.1,
+        "reference": "Approved sample A in Issue #96 (text brief)"
+      },
+      "authoring_center_offset_blender_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "b8298109bcfb464f17f46bb9c698a234af368b518c388f96338ce1a3722b9773",
+      "bytes": 236316
+    }
+  ]
+}
