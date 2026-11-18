@@ -76,7 +76,7 @@ public static class NightOneReviewRegression
                     story.Act(NightAction.ParkBike);story.Act(NightAction.Phone);player.SetPhone(0);story.Act(NightAction.Gate);story.EnterRoom();player.Teleport(story.roomSpawn.position,90);
                     story.Act(NightAction.MoveBag);movedBag=story.bag.transform.position;
                     player.SetPhone(1);story.Send("camera:unknown","Cháu không biết.");
-                    Check(story.State.timeJumped && story.State.clock=="21:26","phone jump failed");
+                    Check(story.State.timeJumped && story.State.clock=="21:26","phone jump failed: stage="+story.State.stage+" parked="+story.State.bikeParked+" arrived="+story.State.bikeArrived+" phone="+story.State.hasNganPhone+" lien="+story.State.helpedLien+" clock="+story.State.clock+" busy="+story.Busy+" inRoom="+story.InRoom+" sent="+string.Join(",",story.State.sent));
                     Check(Vector3.Distance(story.bag.transform.position,movedBag)<.001f && story.State.bagOpen && !story.State.bagMoved,"pre-moved bag teleported or pocket stayed shut");
                     player.SetPhone(0);player.Teleport(story.parkingSpawn.position);story.LeavePhone();
                     Check(story.State.clock=="21:40" && story.State.lienCalled && recalls==1,"first recall missing");

@@ -34,7 +34,13 @@ public static class PlaytestBuild
         EditorApplication.Exit(windows ? 0 : 1);
     }
 
-    static bool PreviewPlayer(string path, BuildTarget target, string scene = "Assets/Scenes/RealisticPreview.unity")
+    public static void NightOnePerf()
+    {
+        bool windows = PreviewPlayer("../BuildPerf/3gio12.exe", BuildTarget.StandaloneWindows64, NightOneRealisticSetup.ScenePath, BuildOptions.Development);
+        EditorApplication.Exit(windows ? 0 : 1);
+    }
+
+    static bool PreviewPlayer(string path, BuildTarget target, string scene = "Assets/Scenes/RealisticPreview.unity", BuildOptions options = BuildOptions.None)
     {
         if (SceneMaterialsRegression.CountEmptySlots() != 0) return false;
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
@@ -42,7 +48,7 @@ public static class PlaytestBuild
             scenes = new[] { scene },
             locationPathName = path,
             target = target,
-            options = BuildOptions.None,
+            options = options,
             extraScriptingDefines = new[] { "PLAYTEST_BUILD" }
         });
         Debug.Log("PLAYTEST_PREVIEW_RESULT " + target + " " + report.summary.result + " " + report.summary.totalErrors);

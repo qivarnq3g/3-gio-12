@@ -18,6 +18,8 @@ namespace BaGio12.Gameplay
         public float headBob = 1;
         public float volume = 1;
         public float brightness;
+        public int antialiasing = (int)AntialiasingMode.SubpixelMorphologicalAntiAliasing;
+        public static readonly string[] AntialiasingNames = { "Tắt", "FXAA", "SMAA", "TAA" };
 
         public GameSettings Copy() => (GameSettings)MemberwiseClone();
 
@@ -33,6 +35,7 @@ namespace BaGio12.Gameplay
             loaded.headBob = Mathf.Clamp01(loaded.headBob);
             loaded.volume = Mathf.Clamp01(loaded.volume);
             loaded.brightness = Mathf.Clamp(loaded.brightness, -1.5f, 1.5f);
+            loaded.antialiasing = Mathf.Clamp(loaded.antialiasing, 0, AntialiasingNames.Length - 1);
             return loaded;
         }
 
@@ -50,6 +53,12 @@ namespace BaGio12.Gameplay
             if (motion != null) { motion.BaseFov = fieldOfView; motion.intensity = headBob; }
             AudioListener.volume = volume;
             ApplyBrightness(brightness);
+            if (player.eyes != null)
+            {
+                var data = player.eyes.GetUniversalAdditionalCameraData();
+                data.antialiasing = (AntialiasingMode)Mathf.Clamp(antialiasing, 0, AntialiasingNames.Length - 1);
+                data.antialiasingQuality = AntialiasingQuality.High;
+            }
         }
 
         static void ApplyBrightness(float offset)
