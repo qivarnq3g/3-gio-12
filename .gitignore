@@ -52,6 +52,7 @@ __pycache__/
 /BuildLinux/
 /BuildNight1/
 /build.log
+/BuildPerf/
 
 # Tệp nguồn và chìa giải mã ARG dùng khi dựng cục bộ.
 /tools/out/

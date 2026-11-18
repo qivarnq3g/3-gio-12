@@ -18,6 +18,13 @@ namespace BaGio12.Gameplay
         public bool InvertY { get; set; }
         public float ViewPitch => pitch;
         public float RunMultiplier { get; set; } = 1f;
+        public float WalkMultiplier { get; set; } = 1f;
+        public bool SprintAllowed { get; set; } = true;
+        public bool CrouchAllowed { get; set; } = true;
+        public bool StaminaLimited { get; set; }
+        public float staminaSeconds = 3.2f, staminaRecovery = .22f, staminaResume = .4f;
+        public float Stamina { get; private set; } = 1f;
+        public bool Winded { get; private set; }
         public bool IsRunning { get; private set; }
         public bool IsPaused => paused;
         public uint PoseRevision { get; private set; }
@@ -36,7 +43,7 @@ namespace BaGio12.Gameplay
         string notice = "";
         float noticeUntil;
         bool paused;
-        int pauseFrame = -1;
+        int pauseFrame = -1, overlayFrame = -1;
         float previousTimeScale = 1;
         bool previousAudioPause;
         GUIStyle text, title;
@@ -80,7 +87,7 @@ namespace BaGio12.Gameplay
             {
                 if (paused) { if (!PauseMenuLocked) ResumeControl(); }
                 else if (ActivePhone != 0) SetPhone(0);
-                else if (!ExternalUI) SetPaused(!paused);
+                else if (!ExternalUI && overlayFrame != Time.frameCount) SetPaused(!paused);
             }
             if (!paused)
             {
@@ -99,14 +106,19 @@ namespace BaGio12.Gameplay
                 transform.Rotate(0, turn.x, 0);
                 pitch = Mathf.Clamp(pitch - turn.y * .7f, -80, 80);
                 eyes.transform.localRotation = Quaternion.Euler(pitch, 0, 0);
-                if (crouch.WasPressedThisFrame()) SetCrouch(!IsCrouched);
+                if (crouch.WasPressedThisFrame() && (CrouchAllowed || IsCrouched)) SetCrouch(!IsCrouched);
                 if (Physics.Raycast(eyes.transform.position, eyes.transform.forward, out var hit, reach, PlayerGeometry.WorldMask, QueryTriggerInteraction.Ignore))
                     target = hit.collider.GetComponentInParent<WorldInteractable>();
                 if (target != null) target.HandleInput(this, interact.WasPressedThisFrame(), interact.IsPressed());
             }
             var axis = control ? Vector2.ClampMagnitude(move.ReadValue<Vector2>(), 1) : Vector2.zero;
-            IsRunning = control && !IsCrouched && sprint.IsPressed() && axis.sqrMagnitude > .01f;
-            float speed = IsCrouched ? crouchSpeed : sprint.IsPressed() ? runSpeed * RunMultiplier : walkSpeed;
+            IsRunning = control && SprintAllowed && !IsCrouched && !Winded && sprint.IsPressed() && axis.sqrMagnitude > .01f;
+            if (StaminaLimited && IsRunning) Stamina = Mathf.Max(0, Stamina - Time.deltaTime / staminaSeconds);
+            else Stamina = Mathf.Min(1, Stamina + Time.deltaTime * staminaRecovery);
+            if (!StaminaLimited) Stamina = 1;
+            if (Stamina <= 0) { Winded = true; IsRunning = false; }
+            else if (Winded && Stamina >= staminaResume) Winded = false;
+            float speed = IsCrouched ? crouchSpeed : IsRunning ? runSpeed * RunMultiplier : walkSpeed * WalkMultiplier * (Winded ? .8f : 1);
             if (body.isGrounded && fall < 0) fall = -2;
             fall = Mathf.Max(fall + Physics.gravity.y * Time.deltaTime, -30);
             body.Move((transform.TransformDirection(new Vector3(axis.x, 0, axis.y)) * speed + Vector3.up * fall) * Time.deltaTime);
@@ -129,6 +141,7 @@ namespace BaGio12.Gameplay
             eyes.transform.localPosition = Vector3.up * (value ? PlayerGeometry.CrouchedEye : PlayerGeometry.StandingEye);
             return true;
         }
+        public void RestoreStamina() { Stamina = 1; Winded = false; }
         public void SetPaused(bool value)
         {
             if (paused == value) return;
@@ -145,7 +158,7 @@ namespace BaGio12.Gameplay
             LockCursor(phone == 0 && !paused && !ExternalUI);
             if (previous != phone) PhoneChanged?.Invoke(previous, phone);
         }
-        public void SetOverlay(bool open) { ExternalUI = open; LockCursor(!open && ActivePhone == 0 && !paused); }
+        public void SetOverlay(bool open) { if (ExternalUI != open) overlayFrame = Time.frameCount; ExternalUI = open; LockCursor(!open && ActivePhone == 0 && !paused); }
         public void Teleport(Vector3 point, float yaw = 0)
         {
             PoseRevision++;
@@ -175,7 +188,8 @@ namespace BaGio12.Gameplay
             if (paused) return;
             if (!showTestHud)
             {
-                if (!paused && ActivePhone == 0 && !ExternalUI && target != null && !string.IsNullOrEmpty(target.Prompt)) GUI.Label(new Rect(Screen.width/2 - 220, Screen.height*.64f, 440, 65), "E - " + target.Prompt, title);
+                bool free = ActivePhone == 0 && !ExternalUI;
+                HudKit.Prompt("E", free && target != null ? target.Prompt : null, !free);
                 return;
             }
             GUI.Box(new Rect(12, 12, 580, 95), "");

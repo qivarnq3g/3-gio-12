@@ -1,6 +1,6 @@
 # Website câu đố ngoài game
 
-Website tĩnh của Ngân thực hiện issue #30. Bài ngày 28/10 dùng ảnh hoàng hôn công khai. Ảnh chụp ngày 08/11 mang gói bằng chứng và được phục vụ ở `/drop/`, nơi người chơi tìm đến từ phổ âm của `test_mic_12-11.wav` trong két trên điện thoại Ngân.
+Website tĩnh của Ngân thực hiện issue #30. Bài ngày 28/10 dùng ảnh hoàng hôn bên hồ Bán Nguyệt. Ảnh chụp ngày 08/11 mang gói bằng chứng và được phục vụ ở `/drop/`, nơi người chơi tìm đến từ phổ âm của `test_mic_12-11.wav` trong két trên điện thoại Ngân.
 
 ## Luồng giải đố
 
