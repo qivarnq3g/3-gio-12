@@ -335,7 +335,7 @@ namespace BaGio12.Prototype
         {
             if (state == null) return;
             log.Clear(); delivered.Clear(); sent.Clear(); answered.Clear(); blocked.Clear(); flags.Clear();
-            shown.Clear(); transcript.Clear();
+            shown.Clear(); transcript.Clear(); pendingBatches.Clear();
             if (data?.contacts == null) return;
 
             ApplyBatch("");
@@ -418,20 +418,8 @@ namespace BaGio12.Prototype
                 }
             }
 
-            if (isPoweredOff)
-            {
-                ShowPoweredOff();
-            }
-            else
-            {
-                if (pendingBatches.Count > 0)
-                {
-                    var toFlush = new List<string>(pendingBatches);
-                    pendingBatches.Clear();
-                    foreach (var b in toFlush) DeliverBatch(b);
-                }
-                Refresh();
-            }
+            if (isPoweredOff) ShowPoweredOff();
+            else Refresh();
         }
 
         static bool IsBatchPending(NightOneState state, string timestamp)
