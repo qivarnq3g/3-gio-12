@@ -212,11 +212,11 @@ namespace BaGio12.Gameplay
             float total = 0;
             for (int i = 0; i + 1 < pairs.Length; i += 2) total += Mathf.Max(30, TextWidth(pairs[i], 15) + 16.5f) + 10 + TextWidth(pairs[i + 1], 19) + 40;
             float x = right ? Width - 64 - total + 40 : Margin, y = Height - 64 - 30;
-            if (right) ShadeBand(new Rect(x - 90, y - 26, total + 140, 82), .6f);
+            if (right) ShadeBand(new Rect(x - 90, y - 26, total + 140, 82), .78f);
             for (int i = 0; i + 1 < pairs.Length; i += 2)
             {
-                x += KeyCap(x, y, pairs[i], 30, .55f) + 10;
-                Label(new Rect(x, y, 400, 30), pairs[i + 1], 19, Fade(Paper, .45f), false, TextAnchor.MiddleLeft, false);
+                x += KeyCap(x, y, pairs[i], 30, .85f) + 10;
+                Label(new Rect(x, y, 400, 30), pairs[i + 1], 19, Fade(Paper, .74f), false, TextAnchor.MiddleLeft, false);
                 x += TextWidth(pairs[i + 1], 19) + 40;
             }
         }
