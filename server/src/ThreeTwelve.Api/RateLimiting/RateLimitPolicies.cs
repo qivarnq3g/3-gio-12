@@ -7,21 +7,17 @@ namespace ThreeTwelve.Api.RateLimiting;
 public static class RateLimitPolicies
 {
     public const string Telemetry = "telemetry";
+    public const string PuzzleSubmit = "puzzle-submit";
 
     public static IServiceCollection AddPublicRateLimits(this IServiceCollection services, IConfiguration configuration)
     {
         var telemetryLimit = configuration.GetValue("RateLimits:Telemetry:PermitLimit", 60);
+        var puzzleSubmitLimit = configuration.GetValue("RateLimits:PuzzleSubmit:PermitLimit", 20);
 
         return services.AddRateLimiter(options =>
         {
-            options.AddPolicy(Telemetry, context => RateLimitPartition.GetFixedWindowLimiter(
-                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = telemetryLimit,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueLimit = 0,
-                }));
+            options.AddPolicy(Telemetry, context => PerAddressPerMinute(context, telemetryLimit));
+            options.AddPolicy(PuzzleSubmit, context => PerAddressPerMinute(context, puzzleSubmitLimit));
 
             options.OnRejected = async (context, ct) =>
             {
@@ -40,4 +36,14 @@ public static class RateLimitPolicies
             };
         });
     }
+
+    private static RateLimitPartition<string> PerAddressPerMinute(HttpContext context, int permitLimit) =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            });
 }

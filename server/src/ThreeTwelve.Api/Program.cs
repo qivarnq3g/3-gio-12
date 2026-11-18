@@ -14,6 +14,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ITelemetryIngestService, TelemetryIngestService>();
+builder.Services.AddScoped<IPuzzleSubmissionService, PuzzleSubmissionService>();
 builder.Services.AddProblemDetails();
 builder.Services.AddPublicRateLimits(builder.Configuration);
 builder.Services.AddControllers();
