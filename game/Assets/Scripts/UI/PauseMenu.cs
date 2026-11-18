@@ -358,12 +358,12 @@ namespace BaGio12.Gameplay
             {
                 if (session.HasSave) Add("Tiếp tục bản đã lưu", () => session.ContinueSaved(), null, "Bạn quay lại đúng chỗ của bản lưu gần nhất.");
                 Add("Chơi mới Đêm 1", () => session.StartNewGame(), session.HasSave ? "Nhấn lần nữa để chơi lại từ đầu" : null,
-                    session.HasSave ? "Bạn bắt đầu lại Đêm 1 từ lúc 21:00, và bản lưu cũ sẽ bị xóa." : "Bạn bắt đầu Đêm 1 từ lúc 21:00 trong con hẻm.");
+                    session.HasSave ? "Bạn bắt đầu lại Đêm 1 từ lúc 20:56, và bản lưu cũ sẽ bị xóa." : "Bạn bắt đầu Đêm 1 từ lúc 20:56 trong con hẻm.");
             }
             else
             {
                 Add("Tiếp tục", player.ResumeControl, null, "Bạn trở lại con hẻm, đúng chỗ vừa dừng.");
-                if (session != null) Add("Chơi lại Đêm 1", () => session.StartNewGame(), "Nhấn lần nữa để chơi lại từ đầu", "Bạn bỏ tiến độ đêm nay và bắt đầu lại Đêm 1 từ 21:00.");
+                if (session != null) Add("Chơi lại Đêm 1", () => session.StartNewGame(), "Nhấn lần nữa để chơi lại từ đầu", "Bạn bỏ tiến độ đêm nay và bắt đầu lại Đêm 1 từ 20:56.");
             }
             settingsIndex = items.Count; Add("Cài đặt", null, null, "Bạn chỉnh chuột, góc nhìn, độ sáng, âm lượng và đồ họa ở đây.");
             controlsIndex = items.Count; Add("Điều khiển", null, null, "Bạn xem các phím để đi lại, tương tác, mở điện thoại và sổ tay.");
