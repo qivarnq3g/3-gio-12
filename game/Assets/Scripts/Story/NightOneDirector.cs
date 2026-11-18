@@ -27,6 +27,15 @@ namespace BaGio12.Story
         public float PrologueElapsed { get; private set; }
         public bool AlarmAudible => sound != null && sound.isPlaying;
         public string Objective { get; private set; }
+        public float LockScreenUntil { get; private set; }
+        public bool OdometerShown { get; private set; }
+        public const int OilChangeKm = 13000;
+        public static string Km(int km) => (km / 1000) + "." + (km % 1000).ToString("000");
+        string OdometerNote => "Đồng hồ xe: " + Km(State.odo_2100) + " km, lúc 21:00";
+        bool attentionHintShown, runHintShown, washerLineShown;
+        const string AttentionHint = "Người này đang bắt đầu để ý tới bạn, và khi thanh trên đầu họ đầy thì bạn sẽ bị phát hiện. Bạn hãy lùi vào chỗ tối hoặc bấm C để cúi người xuống cho tới khi thanh vơi đi.";
+        const string RunHint = "Tiếng chân chạy làm những người ở gần nghe thấy và quay lại nhìn, nên khi đi ngang qua ai đó bạn nên bước chậm lại.";
+        const string WasherLine = "Người phụ nữ rửa chén (nói vọng vào nhà): Ba thằng Bi ơi, lát ra khóa cổ xe giùm em nghen. Dạo này trong hẻm mất đồ hoài, bữa trước có đứa vô nhà xe hút xăng đó.";
         public string Subtitle { get; private set; }
         public string Modal { get; private set; } = "";
         public string BlackTitle { get; private set; } = "";
@@ -108,8 +117,8 @@ namespace BaGio12.Story
             isReplay=completedInSession;
             TelemetryProduced?.Invoke(new NightStartedTelemetry(isReplay));
             Checkpoints.Save("n1.alley_start", State, alleyStart.position, StartYaw);
-            Objective = "Tới nhà xe cuối hẻm. Cúi và đặt chiếc máy dưới chân chiếc Wave.";
-            Say("Đừng để ai thấy.", 6);
+            Objective = "Bạn cần mang chiếc điện thoại đang cầm trên tay vào nhà xe ở cuối hẻm, rồi cúi xuống đặt nó trên nền xi măng, ngay dưới chân chiếc Wave màu đỏ.";
+            Say("Trong hẻm vẫn còn người ngồi trước cửa nhà, và bạn không được để bất kỳ ai nhìn thấy mình trên đường vào nhà xe.", 9);
             SyncWorld();
             gameObject.AddComponent<BaGio12.Persistence.NightPersistence>().story = this;
         }
@@ -140,8 +149,21 @@ namespace BaGio12.Story
                 else hidingSeconds += Time.deltaTime;
                 if (hidingSeconds >= 8) foreach (var o in observers) o.LoseTrail();
                 if (player.IsRunning)
-                    observers.Where(o => o.CanHear && Vector3.Distance(o.transform.position, player.transform.position) <= 5)
-                        .OrderBy(o => Vector3.Distance(o.transform.position, player.transform.position)).FirstOrDefault()?.Hear(player.transform.position, false);
+                {
+                    var listener = observers.Where(o => o.CanHear && Vector3.Distance(o.transform.position, player.transform.position) <= 5)
+                        .OrderBy(o => Vector3.Distance(o.transform.position, player.transform.position)).FirstOrDefault();
+                    if (listener != null)
+                    {
+                        listener.Hear(player.transform.position, false);
+                        if (!runHintShown) { runHintShown = true; Say(RunHint, 9); }
+                    }
+                }
+                if (!washerLineShown)
+                {
+                    var washer = observers.FirstOrDefault(o => o.name.StartsWith("Người phụ nữ"));
+                    if (washer != null && Vector3.Distance(washer.transform.position, player.transform.position) < 7) { washerLineShown = true; Say(WasherLine, 10); }
+                }
+                if (!attentionHintShown && observers.Any(o => o.Mode == ObserverMode.Normal && o.Attention > .15f)) { attentionHintShown = true; Say(AttentionHint, 10); }
                 if ((State.prologue_beaten >= 2 || player.Winded) && Hidden)
                     foreach (var observer in observers.Where(o => o.CanHearBreathing && Vector3.Distance(o.transform.position, player.transform.position) <= 3))
                         observer.HearBreathing(player.transform.position);
@@ -205,21 +227,19 @@ namespace BaGio12.Story
             if (State.stage == NightStage.Prologue)
             {
                 if (action == NightAction.ReturnToStart && State.phonePlaced && !observers.Any(o => o.Mode == ObserverMode.Chasing)) StartCoroutine(CompletePrologue());
-                else Say(State.phonePlaced ? "Quay ra đầu hẻm." : "Đừng để ai thấy.");
+                else if (State.phonePlaced) Say("Vẫn còn người đang đuổi theo, bạn cần cắt đuôi họ trước khi quay ra đầu hẻm.");
                 return;
             }
-            if (Pushing) { Say("Dắt xe vào nhà xe đã."); return; }
+            if (Pushing) { Say("Bạn cần dắt chiếc xe máy vào nhà xe ở cuối hẻm trước đã."); return; }
             switch (action)
             {
                 case NightAction.ParkBike:
-                    if (State.bikeParked) { State.Note("Đồng hồ xe: " + State.odo_2100 + " km, lúc 21:00"); Say("Đã ghi số đồng hồ vào Sổ tay."); break; }
-                    State.bikeParked = true;
-                    State.Note("Đồng hồ xe: " + State.odo_2100 + " km, lúc 21:00");
-                    Say(State.prologue_beaten > 0 ? "Đói quá. Trầy hồi nào vậy ta." : "Đói quá.");
-                    Objective = "Nhặt chiếc máy đang sáng dưới chân xe đậu cạnh."; break;
+                    if (State.bikeParked) { State.Note(OdometerNote); Say("Số đồng hồ xe đã nằm trong Sổ tay, bạn có thể bấm N để xem lại bất cứ lúc nào."); break; }
+                    odometerRoutine = StartCoroutine(ReadOdometer()); break;
                 case NightAction.Phone:
                 case NightAction.PlacePhone:
-                    if (!State.bikeParked) { Say("Dựng xe và tắt máy trước."); break; }
+                    EndOdometer();
+                    if (!State.bikeParked) { Say("Bạn cần dựng xe vào chỗ và cúi xuống xem đồng hồ xe trước đã."); break; }
                     if (State.hasNganPhone) OpenModal("leave-phone");
                     else
                     {
@@ -227,19 +247,19 @@ namespace BaGio12.Story
                         if (!State.phoneEverPicked)
                         {
                             State.phoneEverPicked = true;
-                            foreach (string line in Dialogue.batchA) Deliver("Mẹ · 20:56 · 4 phút trước: " + line);
+                            foreach (string line in Dialogue.batchA) Deliver("Mẹ · 20:57 · 4 phút trước: " + line);
                             State.stage = NightStage.Exploration;
                             Checkpoints.Save("n1.parking", State, parkingSpawn.position, parkingSpawn.eulerAngles.y + 180);
                         }
-                        Objective = "Đọc tin trên máy Ngân (1), khám phá hẻm hoặc lên phòng 7.";
-                        Say("Máy không khóa. Có tin nhắn từ Mẹ."); player.SetPhone(1);
+                        Objective = "Bạn hãy đọc tin nhắn trên máy của Ngân bằng phím 1, rồi đi xem quanh hẻm hoặc lên phòng 7 ở tầng ba nhà trọ cô Liên.";
+                        Say("Sinh viên (nghĩ): Không cài mật khẩu luôn hả trời."); player.SetPhone(1);
                     }
                     break;
-                case NightAction.Shop: if (State.stage != NightStage.LateNight) { if(State.stage==NightStage.Exploration) Clock.Set("21:10"); OpenModal("shop"); } else Say("Tiệm đã đóng cửa."); break;
-                case NightAction.Camera: State.saw_shop_camera = true; State.Note("Tiệm đầu hẻm có camera quay ra hẻm"); Say("Đã ghi camera vào Sổ tay."); break;
-                case NightAction.Police: if (State.hasNganPhone) OpenModal("police"); else Say("Biển Công an phường ở phía đường lớn."); break;
+                case NightAction.Shop: if (State.stage != NightStage.LateNight) { if(State.stage==NightStage.Exploration) Clock.Set("21:10"); OpenModal("shop"); } else Say("Tiệm tạp hóa của chú Hùng đã đóng cửa rồi."); break;
+                case NightAction.Camera: State.saw_shop_camera = true; State.Note("Tiệm đầu hẻm có camera quay ra hẻm"); Say("Bạn đã ghi chiếc camera của tiệm đầu hẻm vào Sổ tay."); break;
+                case NightAction.Police: if (State.hasNganPhone) OpenModal("police"); else Say("Biển Công an phường nằm ở phía đường lớn, ngay ngoài đầu hẻm."); break;
                 case NightAction.Gate:
-                    if (State.stage == NightStage.Parking) { Say("Nhặt chiếc máy ở nhà xe trước."); break; }
+                    if (State.stage == NightStage.Parking) { Say("Bạn cần xem chiếc điện thoại đang sáng ở nhà xe trước khi vào nhà trọ."); break; }
                     if (State.helpedLien) { Say("Cô Liên: Mưa gì mà mưa hoài."); break; }
                     State.helpedLien = true;
                     var lines = new System.Collections.Generic.List<string> { "Cô Liên: Phòng 7 hả con? Ừ, đó, để cái đó sát vô tường giùm cô... Mưa gì mà mưa hoài." };
@@ -247,20 +267,20 @@ namespace BaGio12.Story
                     if (State.prologue_beaten >= 2) lines.AddRange(new[] { "Cô Liên chìa ra chiếc găng xám: Nó rớt cái này nè. Cô cất trong buồng, ai mất thì kiếm cô.", "Sinh viên: Dạ." });
                     lines.AddRange(new[] { "Cô Liên: À, cái căn cước. Hôm trước con nói mai đưa. Mai của con là mai nào?", "Sinh viên: Dạ, cái bóp con rớt hôm té xe, mất luôn căn cước. Con đang làm lại.", "Cô Liên: Làm lẹ nghen con. Phường người ta xuống hỏi mà cô không có gì đưa là cô bị phạt đó." });
                     Speak(lines.ToArray());
-                    Objective = "Đi cầu thang lên tầng 3, vào phòng 7."; break;
+                    Objective = "Bạn hãy đi cầu thang lên tầng ba và vào phòng 7, phòng trọ của bạn."; break;
                 case NightAction.Room: EnterRoom(); break;
-                case NightAction.Deposit: State.found_deposit_slip = true; State.Note("Phòng 7, nhận cọc ngày 22/11, không ghi tên"); Say("Giấy nhận cọc không ghi tên."); break;
+                case NightAction.Deposit: State.found_deposit_slip = true; State.Note("Phòng 7, nhận cọc ngày 22/11, không ghi tên"); Say("Tờ giấy nhận cọc phòng 7 không ghi tên người thuê, và bạn đã ghi nó vào Sổ tay."); break;
                 case NightAction.Bag:
                     State.bagInspected = true;
                     string contents = State.prologue_beaten >= 2 ? "Áo mưa rách, chỉ còn găng phải." : State.prologue_beaten == 1 ? "Áo mưa rách một tay, đôi găng xám." : "Áo mưa xanh còn ướt, đôi găng xám.";
                     State.Note("Ba lô: sạc dự phòng, chai nước, khẩu trang. " + contents);
                     Say(State.bagMoved ? "Ủa... mình để nó trên nệm hồi nào ta. Ngăn nhỏ bị kẹt." : contents + (State.bagOpen ? " Ngăn chính mở hé." : "") + " Ngăn nhỏ bị kẹt."); break;
                 case NightAction.MoveBag: State.bagDisplaced = true; bag.transform.position = FromBed(new Vector3(.9f,.3f,0)); State.bagPosition=bag.transform.position;State.hasBagPosition=true; Say("Bạn dời ba lô sang cạnh nệm."); break;
-                case NightAction.Wifi: State.Note("Mật khẩu Wi-Fi sau cửa phòng 7"); Say("Đã ghi Wi-Fi vào Sổ tay."); break;
+                case NightAction.Wifi: State.Note("Mật khẩu Wi-Fi sau cửa phòng 7"); Say("Bạn đã ghi mật khẩu Wi-Fi dán sau cửa phòng 7 vào Sổ tay."); break;
                 case NightAction.Mirror: Say("Sinh viên (nghĩ): Gương gì mờ căm, soi không ra cái mặt."); break;
-                case NightAction.Notice: State.Note("Ai để xe qua đêm tự khóa cổ, mất ráng chịu"); Say("Ai để xe qua đêm tự khóa cổ, mất ráng chịu."); break;
+                case NightAction.Notice: State.Note("Ai để xe qua đêm tự khóa cổ, mất ráng chịu"); Say("Tờ giấy dán trên cột ghi: Ai để xe qua đêm tự khóa cổ, mất ráng chịu."); break;
                 case NightAction.Bed:
-                    if (State.stage < NightStage.Room) { Say("Vào phòng 7 trước."); break; }
+                    if (State.stage < NightStage.Room) { Say("Bạn cần vào phòng 7 trước đã."); break; }
                     if (!State.timeJumped) { JumpTime(); break; }
                     if (!State.numberArrived) ArriveStranger();
                     if (State.stage != NightStage.LateNight) OpenModal("wait"); else OpenModal(State.clock == "03:12" ? "dawn" : "bed"); break;
@@ -274,12 +294,12 @@ namespace BaGio12.Story
         }
         public void EnterRoom()
         {
-            if (State.stage >= NightStage.Room) { Say("Phòng 7."); return; }
-            if (!State.helpedLien) { Say("Phụ cô Liên dựng chậu trước khi lên phòng."); return; }
+            if (State.stage >= NightStage.Room) { Say("Bạn đang ở trong phòng 7 rồi."); return; }
+            if (!State.helpedLien) { Say("Cô Liên đang loay hoay với chậu cây ở cổng, bạn hãy phụ cô dựng lại trước khi lên phòng."); return; }
             State.stage = NightStage.Room; Clock.Set("21:20");
             bag.transform.position = bagAtDoor.position; State.bagPosition=bag.transform.position;State.hasBagPosition=true;
             Checkpoints.Save("n1.room7", State, roomSpawn.position, roomSpawn.eulerAngles.y + 90);
-            Objective = "Xem đồ trong phòng. Đọc hoặc gửi tin trên máy Ngân.";
+            Objective = "Bạn hãy xem qua đồ đạc trong phòng, rồi đọc hoặc trả lời tin nhắn trên máy của Ngân.";
             Speak(new[] { "Bạn đặt ba lô xuống sàn cạnh cửa.", "Sinh viên (nghĩ): Trống trơn. Mai mua cái kệ với cái đèn bàn, chứ ở vầy buồn chết." });
             EmitInternal("area_entered", "n1.room7");
         }
@@ -287,8 +307,8 @@ namespace BaGio12.Story
         {
             if (!CanPlace || !player.IsCrouched) return;
             State.phonePlaced = true; HoldProgress = 0;
-            Objective = "Quay ra đầu hẻm. Đừng để ai thấy.";
-            Say("Chiếc máy đã nằm dưới chân xe.");
+            Objective = "Chiếc điện thoại đã nằm dưới chân chiếc Wave, giờ bạn hãy quay ra đầu hẻm mà không để ai thấy.";
+            LockScreenUntil = Time.time + 2.6f;
             EmitInternal("phone_placed", "n1.parking");
         }
         public bool ExposedWhilePlacing()
@@ -329,19 +349,46 @@ namespace BaGio12.Story
                 State.bikeArrived = false;
                 player.Teleport(alleyStart.position, StartYaw);
                 Checkpoints.Save("n1.arrival", State, alleyStart.position, StartYaw);
-                Objective = "Dắt xe vào nhà xe cuối hẻm.";
+                Objective = "Bạn hãy dắt chiếc xe máy vào nhà xe ở cuối hẻm và dựng nó vào chỗ trống cạnh chiếc Wave màu đỏ.";
+                Say("Sinh viên (nghĩ): Dắt vô nhà xe rồi còn leo ba tầng nữa mới tới phòng. Mệt quá trời.", 6);
             }
             else
             {
                 State.bikeArrived = true;
                 player.Teleport(parkingSpawn.position,parkingSpawn.eulerAngles.y);
                 Checkpoints.Save("n1.parking", State, parkingSpawn.position,parkingSpawn.eulerAngles.y);
-                Objective = "Dựng xe, tắt máy và xem số đồng hồ.";
+                Objective = "Bạn hãy dựng xe vào chỗ trống cạnh chiếc Wave màu đỏ, rồi cúi xuống xem đồng hồ xe.";
             }
             SyncWorld();
             BlackTitle = ""; AudioListener.volume = master;
             for (float t = 0; t < 1.2f; t += Time.deltaTime) { Fade = 1 - t / 1.2f; yield return null; }
             Fade = 0; Busy = false; player.SetOverlay(false);
+        }
+        Coroutine odometerRoutine;
+        void EndOdometer()
+        {
+            if (odometerRoutine == null) return;
+            StopCoroutine(odometerRoutine); odometerRoutine = null;
+            OdometerShown = false; player.SetCrouch(false); player.SetOverlay(false);
+        }
+        IEnumerator ReadOdometer()
+        {
+            State.bikeParked = true; State.Note(OdometerNote);
+            player.SetOverlay(true); player.SetCrouch(true);
+            Vector3 gauge = ownBike != null ? ownBike.transform.position + Vector3.up * .95f : player.eyes.transform.position + player.transform.forward * .8f + Vector3.down * .5f;
+            for (float t = 0; t < .6f; t += Time.deltaTime) { player.AimAt(gauge, Mathf.Clamp01(Time.deltaTime * 8)); yield return null; }
+            OdometerShown = true;
+            Say("Sinh viên (nghĩ): Còn chừng " + ((OilChangeKm - State.odo_2100) / 100 * 100) + " cây nữa là tới hạn thay nhớt.", 4);
+            for (float t = 0; t < 3f; t += Time.deltaTime) { player.AimAt(gauge, Mathf.Clamp01(Time.deltaTime * 8)); yield return null; }
+            OdometerShown = false; player.SetCrouch(false); player.SetOverlay(false); odometerRoutine = null;
+            Say("Số đồng hồ xe vừa được ghi vào Sổ tay, bạn có thể bấm N để xem lại bất cứ lúc nào.", 6);
+            yield return new WaitForSeconds(6);
+            if (State.hasNganPhone) yield break;
+            Say(State.prologue_beaten > 0 ? "Sinh viên (nghĩ): Đói quá. Trầy hồi nào vậy ta." : "Sinh viên (nghĩ): Đói quá. Lát ra đầu hẻm mua gói mì.", 5);
+            yield return new WaitForSeconds(5);
+            if (State.hasNganPhone) yield break;
+            Say("Màn hình một chiếc điện thoại dưới chân chiếc Wave vừa sáng lên với dòng chữ: Pin yếu, còn 15%.", 7);
+            Objective = "Dưới chân chiếc Wave màu đỏ có một chiếc điện thoại vừa sáng màn hình, bạn hãy lại gần xem đó là máy của ai.";
         }
         IEnumerator ArriveWithBike()
         {
@@ -349,7 +396,7 @@ namespace BaGio12.Story
             for (float t = 0; t < .35f; t += Time.deltaTime) { Fade = t / .35f; yield return null; }
             State.bikeArrived = true; SyncWorld();
             Checkpoints.Save("n1.parking", State, parkingSpawn.position, parkingSpawn.eulerAngles.y);
-            Objective = "Dựng xe, tắt máy và xem số đồng hồ.";
+            Objective = "Bạn hãy dựng xe vào chỗ trống cạnh chiếc Wave màu đỏ, rồi cúi xuống xem đồng hồ xe.";
             for (float t = 0; t < .5f; t += Time.deltaTime) { Fade = 1 - t / .5f; yield return null; }
             Fade = 0; Busy = false; player.SetOverlay(false);
         }
@@ -408,8 +455,8 @@ namespace BaGio12.Story
             if (State.numberArrived) return;
             State.numberArrived = true; Clock.Set("21:35");
             Deliver("Số lạ · 21:35 · Đã đọc: " + Dialogue.stranger);
-            Say("Có tin nhắn từ một dãy số lạ.");
-            Objective = "Xem tin số lạ hoặc bỏ qua. Tới nệm để chờ khuya.";
+            Say("Một dãy số lạ không lưu tên vừa nhắn tin vào máy của Ngân.");
+            Objective = "Bạn có thể đọc tin của dãy số lạ hoặc bỏ qua, rồi tới nệm để chờ tới khuya.";
             if (!State.hasNganPhone && State.phone_left_count == 1) RecallPhone();
         }
         public void ChooseNumber(string choice)
@@ -436,7 +483,7 @@ namespace BaGio12.Story
         {
             CloseModal(); State.stage = NightStage.LateNight; Clock.Set("22:30");
             Checkpoints.Save("n1.room7.late", State, roomSpawn.position,roomSpawn.eulerAngles.y + 90);
-            Objective = "Tới nệm: đi ngủ hoặc thức canh tới sáng.";
+            Objective = "Bạn hãy tới nệm, rồi chọn đi ngủ hoặc thức canh tới sáng.";
         }
         public void Rest(bool sleep) { CloseModal(); StartCoroutine(RestSequence(sleep)); }
         IEnumerator RestSequence(bool sleep)
@@ -463,7 +510,7 @@ namespace BaGio12.Story
         public void StopAlarm()
         {
             State.alarm = false; sound.Stop(); player.SetPhone(0);
-            Objective = "Kiểm tra hành lang nếu muốn. Trở lại nệm để chờ sáng.";
+            Objective = "Bạn có thể ra kiểm tra hành lang nếu muốn, rồi trở lại nệm để chờ trời sáng.";
             OpenModal("dawn");
         }
         public void FinishNight()
@@ -582,7 +629,7 @@ namespace BaGio12.Story
             foreach (var l in alertLights) l.enabled = false;
             leftStart = false; shoutCount = 0; hidingSeconds = 0; hideAnchor = player.transform.position; PrologueDeparted=false;PrologueElapsed=0;
             if(parkingAlertLight!=null)parkingAlertLight.enabled=false;
-            Objective = "Tới nhà xe cuối hẻm. Cúi và đặt chiếc máy dưới chân chiếc Wave.";
+            Objective = "Bạn cần mang chiếc điện thoại đang cầm trên tay vào nhà xe ở cuối hẻm, rồi cúi xuống đặt nó trên nền xi măng, ngay dưới chân chiếc Wave màu đỏ.";
         }
         public void RestoreCheckpoint()
         {

@@ -48,12 +48,15 @@ namespace BaGio12.Story
             else if(story.Modal!="")DrawModal();
             else if(!story.Busy)
             {
-                Panel(new Rect(20,18,660,115),new Color(.025f,.035f,.05f,.85f));
+                Panel(new Rect(20,18,660,145),new Color(.025f,.035f,.05f,.85f));
                 GUI.Label(new Rect(38,25,600,35),state.clock+"  •  "+(state.stage==NightStage.Prologue?"Hẻm 12":"Đêm 1"),heading);
-                GUI.Label(new Rect(38,70,620,55),story.Objective,normal);
+                GUI.Label(new Rect(38,70,620,88),story.Objective,normal);
+                if(state.stage==NightStage.Prologue)DrawAttention();
+                if(Time.time<story.LockScreenUntil)DrawLockScreen();
+                if(story.OdometerShown)DrawOdometer();
                 if(story.player.enabled)GUI.Label(new Rect(24,675,1200,35),state.stage==NightStage.Prologue?"WASD đi · Shift chạy · C cúi · Giữ E để đặt máy · Esc tạm dừng":"WASD đi · Shift chạy · C cúi · E tương tác · 1/2 điện thoại · N Sổ tay · Esc tạm dừng",small);
                 if(story.Subtitle!="")
-                { Panel(new Rect(440,548,800,84),new Color(0,0,0,.8f));GUI.Label(new Rect(460,558,760,70),story.Subtitle,normal); }
+                { Panel(new Rect(440,530,800,104),new Color(0,0,0,.8f));GUI.Label(new Rect(460,538,760,92),story.Subtitle,normal); }
                 if(state.stage==NightStage.Prologue && story.player.Stamina<.99f)
                 { Panel(new Rect(565,640,150,5),new Color(0,0,0,.6f));Panel(new Rect(565,640,150*story.player.Stamina,5),story.player.Winded?new Color(.75f,.3f,.25f,.9f):new Color(.85f,.85f,.8f,.75f)); }
                 if(story.HoldProgress>.01f)
@@ -123,6 +126,34 @@ namespace BaGio12.Story
             }
             GUI.Label(new Rect(65,640,1100,65),story.Subtitle??"",small);
         }
+        void DrawAttention()
+        {
+            var cam=story.player.eyes;
+            foreach(var o in story.observers)
+            {
+                if(o==null||!o.isActiveAndEnabled||o.Attention<.02f)continue;
+                Vector3 p=cam.WorldToScreenPoint(o.transform.position+Vector3.up*2.05f);
+                if(p.z<=0)continue;
+                float x=p.x*1280f/Screen.width, y=720f-p.y*720f/Screen.height;
+                Panel(new Rect(x-40,y,80,6),new Color(0,0,0,.55f));
+                Panel(new Rect(x-40,y,80*o.Attention,6),new Color(.95f,.75f,.3f,.85f));
+            }
+        }
+        void DrawLockScreen()
+        {
+            Panel(new Rect(500,170,280,330),new Color(.03f,.05f,.08f,.94f));
+            GUI.Label(new Rect(525,195,240,40),"20:58",heading);
+            Panel(new Rect(515,270,250,70),new Color(1,1,1,.12f));
+            GUI.Label(new Rect(525,276,235,62),"Mẹ · 20:57\nNgân ơi con đâu rồi?",normal);
+        }
+        void DrawOdometer()
+        {
+            Panel(new Rect(430,170,420,170),new Color(.02f,.02f,.02f,.9f));
+            GUI.Label(new Rect(450,180,380,30),"Đồng hồ xe",small);
+            GUI.Label(new Rect(450,205,380,45),NightOneDirector.Km(story.State.odo_2100)+" km",heading);
+            Panel(new Rect(450,262,380,60),new Color(.95f,.93f,.85f,.95f));
+            GUI.color=Color.black; GUI.Label(new Rect(462,268,360,50),"Tem dán đầu xe: Thay nhớt lần sau ở "+NightOneDirector.Km(NightOneDirector.OilChangeKm)+" km",normal); GUI.color=Color.white;
+        }
         string Shown(string message)
         {
             const string tag=" · 4 phút trước";
@@ -130,7 +161,7 @@ namespace BaGio12.Story
             var parts=story.State.clock.Split(':');
             if(parts.Length!=2||!int.TryParse(parts[0],out int h)||!int.TryParse(parts[1],out int m))return message;
             int now=h*60+m; if(now<20*60)now+=1440;
-            int ago=now-(20*60+56);
+            int ago=now-(20*60+(message.Contains("20:56")?56:57));
             return message.Replace(tag,ago<60?" · "+Mathf.Max(1,ago)+" phút trước":"");
         }
         bool Button(int row,string label) => GUI.Button(new Rect(310,250+row*65,660,52),label);

@@ -15,6 +15,7 @@ namespace BaGio12.Story
         {
             get
             {
+                if (action == NightAction.ParkBike && Director.State.stage == NightStage.Parking) return Director.State.bikeParked ? "Xem lại số đồng hồ xe" : "Cúi xuống xem đồng hồ xe";
                 if (Director.State.stage != NightStage.Prologue) return caption;
                 if (action == NightAction.PlacePhone) return Director.State.phonePlaced ? "" : Director.CanPlace ? "Đặt máy (cúi, giữ 4 giây)" : "Chưa đặt máy được khi có người nghi hay đuổi";
                 if (action == NightAction.ReturnToStart && Director.State.phonePlaced) return caption;
