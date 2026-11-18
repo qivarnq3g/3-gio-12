@@ -1,0 +1,274 @@
+[
+  {
+    "file": "prop_bed_bunk_iron.fbx",
+    "vertices": 5037,
+    "triangles": 8959,
+    "dimensions_unity_m": [
+      1.0281,
+      1.7,
+      2.0015
+    ],
+    "bounds_min_unity_m": [
+      -0.514,
+      0.0,
+      -1.0007
+    ],
+    "materials": [
+      "M_CanvasBlue",
+      "M_CanvasRed",
+      "M_ClothBlue",
+      "M_DoorWoodBrown",
+      "M_FoodBrown",
+      "M_FoodGreen",
+      "M_Rubber",
+      "M_ShutterGray",
+      "M_StainlessSteel",
+      "M_SteelDark",
+      "M_TinRust",
+      "M_TreeBark",
+      "M_WallPlinthGray",
+      "M_WallStainYellow"
+    ],
+    "mesh_objects": 158,
+    "uv_range": [
+      0.0003415,
+      0.9996585
+    ],
+    "identity_transforms": true,
+    "triangle_limit_exclusive": 10000,
+    "details": {
+      "nominal_m": [
+        0.94,
+        1.7,
+        2.0
+      ],
+      "style": "Dormitory steel bunk",
+      "tarp_drop_m": 0.1525,
+      "ladder_rungs": 4,
+      "lower_support_slats": 9
+    },
+    "authoring_center_offset_blender_m": [
+      0.040474072098731995,
+      -0.000263214111328125,
+      0.0
+    ],
+    "sha256": "aa3f2f7c1331f60dae20f99baede95ce18f12f3a2c4244a29c987a19d17b5196",
+    "bytes": 1135036,
+    "unity_import": {
+      "version": "6000.6.7f1",
+      "status": "pass",
+      "bounds_min_y_m": 0.0,
+      "bounds_center_xz_m": [
+        0.0,
+        0.0
+      ],
+      "uv_range": [
+        0.0003415,
+        0.9996585
+      ],
+      "identity_transforms": true,
+      "material_shader": "Toon/Toon"
+    },
+    "renders": [
+      {
+        "file": "prop_bed_bunk_iron.png",
+        "sha256": "7e609820b2b00b3b29d620a268fabc5e77386e87c45f1aa08ba4caf5e63acdc7"
+      },
+      {
+        "file": "prop_bed_bunk_iron_tarp_detail.png",
+        "sha256": "9c70515aa44f9e143fc8670dd061a9644a0dad18c30d57c923c454ef689f8050"
+      }
+    ]
+  },
+  {
+    "file": "prop_bed_wood_slats.fbx",
+    "vertices": 4058,
+    "triangles": 7868,
+    "dimensions_unity_m": [
+      1.301,
+      0.608,
+      2.0015
+    ],
+    "bounds_min_unity_m": [
+      -0.6505,
+      0.0,
+      -1.0008
+    ],
+    "materials": [
+      "M_Cardboard",
+      "M_DoorWoodBrown",
+      "M_DoorWoodDark",
+      "M_FoodBrown",
+      "M_ShutterGray",
+      "M_SteelDark",
+      "M_TinRust",
+      "M_TreeBark",
+      "M_WallMoldStain"
+    ],
+    "mesh_objects": 62,
+    "uv_range": [
+      0.0002957,
+      0.9997044
+    ],
+    "identity_transforms": true,
+    "triangle_limit_exclusive": 10000,
+    "details": {
+      "nominal_m": [
+        1.3,
+        0.608,
+        2.0
+      ],
+      "style": "Boarding-house bed with rough-sawn wood slats",
+      "leg_section_m": [
+        0.07,
+        0.07
+      ],
+      "slats": 24,
+      "load_bearing_cross_joists": 3,
+      "slat_stock_materials": [
+        "M_DoorWoodDark",
+        "M_DoorWoodBrown",
+        "M_FoodBrown",
+        "M_ShutterGray",
+        "M_TreeBark"
+      ],
+      "nominal_headboard_rise_m": 0.229,
+      "slat_abs_offset_x_m": [
+        0.0031,
+        0.0047
+      ],
+      "slat_abs_length_variation_m": [
+        0.0101,
+        0.0193
+      ],
+      "tilted_slats": 12,
+      "slat_roll_degrees": [
+        0.53,
+        0.98
+      ],
+      "slat_x_projection_gap_m": [
+        0.002892,
+        0.020809
+      ]
+    },
+    "authoring_center_offset_blender_m": [
+      0.0,
+      -8.225440979003906e-06,
+      0.0
+    ],
+    "sha256": "c0a516df76eb6e513c45add9ea1b8b1df5265a4a79f82a2db82815f88fb1999a",
+    "bytes": 791356,
+    "unity_import": {
+      "version": "6000.6.7f1",
+      "status": "pass",
+      "bounds_min_y_m": 0.0,
+      "bounds_center_xz_m": [
+        0.0,
+        0.0
+      ],
+      "uv_range": [
+        0.0002957,
+        0.9997044
+      ],
+      "identity_transforms": true,
+      "material_shader": "Toon/Toon"
+    },
+    "renders": [
+      {
+        "file": "prop_bed_wood_slats.png",
+        "sha256": "811b14fb6b5d4fac726a78707e45dee47eaf4d69cec8399d5ff87233c03a8607"
+      },
+      {
+        "file": "prop_bed_wood_slats_joists_detail.png",
+        "sha256": "e306e618a65ce72aaaf3fc33a0a3602ab23cb51db8391d2e0521f1f4b3a23e56"
+      }
+    ]
+  },
+  {
+    "file": "prop_bed_mattress_bamboo.fbx",
+    "vertices": 5072,
+    "triangles": 8732,
+    "dimensions_unity_m": [
+      1.2,
+      0.4445,
+      1.95
+    ],
+    "bounds_min_unity_m": [
+      -0.6,
+      0.0,
+      -0.975
+    ],
+    "materials": [
+      "M_CanvasRed",
+      "M_ClothPink",
+      "M_DoorWoodDark",
+      "M_FoodBrown",
+      "M_TreeBark",
+      "M_WallStainYellow"
+    ],
+    "mesh_objects": 356,
+    "uv_range": [
+      0.0008603,
+      0.9991396
+    ],
+    "identity_transforms": true,
+    "triangle_limit_exclusive": 10000,
+    "details": {
+      "nominal_m": [
+        1.2,
+        0.4445,
+        1.95
+      ],
+      "style": "Nệm đặt sàn phủ chiếu trúc hạt tre",
+      "bamboo_tiles": 336,
+      "bamboo_tile_gap_m": 0.004,
+      "inlaid_flowers": 32,
+      "usable_backpack_patch_m": [
+        [
+          -0.45,
+          -0.75
+        ],
+        [
+          0.45,
+          0.05
+        ]
+      ],
+      "previous_fbx_geometry_check": {
+        "unchanged_meshes_except_mattress_core": 355,
+        "original_mattress_core_vertices_preserved": 192,
+        "new_mattress_core_vertices_on_original_faces": 1120,
+        "max_surface_delta_m_rounded": 3e-08,
+        "surface_area_delta_m2_rounded": 1.3e-08,
+        "closed_mattress_core": true
+      }
+    },
+    "authoring_center_offset_blender_m": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "sha256": "528e3e39d35ca92d075e1bc945a63c8151e9c8ef7c3cd3d2b2a8f1e988d9a84f",
+    "bytes": 1640572,
+    "unity_import": {
+      "version": "6000.6.7f1",
+      "status": "pass",
+      "bounds_min_y_m": 0.0,
+      "bounds_center_xz_m": [
+        0.0,
+        0.0
+      ],
+      "uv_range": [
+        0.0008603,
+        0.9991396
+      ],
+      "identity_transforms": true,
+      "material_shader": "Toon/Toon"
+    },
+    "renders": [
+      {
+        "file": "prop_bed_mattress_bamboo.png",
+        "sha256": "e37673fdc332d79a510ab2ccdf29987d14274edc6c93ee6698c10196a24bd273"
+      }
+    ]
+  }
+]
