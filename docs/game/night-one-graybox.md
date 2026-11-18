@@ -104,3 +104,7 @@ Kiểm dữ liệu xuất từ Unity: cài gói phát triển `PyYAML` và `json
 ## Lưu tiến độ và cài đặt
 
 Menu khởi động, tự lưu trên máy, tiếp tục/chơi mới/xóa tiến độ và cài đặt được mô tả tại [Lưu tiến độ và cài đặt](save-and-settings.md). Các kiểm tra gameplay tự động cũ cần dùng thư mục dữ liệu thử riêng và `THREEGIO12_SKIP_START_MENU=1`.
+
+## Truy đuổi và ẩn nấp
+
+Luật nhìn/nghe, cắt dấu, đèn pin, ba lần bị bắt và hướng dẫn kiểm tra #20: [Truy đuổi và ẩn nấp](stealth-and-chase.md).

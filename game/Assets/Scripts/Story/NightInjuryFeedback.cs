@@ -37,7 +37,8 @@ namespace BaGio12.Story
             bool climbing=motion.y>.001f && new Vector2(motion.x,motion.z).sqrMagnitude>.00001f;
             bool straining=running || climbing || (director.State.stage==NightStage.Prologue && director.Hidden);
             if(injured && !director.Busy && straining)strainUntil=Time.time+.65f;
-            bool playing=injured && !director.Busy && Time.time<strainUntil;
+            bool winded=director.player.Winded && director.State.stage==NightStage.Prologue;
+            bool playing=!director.Busy && ((injured && Time.time<strainUntil) || winded);
             if(playing && !breath.isPlaying)breath.Play();
             if(!playing && breath.isPlaying)breath.Stop();
         }
