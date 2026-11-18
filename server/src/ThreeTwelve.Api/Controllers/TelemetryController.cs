@@ -14,6 +14,7 @@ public sealed partial class TelemetryController(ITelemetryIngestService telemetr
 {
     public const int MaxBatchBytes = 256 * 1024;
     private const int MaxEvents = 100;
+    private const int MaxGameVersionLength = 16;
 
     [GeneratedRegex("^[0-9]+\\.[0-9]+\\.[0-9]+$")]
     private static partial Regex GameVersionPattern();
@@ -25,8 +26,8 @@ public sealed partial class TelemetryController(ITelemetryIngestService telemetr
     {
         if (batch.InstallationId is null || batch.InstallationId == Guid.Empty)
             ModelState.AddModelError("installationId", "Bắt buộc, UUID.");
-        if (batch.GameVersion is null || !GameVersionPattern().IsMatch(batch.GameVersion))
-            ModelState.AddModelError("gameVersion", "Bắt buộc, dạng 0.3.0.");
+        if (batch.GameVersion is null || batch.GameVersion.Length > MaxGameVersionLength || !GameVersionPattern().IsMatch(batch.GameVersion))
+            ModelState.AddModelError("gameVersion", $"Bắt buộc, dạng 0.3.0, tối đa {MaxGameVersionLength} ký tự.");
         if (batch.Platform != "windows")
             ModelState.AddModelError("platform", "Chỉ nhận windows.");
         if (batch.Events is null || batch.Events.Count is 0 or > MaxEvents)

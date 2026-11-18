@@ -12,12 +12,14 @@ namespace BaGio12.Persistence
         public NightOneState state, checkpointState;
         public string checkpointId, objective, modal;
         public Vector3 position, checkpointPosition;
-        public float yaw, pitch, checkpointYaw, roomSeconds, unseenSeconds, immuneRemaining, prologueElapsed, playedSeconds;
+        public float hidingSeconds;
+        public float yaw, pitch, checkpointYaw, roomSeconds, immuneRemaining, prologueElapsed, playedSeconds;
         public bool crouched, leftStart, prologueDeparted, isReplay, completedInSession;
         public int activePhone, shoutCount;
         public bool[] alertLights;
         public bool parkingAlert;
         public ObserverSaveData[] observers;
+        public static readonly string[] Scenes = { "NightOneGraybox", "NightOneRealistic" };
         static bool VectorValid(Vector3 v) => GamePreferences.Finite(v.x) && GamePreferences.Finite(v.y) && GamePreferences.Finite(v.z)
             && Mathf.Abs(v.x) < 1000 && v.y > -10 && v.y < 1000 && Mathf.Abs(v.z) < 1000;
         static bool StateValid(NightOneState s) => s != null && s.schemaVersion == 2 && Enum.IsDefined(typeof(NightStage), s.stage)
@@ -25,11 +27,11 @@ namespace BaGio12.Persistence
             && s.prologue_beaten >= 0 && s.prologue_beaten < 3 && s.sent != null && s.messages != null && s.pendingMessages != null && s.notebook != null && s.afterJumpQuestions != null;
         public static bool Valid(NightSaveData d)
         {
-            if (d.schemaVersion != 1 || d.scene != "NightOneGraybox" || !StateValid(d.state) || !StateValid(d.checkpointState)
+            if (d.schemaVersion != 1 || Array.IndexOf(Scenes, d.scene) < 0 || !StateValid(d.state) || !StateValid(d.checkpointState)
                 || string.IsNullOrEmpty(d.checkpointId) || !VectorValid(d.position) || !VectorValid(d.checkpointPosition)
                 || !GamePreferences.Finite(d.yaw) || !GamePreferences.Finite(d.pitch) || !GamePreferences.Finite(d.checkpointYaw)
                 || d.pitch < -80 || d.pitch > 80 || d.activePhone < 0 || d.activePhone > 2 || d.observers == null || d.alertLights == null) return false;
-            foreach (var n in new[] { d.roomSeconds, d.unseenSeconds, d.immuneRemaining, d.prologueElapsed, d.playedSeconds })
+            foreach (var n in new[] { d.hidingSeconds, d.roomSeconds, d.immuneRemaining, d.prologueElapsed, d.playedSeconds })
                 if (!GamePreferences.Finite(n) || n < 0) return false;
             foreach (var o in d.observers) if (o == null || !o.Valid()) return false;
             return true;

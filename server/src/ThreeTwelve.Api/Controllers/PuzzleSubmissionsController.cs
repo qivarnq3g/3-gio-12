@@ -14,6 +14,8 @@ namespace ThreeTwelve.Api.Controllers;
 [EnableRateLimiting(RateLimitPolicies.PuzzleSubmit)]
 public sealed partial class PuzzleSubmissionsController(IPuzzleSubmissionService submissions) : ControllerBase
 {
+    private const int MaxGameVersionLength = 16;
+
     [GeneratedRegex("^[a-z0-9][a-z0-9-]{0,63}$")]
     private static partial Regex PuzzleIdPattern();
 
@@ -30,8 +32,8 @@ public sealed partial class PuzzleSubmissionsController(IPuzzleSubmissionService
             ModelState.AddModelError("puzzleId", "Chữ thường, số và gạch nối, tối đa 64 ký tự.");
         if (submission.InstallationId is null || submission.InstallationId == Guid.Empty)
             ModelState.AddModelError("installationId", "Bắt buộc, UUID.");
-        if (submission.GameVersion is null || !GameVersionPattern().IsMatch(submission.GameVersion))
-            ModelState.AddModelError("gameVersion", "Bắt buộc, dạng 0.3.0.");
+        if (submission.GameVersion is null || submission.GameVersion.Length > MaxGameVersionLength || !GameVersionPattern().IsMatch(submission.GameVersion))
+            ModelState.AddModelError("gameVersion", $"Bắt buộc, dạng 0.3.0, tối đa {MaxGameVersionLength} ký tự.");
         if (submission.Sha256 is null || !Sha256Pattern().IsMatch(submission.Sha256))
             ModelState.AddModelError("sha256", "Bắt buộc, 64 ký tự hex chữ thường.");
         if (!ModelState.IsValid)

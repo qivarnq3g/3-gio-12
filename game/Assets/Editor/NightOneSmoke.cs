@@ -16,11 +16,12 @@ public static class NightOneSmoke
     static int step, frame;
     static double next, captureTime;
     static bool record;
+    public static string ScenePath => Environment.GetEnvironmentVariable("THREEGIO12_NIGHT_SCENE") is { Length: > 0 } scene ? scene : "Assets/Scenes/Night01/NightOneGraybox.unity";
     static NightOneSmoke()
     { if(SessionState.GetBool("NightOneSmoke",false)) EditorApplication.playModeStateChanged+=Changed; }
     public static void Run()
     {
-        EditorSceneManager.OpenScene("Assets/Scenes/Night01/NightOneGraybox.unity");
+        EditorSceneManager.OpenScene(ScenePath);
         SessionState.SetBool("NightOneSmoke",true);
         EditorApplication.playModeStateChanged-=Changed;EditorApplication.playModeStateChanged+=Changed;
         EditorApplication.EnterPlaymode();
@@ -44,6 +45,7 @@ public static class NightOneSmoke
         try
         {
             var s=story.State;
+            if(step>=1 && step<=6 && (story.Busy||story.Fade>0)){next=EditorApplication.timeSinceStartup+.3;return;}
             switch(step++)
             {
                 case 0:
@@ -54,33 +56,46 @@ public static class NightOneSmoke
                     story.player.SetPhone(1);Require(story.player.ActivePhone==0,"phone allowed during prologue");
                     var path=new NavMeshPath();
                     Require(NavMesh.CalculatePath(story.alleyStart.position,story.parkingSpawn.position,NavMesh.AllAreas,path)&&path.status==NavMeshPathStatus.PathComplete,"alley to parking nav path disconnected");
+                    foreach(var o in story.observers){var a=o.GetComponent<NavMeshAgent>();Require(a==null||!a.isActiveAndEnabled||a.isOnNavMesh,"observer agent off NavMesh: "+o.name);}
                     var observer=story.observers[0];
-                    story.player.Teleport(new Vector3(0,.08f,7)); observer.startDelay=0;
-                    observer.transform.rotation=Quaternion.Euler(0,90,0); Physics.SyncTransforms();
+                    story.player.Teleport(story.alleyStart.position,story.alleyStart.eulerAngles.y); observer.startDelay=0; Physics.SyncTransforms();
+                    Require(!story.PrologueDeparted && story.observers.All(x=>!x.CanSeePlayer()),"observer sees player before leaving alley start");
+                    typeof(NightOneDirector).GetProperty("PrologueDeparted").GetSetMethod(true).Invoke(story,new object[]{true});
+                    var facing=Vector3.ProjectOnPlane(observer.transform.forward,Vector3.up).normalized;
+                    story.player.Teleport(observer.transform.position+facing*2.5f+Vector3.up*.05f); Physics.SyncTransforms();
                     Require(observer.CanSeePlayer(),"observer failed clear line of sight");
-                    var obstruction=GameObject.CreatePrimitive(PrimitiveType.Cube);obstruction.transform.position=new Vector3(-1.3f,1.5f,7);obstruction.transform.localScale=new Vector3(.3f,3,2);Physics.SyncTransforms();
+                    var obstruction=GameObject.CreatePrimitive(PrimitiveType.Cube);obstruction.transform.SetPositionAndRotation(observer.transform.position+facing*1.25f+Vector3.up*1.5f,Quaternion.LookRotation(facing));obstruction.transform.localScale=new Vector3(2,3,.3f);Physics.SyncTransforms();
                     Require(!observer.CanSeePlayer(),"observer saw through solid wall");
                     obstruction.GetComponent<Collider>().enabled=false;UnityEngine.Object.Destroy(obstruction);
                     observer.Detect(false);Require(observer.Mode==ObserverMode.Suspicious,"outside parking must become suspicious");
                     observer.Detect(true);Require(observer.Mode==ObserverMode.Chasing && story.alertLights.Any(x=>x.enabled),"chase/shout activation failed");
                     story.ResetPrologue();
-                    story.Caught();next=EditorApplication.timeSinceStartup+2;return;
-                case 1: Require(s.prologue_beaten==1,"first capture");story.Caught();next=EditorApplication.timeSinceStartup+5.5;return;
+                    Catch(story);next=EditorApplication.timeSinceStartup+2;return;
+                case 1: Require(s.prologue_beaten==1,"first capture");Catch(story);next=EditorApplication.timeSinceStartup+5.5;return;
                 case 2: story.Caught();next=EditorApplication.timeSinceStartup+2;return;
                 case 3:
                     Require(s.prologue_beaten==2,"second capture");
                     Require(Mathf.Abs(story.player.RunMultiplier-2f/3)<.01f,"injury sprint multiplier");
-                    story.Caught();next=EditorApplication.timeSinceStartup+5.5;return;
+                    Catch(story);next=EditorApplication.timeSinceStartup+5.5;return;
                 case 4: story.Caught();next=EditorApplication.timeSinceStartup+2;return;
                 case 5:
                     Require(story.State.prologue_beaten==0,"third capture must reset");
                     Require(story.State.clock=="20:56","capture changed story clock");
-                    story.player.Teleport(new Vector3(0,.1f,30),0);story.player.SetCrouch(true);
+                    story.player.Teleport(story.parkingSpawn.position,story.parkingSpawn.eulerAngles.y);story.player.SetCrouch(true);Require(story.InParking,"parking spawn outside parking zone");
                     story.PlacePhone();Require(story.State.phonePlaced,"phone placement blocked");
-                    story.player.Teleport(new Vector3(0,.1f,.5f),0);story.Act(NightAction.ReturnToStart);
+                    story.player.Teleport(story.alleyStart.position-story.alleyStart.forward*1.1f,story.alleyStart.eulerAngles.y);story.Act(NightAction.ReturnToStart);
                     next=EditorApplication.timeSinceStartup+4.5;return;
                 case 6:
+                    if(story.Busy){next=EditorApplication.timeSinceStartup+.5;step--;return;}
                     Require(story.State.stage==NightStage.Parking,"prologue did not transition");
+                    if(story.Pushing)
+                    {
+                        story.Act(NightAction.ParkBike);Require(!story.State.bikeParked,"parked a bike that was still at the alley mouth");
+                        Require(!story.player.SprintAllowed && story.player.WalkMultiplier<1,"pushing the bike did not slow the player");
+                        story.player.Teleport(story.parkingSpawn.position,story.parkingSpawn.eulerAngles.y);
+                        next=EditorApplication.timeSinceStartup+.5;step--;return;
+                    }
+                    Require(story.State.bikeArrived && story.player.SprintAllowed,"bike arrival did not restore control");
                     story.Act(NightAction.ParkBike);story.Act(NightAction.Phone);
                     Require(story.HasNgan && story.State.messages.Count==6,"pickup/batch A");
                     Require(story.State.notebook.Count==1,"odometer notebook entry");
@@ -88,12 +103,16 @@ public static class NightOneSmoke
                     story.player.SetPhone(0);story.Act(NightAction.Camera);
                     story.Send("camera:yes","Có, tiệm đầu hẻm.");Require(story.State.linh_knows_shop_camera,"camera choice missing");
                     story.Act(NightAction.Gate);story.EnterRoom();
-                    story.player.Teleport(story.roomSpawn.position,90);
+                    story.player.Teleport(story.roomSpawn.position,90);Physics.SyncTransforms();
                     next=EditorApplication.timeSinceStartup+1;return;
                 case 7:
                     var route=new NavMeshPath();
                     // Door collider becomes a trigger at runtime; navigation is for NPCs in the alley.
-                    Require(NavMesh.CalculatePath(story.parkingSpawn.position,new Vector3(10.4f,8.4f,20.7f),NavMesh.AllAreas,route)&&route.status==NavMeshPathStatus.PathComplete,"stairs are disconnected");
+                    Require(story.InRoom,"room spawn outside room zone");
+                    var door=UnityEngine.Object.FindFirstObjectByType<NightRoomDoor>().transform.position;
+                    var outward=Vector3.ProjectOnPlane(door-story.roomSpawn.position,Vector3.up).normalized;
+                    Require(NavMesh.SamplePosition(door+outward*.7f+Vector3.down*1,out var corridor,1.2f,NavMesh.AllAreas),"no navmesh outside room door");
+                    Require(NavMesh.CalculatePath(story.parkingSpawn.position,corridor.position,NavMesh.AllAreas,route)&&route.status==NavMeshPathStatus.PathComplete,"stairs are disconnected");
                     story.Act(NightAction.Deposit);story.Act(NightAction.Bag);
                     story.player.SetPhone(1);story.Send("why","Vì sao máy ở nhà xe?");
                     Require(story.State.clock=="21:26" && story.State.timeJumped,"six-minute jump missing");
@@ -125,6 +144,8 @@ public static class NightOneSmoke
         }
         catch(Exception e){Debug.LogException(e);Finish(1);}
     }
+    static void Catch(NightOneDirector story)
+    {typeof(NightOneDirector).GetField("immuneUntil",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).SetValue(story,0f);story.Caught();}
     static void Finish(int code)
     {EditorApplication.update-=Tick;SessionState.SetBool("NightOneSmoke",false);SessionState.SetBool("NightOneRecord",false);EditorApplication.Exit(code);}
 }
