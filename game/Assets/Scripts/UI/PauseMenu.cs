@@ -16,7 +16,7 @@ namespace BaGio12.Gameplay
         const string Regular = "Fonts/BeVietnamPro-Regular", Medium = "Fonts/BeVietnamPro-Medium";
         static readonly Color Warm = new Color(1, .8f, .52f);
         static readonly Color Paper = new Color(.97f, .93f, .85f);
-        enum Kind { Slider, Toggle, Action }
+        enum Kind { Slider, Toggle, Choice, Action }
 
         sealed class Entry
         {
@@ -144,12 +144,13 @@ namespace BaGio12.Gameplay
                     () => settings.brightness, v => settings.brightness = v, v => Number(v / .25f + 5, 0), true),
                 Slider("Âm lượng", "Âm lượng chung của game.", 0, 1, .05f,
                     () => settings.volume, v => settings.volume = v, Percent),
+                Choice("Khử răng cưa", "Làm mịn mép răng cưa của đồ vật. SMAA nét và ổn định nên được chọn sẵn, FXAA nhẹ hơn nhưng hình hơi mờ, còn TAA mịn nhất nhưng song sắt và dây điện có thể lấp lóa.", GameSettings.AntialiasingNames,
+                    () => settings.antialiasing, v => settings.antialiasing = v),
             };
             if (Session != null)
             {
-                int last = QualitySettings.names.Length - 1;
-                rows.Add(Slider("Chất lượng đồ họa", "Giảm xuống nếu game chạy giật trên máy yếu.", 0, last, 1,
-                    () => Session.Quality, v => Session.Quality = Mathf.RoundToInt(v), v => QualitySettings.names[Mathf.Clamp(Mathf.RoundToInt(v), 0, last)]));
+                rows.Add(Choice("Chất lượng đồ họa", "Chọn mức thấp hơn nếu game chạy giật trên máy yếu.", QualitySettings.names,
+                    () => Session.Quality, v => Session.Quality = v));
                 rows.Add(Toggle("Cảnh báo nội dung", "Hiện cảnh báo nội dung ở màn hình đầu khi mở game.",
                     () => Session.ShowWarning ? 1 : 0, v => Session.ShowWarning = v > .5f));
             }
@@ -221,6 +222,11 @@ namespace BaGio12.Gameplay
 
         static Setting Toggle(string name, string hint, Func<float> get, Action<float> set) =>
             new Setting { name = name, hint = hint, kind = Kind.Toggle, min = 0, max = 1, step = 1, get = get, set = set };
+
+        static Setting Choice(string name, string hint, string[] options, Func<int> get, Action<int> set) =>
+            new Setting { name = name, hint = hint, kind = Kind.Choice, min = 0, max = options.Length - 1, step = 1,
+                get = () => get(), set = v => set(Mathf.Clamp(Mathf.RoundToInt(v), 0, options.Length - 1)),
+                format = v => options[Mathf.Clamp(Mathf.RoundToInt(v), 0, options.Length - 1)] };
 
         void MakeRow(Setting s, int index)
         {
@@ -477,6 +483,7 @@ namespace BaGio12.Gameplay
             if (confirm)
             {
                 if (current.kind == Kind.Toggle) Change(current, 1);
+                else if (current.kind == Kind.Choice) Cycle(current);
                 else if (current.kind == Kind.Action) current.run();
             }
             if (keys.escapeKey.wasPressedThisFrame || keys.backspaceKey.wasPressedThisFrame) LeavePage();
@@ -490,6 +497,7 @@ namespace BaGio12.Gameplay
             if (Contains(s.minus, point)) Change(s, -1);
             else if (Contains(s.plus, point)) Change(s, 1);
             else if (s.kind == Kind.Toggle) Change(s, 1);
+            else if (s.kind == Kind.Choice) Cycle(s);
             else { dragging = index; SetFromPointer(s, point); }
         }
 
@@ -497,6 +505,12 @@ namespace BaGio12.Gameplay
         {
             if (s.kind == Kind.Toggle) { s.set(s.get() > .5f ? 0 : 1); Changed(); return; }
             Assign(s, s.get() + direction * s.step);
+        }
+
+        void Cycle(Setting s)
+        {
+            float next = s.get() + 1;
+            Assign(s, next > s.max + .01f ? s.min : next);
         }
 
         void SetFromPointer(Setting s, Vector2 point)
@@ -537,8 +551,9 @@ namespace BaGio12.Gameplay
                 float t = s.kind == Kind.Toggle ? value : Mathf.InverseLerp(s.min, s.max, value);
                 if (s.fill != null) { s.fill.sizeDelta = new Vector2(TrackWidth * t, 2); s.handle.anchoredPosition = new Vector2(TrackWidth * t, 0); }
                 s.value.text = s.kind == Kind.Toggle ? value > .5f ? "Bật" : "Tắt" : s.format(value);
-                bool atMin = s.kind == Kind.Slider && value <= s.min + s.step * .01f;
-                bool atMax = s.kind == Kind.Slider && value >= s.max - s.step * .01f;
+                bool ranged = s.kind == Kind.Slider || s.kind == Kind.Choice;
+                bool atMin = ranged && value <= s.min + s.step * .01f;
+                bool atMax = ranged && value >= s.max - s.step * .01f;
                 s.minusText.alpha = atMin ? .15f : .6f;
                 s.plusText.alpha = atMax ? .15f : .6f;
             }

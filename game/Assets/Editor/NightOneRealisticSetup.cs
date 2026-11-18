@@ -32,6 +32,39 @@ public static class NightOneRealisticSetup
     static Transform Child(string name) =>
         blockout == null ? null : blockout.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == name);
 
+    static void FoldingGrille(Transform root, float x, float z0, float z1, float height)
+    {
+        var steel = AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/MaterialsPBR/M_SteelPaintedGreen.mat");
+        float zMin = Mathf.Min(z0, z1), zMax = Mathf.Max(z0, z1), span = zMax - zMin;
+        void Bar(string name, Vector3 at, Vector3 size, float tilt)
+        {
+            var b = GameObject.CreatePrimitive(PrimitiveType.Cube); b.name = name;
+            Object.DestroyImmediate(b.GetComponent<Collider>());
+            b.transform.SetParent(root, false);
+            b.transform.position = at; b.transform.rotation = Quaternion.Euler(tilt, 0, 0); b.transform.localScale = size;
+            var r = b.GetComponent<Renderer>(); r.sharedMaterial = steel; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            GameObjectUtility.SetStaticEditorFlags(b, StaticEditorFlags.BatchingStatic);
+        }
+        Bar("Grille rail top", new Vector3(x, height - .03f, zMin + span / 2), new Vector3(.05f, .06f, span), 0);
+        Bar("Grille rail low", new Vector3(x, .04f, zMin + span / 2), new Vector3(.05f, .05f, span), 0);
+        int posts = Mathf.Max(2, Mathf.RoundToInt(span / .13f));
+        float step = span / posts;
+        for (int i = 0; i <= posts; i++)
+            Bar("Grille post " + i, new Vector3(x, height / 2, zMin + i * step), new Vector3(.03f, height - .08f, .018f), 0);
+        float pitch = step * 2;
+        int cells = Mathf.Max(1, posts / 2);
+        int rows = Mathf.Max(2, Mathf.RoundToInt((height - .2f) / (pitch * 1.6f)));
+        float rowH = (height - .2f) / rows;
+        float length = Mathf.Sqrt(pitch * pitch + rowH * rowH), angle = Mathf.Atan2(rowH, pitch) * Mathf.Rad2Deg;
+        for (int row = 0; row < rows; row++)
+            for (int i = 0; i < cells; i++)
+            {
+                var c = new Vector3(x - .012f, .1f + (row + .5f) * rowH, zMin + (i + .5f) * pitch);
+                Bar($"Grille strap {row}_{i}a", c, new Vector3(.012f, .014f, length), angle);
+                Bar($"Grille strap {row}_{i}b", c, new Vector3(.012f, .014f, length), -angle);
+            }
+    }
+
     static Bounds Box(string name, Vector3 min, Vector3 max)
     {
         var fallback = new Bounds((min + max) / 2, max - min);
@@ -325,12 +358,14 @@ public static class NightOneRealisticSetup
         nav.BuildNavMesh();
         if (nav.navMeshData == null) throw new System.Exception("NavMesh build produced nothing");
         AssetDatabase.DeleteAsset(NavPath); AssetDatabase.CreateAsset(nav.navMeshData, NavPath);
+        var gateRoot = new GameObject("Night1 prologue gate").transform; gateRoot.SetParent(gameplay, false);
         var shut = GameObject.CreatePrimitive(PrimitiveType.Cube); shut.name = "Night1 prologue gate shut";
-        shut.transform.SetParent(gameplay, false);
-        shut.transform.position = new Vector3(gate.center.x - .05f, 1.2f, (gate.min.z - 44.6f) / 2);
+        shut.transform.SetParent(gateRoot, false);
+        shut.transform.position = new Vector3(gate.center.x - .3f, 1.2f, (gate.min.z - 44.6f) / 2);
         shut.transform.localScale = new Vector3(.06f, 2.4f, gate.min.z + 44.6f);
         shut.GetComponent<Renderer>().sharedMaterial = dark;
-        story.prologueGate = shut;
+        FoldingGrille(gateRoot, gate.center.x + .02f, gate.min.z, -44.6f, 2.35f);
+        story.prologueGate = gateRoot.gameObject;
 
         foreach (var w in watchers)
         {

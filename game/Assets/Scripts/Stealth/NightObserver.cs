@@ -217,15 +217,14 @@ namespace BaGio12.Stealth
             if (director != null && director.State.prologue_beaten > 0) { interval=11; watchDuration=6; startDelay=0; }
             if(startsDormant)Mode=ObserverMode.Inactive;
         }
-        void OnGUI()
+        public bool Shown
         {
-            if (Attention <= .01f || director == null || director.Busy || director.player.ActivePhone != 0) return;
-            var p=director.player.eyes.WorldToScreenPoint(transform.position+Vector3.up*2.2f);
-            if(p.z<=0)return;
-            var rect=new Rect(p.x-45,Screen.height-p.y,90,7);
-            GUI.color=Color.black; GUI.DrawTexture(rect,Texture2D.whiteTexture);
-            GUI.color=Mode == ObserverMode.Chasing ? Color.red : Color.yellow;
-            GUI.DrawTexture(new Rect(rect.x,rect.y,rect.width*Attention,rect.height),Texture2D.whiteTexture); GUI.color=Color.white;
+            get
+            {
+                if (visuals == null) return false;
+                foreach (var v in visuals) if (v != null && v.enabled) return true;
+                return false;
+            }
         }
     }
 }
