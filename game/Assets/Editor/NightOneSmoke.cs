@@ -45,6 +45,7 @@ public static class NightOneSmoke
         try
         {
             var s=story.State;
+            if(step>=1 && step<=6 && (story.Busy||story.Fade>0)){next=EditorApplication.timeSinceStartup+.3;return;}
             switch(step++)
             {
                 case 0:
@@ -69,13 +70,13 @@ public static class NightOneSmoke
                     observer.Detect(false);Require(observer.Mode==ObserverMode.Suspicious,"outside parking must become suspicious");
                     observer.Detect(true);Require(observer.Mode==ObserverMode.Chasing && story.alertLights.Any(x=>x.enabled),"chase/shout activation failed");
                     story.ResetPrologue();
-                    story.Caught();next=EditorApplication.timeSinceStartup+2;return;
-                case 1: Require(s.prologue_beaten==1,"first capture");story.Caught();next=EditorApplication.timeSinceStartup+5.5;return;
+                    Catch(story);next=EditorApplication.timeSinceStartup+2;return;
+                case 1: Require(s.prologue_beaten==1,"first capture");Catch(story);next=EditorApplication.timeSinceStartup+5.5;return;
                 case 2: story.Caught();next=EditorApplication.timeSinceStartup+2;return;
                 case 3:
                     Require(s.prologue_beaten==2,"second capture");
                     Require(Mathf.Abs(story.player.RunMultiplier-2f/3)<.01f,"injury sprint multiplier");
-                    story.Caught();next=EditorApplication.timeSinceStartup+5.5;return;
+                    Catch(story);next=EditorApplication.timeSinceStartup+5.5;return;
                 case 4: story.Caught();next=EditorApplication.timeSinceStartup+2;return;
                 case 5:
                     Require(story.State.prologue_beaten==0,"third capture must reset");
@@ -85,9 +86,26 @@ public static class NightOneSmoke
                     story.player.Teleport(story.alleyStart.position-story.alleyStart.forward*1.1f,story.alleyStart.eulerAngles.y);story.Act(NightAction.ReturnToStart);
                     next=EditorApplication.timeSinceStartup+4.5;return;
                 case 6:
+                    if(story.Busy){next=EditorApplication.timeSinceStartup+.5;step--;return;}
                     Require(story.State.stage==NightStage.Parking,"prologue did not transition");
+                    if(story.Pushing)
+                    {
+                        story.Act(NightAction.ParkBike);Require(!story.State.bikeParked,"parked a bike that was still at the alley mouth");
+                        Require(!story.player.SprintAllowed && story.player.WalkMultiplier<1,"pushing the bike did not slow the player");
+                        story.player.Teleport(story.parkingSpawn.position,story.parkingSpawn.eulerAngles.y);
+                        next=EditorApplication.timeSinceStartup+.5;step--;return;
+                    }
+                    Require(story.State.bikeArrived && story.player.SprintAllowed,"bike arrival did not restore control");
                     story.Act(NightAction.ParkBike);story.Act(NightAction.Phone);
-                    Require(story.HasNgan && story.State.messages.Count==6,"pickup/batch A");Require(BaGio12.Prototype.PhonePrototype.Instance==null||BaGio12.Prototype.PhonePrototype.Instance.HasDelivered("A"),"prototype missing batch A");BaGio12.Prototype.PhonePrototype.Instance?.RefusePasscode();Require(story.Subtitle=="Máy người ta, đặt mã lỡ người ta không mở được.","refusal to set lock code missing");
+                    Require(story.HasNgan && story.State.messages.Count==6,"pickup/batch A");
+                    var nganPhone = BaGio12.Prototype.PhonePrototype.Instance;
+                    Require(nganPhone!=null && nganPhone.IsOpen && nganPhone.HasDelivered("A"),"picking up the phone did not open the prototype with batch A");
+                    story.player.SetPhone(2);
+                    Require(story.player.ActivePhone==2 && !nganPhone.IsOpen,"student phone opened the Ngân prototype");
+                    story.player.SetPhone(1);
+                    Require(story.player.ActivePhone==1 && nganPhone.IsOpen,"switching back did not open the Ngân prototype");
+                    nganPhone.RefusePasscode();
+                    Require(story.Subtitle=="Máy người ta, đặt mã lỡ người ta không mở được.","refusal to set lock code missing");
                     Require(story.State.notebook.Count==1,"odometer notebook entry");
                     story.Send("camera:yes","Có, tiệm đầu hẻm.");Require(!story.State.linh_knows_shop_camera,"camera answer gate bypassed");
                     story.player.SetPhone(0);story.Act(NightAction.Camera);
@@ -146,6 +164,8 @@ public static class NightOneSmoke
         }
         catch(Exception e){Debug.LogException(e);Finish(1);}
     }
+    static void Catch(NightOneDirector story)
+    {typeof(NightOneDirector).GetField("immuneUntil",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).SetValue(story,0f);story.Caught();}
     static void Finish(int code)
     {EditorApplication.update-=Tick;SessionState.SetBool("NightOneSmoke",false);SessionState.SetBool("NightOneRecord",false);EditorApplication.Exit(code);}
 }

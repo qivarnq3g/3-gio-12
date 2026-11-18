@@ -62,7 +62,7 @@ public static class RealisticSceneBuilder
         ["M_SteelDark"] = new Surface { tex = "rusty_painted_metal", size = 1f, tintMix = .5f },
         ["M_SteelPaintedBlue"] = new Surface { tex = "rusty_painted_metal", size = 1f, tintMix = .7f },
         ["M_Asphalt"] = new Surface { tex = "asphalt_02", size = 4f, tintMix = 0, wet = .6f },
-        ["M_SidewalkTile"] = new Surface { tex = "square_pavers", size = 2f, tintMix = .3f },
+        ["M_SidewalkTile"] = new Surface { tex = "terrazzo_sidewalk", size = 1.6f, tintMix = 0 },
         ["M_FloorTileCream"] = new Surface { tex = "floor_tiles_06", size = 1.2f, tintMix = .3f },
         ["M_FloorTileCreamDark"] = new Surface { tex = "floor_tiles_06", size = 1.2f, tintMix = .5f },
         ["M_FloorTileGray"] = new Surface { tex = "floor_tiles_06", size = 1.2f, tintMix = .4f },
@@ -284,7 +284,8 @@ public static class RealisticSceneBuilder
     {
         var key = "Decal_" + tex; if (Cache.TryGetValue(key, out var done)) return done;
         var saved = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{key}.mat"); if (saved != null) return Cache[key] = saved;
-        var m = new Material(Shader.Find("Shader Graphs/Decal")) { name = key, enableInstancing = true };
+        var shader = Shader.Find("Shader Graphs/Decal") ?? AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/Decal_D_Cracks.mat").shader;
+        var m = new Material(shader) { name = key, enableInstancing = true };
         var t = Tex($"{DecalRoot}/{tex}.png", max: 1024);
         var imp = (TextureImporter)AssetImporter.GetAtPath($"{DecalRoot}/{tex}.png");
         if (imp.wrapMode != TextureWrapMode.Clamp) { imp.wrapMode = TextureWrapMode.Clamp; imp.SaveAndReimport(); }
@@ -320,7 +321,10 @@ public static class RealisticSceneBuilder
     {
         var forward = rotation * Vector3.forward; var right = rotation * Vector3.right * size.x / 2; var top = rotation * Vector3.up * size.y / 2;
         var depths = new List<float>();
-        foreach (var (a, b) in new[] { (0f, 0f), (-.9f, -.9f), (.9f, -.9f), (-.9f, .9f), (.9f, .9f), (-.9f, 0f), (.9f, 0f), (0f, -.9f), (0f, .9f) })
+        var grid = strict
+            ? (from i in Enumerable.Range(0, 9) from j in Enumerable.Range(0, 7) select (-.95f + i * 1.9f / 8, -.95f + j * 1.9f / 6)).ToArray()
+            : new[] { (0f, 0f), (-.9f, -.9f), (.9f, -.9f), (-.9f, .9f), (.9f, .9f), (-.9f, 0f), (.9f, 0f), (0f, -.9f), (0f, .9f) };
+        foreach (var (a, b) in grid)
         {
             var d = SkinDepth(at - forward * .5f + right * a + top * b, forward, strict);
             if (d != null) depths.Add(d.Value); else if (strict) return null;
@@ -336,6 +340,88 @@ public static class RealisticSceneBuilder
         go.transform.SetPositionAndRotation(at + forward * plane.Value, rotation);
         var d = go.AddComponent<DecalProjector>(); d.material = DecalMat(tex, normal); d.size = new Vector3(size.x, size.y, DecalDepth); d.pivot = Vector3.zero; d.drawDistance = 60;
         return true;
+    }
+    static void SignBoard(Transform parent, string tex, Vector3 at, Vector3 forward, Vector2 size, float standoff = .12f, int lamps = 0)
+    {
+        var rotation = Quaternion.LookRotation(forward, Vector3.up);
+        var up = rotation * Vector3.up; var side = rotation * Vector3.right;
+        float Probe(Vector3 o) { float d = 1f; foreach (var hit in Physics.RaycastAll(o - forward * .5f, forward, 1f)) d = Mathf.Min(d, hit.distance); return d; }
+        var wall = Enumerable.Range(0, 11).Select(i => Probe(at + side * (i - 5) * .1f + up * size.y * .45f)).OrderBy(d => d).ElementAt(5);
+        bool Clear(Vector2 s) { for (int i = 0; i <= 10; i++) for (int j = 0; j <= 4; j++) if (Probe(at + side * s.x / 2 * (-1 + i * .2f) + up * s.y / 2 * (-1 + j * .5f)) < wall - standoff + .01f) return false; return true; }
+        float full = size.x;
+        while (size.x > 1f && !Clear(size)) { size.y *= (size.x - .1f) / size.x; size.x -= .1f; }
+        const float thick = .04f;
+        var board = new GameObject("Sign board " + tex).transform; board.SetParent(parent, false);
+        board.SetPositionAndRotation(at - forward * (.5f - wall + standoff - thick / 2), rotation);
+        var frame = MatFor("M_SignFrame", new Color(.42f, .43f, .44f), .3f);
+        var steel = MatFor("M_SignBracket", new Color(.16f, .14f, .13f), .15f);
+        void Box(string n, Vector3 local, Vector3 scale, Material mat)
+        {
+            var b = GameObject.CreatePrimitive(PrimitiveType.Cube); Object.DestroyImmediate(b.GetComponent<Collider>());
+            b.name = n; b.transform.SetParent(board, false); b.transform.localPosition = local; b.transform.localScale = scale;
+            b.GetComponent<MeshRenderer>().sharedMaterial = mat;
+        }
+        const float trim = .045f;
+        Box("Back", new Vector3(0, 0, thick * .25f), new Vector3(size.x, size.y, thick * .5f), steel);
+        Box("Trim top", new Vector3(0, size.y / 2 - trim / 2, 0), new Vector3(size.x, trim, thick), frame);
+        Box("Trim bottom", new Vector3(0, -size.y / 2 + trim / 2, 0), new Vector3(size.x, trim, thick), frame);
+        Box("Trim left", new Vector3(-size.x / 2 + trim / 2, 0, 0), new Vector3(trim, size.y, thick), frame);
+        Box("Trim right", new Vector3(size.x / 2 - trim / 2, 0, 0), new Vector3(trim, size.y, thick), frame);
+        foreach (var u in new[] { -.38f, .38f }) foreach (var v in new[] { -.3f, .3f })
+            Box("Bracket", new Vector3(u * size.x, v * size.y, thick / 2 + (standoff - thick) / 2), new Vector3(.04f, .04f, standoff - thick), steel);
+        var face = GameObject.CreatePrimitive(PrimitiveType.Quad); Object.DestroyImmediate(face.GetComponent<Collider>());
+        face.name = "Sign face " + tex; face.transform.SetParent(board, false);
+        face.transform.localPosition = new Vector3(0, -.004f, -thick * .1f); face.transform.localScale = new Vector3(size.x - trim * 1.6f, size.y - trim * 1.6f, 1);
+        var m = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/Sign_{tex}.mat");
+        if (m == null) { m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = "Sign_" + tex }; AssetDatabase.CreateAsset(m, $"{MatRoot}/Sign_{tex}.mat"); }
+        var t = Tex($"{DecalRoot}/{tex}.png", max: 2048);
+        m.SetTexture("_BaseMap", t); m.SetColor("_BaseColor", Color.white); m.SetFloat("_Smoothness", .22f);
+        EditorUtility.SetDirty(m);
+        face.GetComponent<MeshRenderer>().sharedMaterial = m;
+        for (int k = 0; k < lamps; k++)
+        {
+            float u = lamps == 1 ? 0 : (-.3f + .6f * k / (lamps - 1)) * size.x;
+            var arm = new Vector3(u, size.y / 2 + .08f, 0);
+            Box("Lamp arm", arm + new Vector3(0, 0, (-.55f + standoff - thick / 2) / 2), new Vector3(.025f, .025f, .55f + standoff - thick / 2), steel);
+            Box("Lamp head", arm + new Vector3(0, -.02f, -.57f), new Vector3(.16f, .05f, .1f), steel);
+            var l = new GameObject("Sign lamp").AddComponent<Light>(); l.transform.SetParent(board, false);
+            l.type = LightType.Spot; l.color = new Color(1f, .93f, .82f); l.intensity = 1.1f; l.range = 3.5f; l.spotAngle = 110; l.innerSpotAngle = 40;
+            l.shadows = LightShadows.Soft; l.lightmapBakeType = LightmapBakeType.Mixed;
+            l.transform.localPosition = arm + new Vector3(0, -.05f, -.57f);
+            l.transform.LookAt(board.TransformPoint(new Vector3(u, -size.y * .15f, 0)));
+            NightStreetBuilder.SetShadowTier(l, UniversalAdditionalLightData.AdditionalLightsShadowResolutionTierLow);
+        }
+        foreach (var r in board.GetComponentsInChildren<MeshRenderer>()) r.shadowCastingMode = ShadowCastingMode.On;
+        Debug.Log($"REAL_SIGN {tex} wall={wall - .5f:F3} width {full:F2}->{size.x:F2} height={size.y:F2} lamps={lamps}");
+    }
+    static Material MatFor(string name, Color c, float smooth)
+    {
+        var path = $"{MatRoot}/{name}.mat"; var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (m == null) { m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = name }; AssetDatabase.CreateAsset(m, path); }
+        m.SetColor("_BaseColor", c); m.SetFloat("_Smoothness", smooth); EditorUtility.SetDirty(m); return m;
+    }
+    public static void PatchAlleyAds()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var alley = GameObject.Find("env_alley");
+        var logs = new[] { "Alley_Facades", "Alley_Ironwork" }.Select(n => ReplaceModelMesh(AlleyModel, n)).ToList();
+        if (logs.Any(l => l == null)) { EditorApplication.Exit(1); return; }
+        var lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(l => l.name == "Altar light").ToList();
+        var halos = Object.FindObjectsByType<ParticleSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+            .Where(p => p.name == "Halo" && lights.Any(l => Vector3.Distance(l.transform.position, p.transform.position) < .1f)).ToList();
+        foreach (var h in halos) Object.DestroyImmediate(h.gameObject);
+        foreach (var l in lights) Object.DestroyImmediate(l.gameObject);
+        int made = AltarLights(alley);
+        foreach (var name in new[] { "Alley dressing", "Garage dressing" }) { var old = GameObject.Find(name); if (old) Object.DestroyImmediate(old); }
+        Physics.SyncTransforms();
+        DressAlley();
+        DressGarage();
+        var decals = Object.FindObjectsByType<DecalProjector>(FindObjectsSortMode.None).Where(d => d.name.StartsWith("Decal D_Ad")).GroupBy(d => d.name).Select(g => $"{g.Key}={g.Count()}");
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        AssetDatabase.SaveAssets();
+        Debug.Log($"REAL_PATCH_ADS meshes=[{string.Join(" | ", logs)}] lights_removed={lights.Count} lights_made={made} ads={string.Join(",", decals)}");
+        EditorApplication.Exit(0);
     }
     static Material Additive(string tex, Color c)
     {
@@ -393,35 +479,35 @@ public static class RealisticSceneBuilder
         var root = new GameObject("Alley dressing").transform;
         var rng = new System.Random(312);
         float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
-        var posters = new[] { "D_PosterDrill", "D_PosterSeptic", "D_PosterLoan" };
+        var stencils = new[] { ("D_AdStencilA", new Vector2(1.05f, .39f)), ("D_AdStencilB", new Vector2(.68f, .47f)), ("D_AdStencilC", new Vector2(.62f, .17f)) };
         foreach (var side in new[] { -1, 1 })
         {
-            var into = new Vector3(side, 0, 0); float x = side * 1.25f;
-            void Stick(System.Func<Vector3> spot, Vector2 size, float tilt)
+            var into = new Vector3(side, 0, 0); float x = side * AlleyWidth.Half;
+            void Stick(string tex, System.Func<Vector3> spot, Vector2 size, float tilt)
             {
-                for (int t = 0; t < 10; t++) if (Decal(root, posters[rng.Next(3)], spot(), into, size, null, tilt, true)) return;
+                for (int t = 0; t < 40; t++) if (Decal(root, tex, spot(), into, size, null, tilt, true)) return;
             }
             for (float y = .6f; y < 47.5f; y += R(1.2f, 2.4f))
                 foreach (var ledge in new[] { 3.25f, 6.65f })
                     if (rng.NextDouble() < .5) { float h = R(1.3f, 2.4f); Decal(root, "D_Leak" + rng.Next(6), new Vector3(x, ledge - h / 2, -y), into, new Vector2(R(.9f, 1.6f), h)); }
             for (float y = 0; y < 48; y += 3) Decal(root, "D_DampBase", new Vector3(x, .5f, -(y + 1.5f)), into, new Vector2(3.1f, 1f));
-            var houses = side < 0 ? LeftHouses : RightHouses;
+            var houses = side > 0 ? LeftHouses : RightHouses;
             for (int k = 0; k < houses.Length; k++)
             {
                 var (y0, y1) = houses[k];
-                Decal(root, "D_Plate" + ((k * 2 + (side > 0 ? 1 : 0)) % 13), new Vector3(x, 2.35f, -(y0 + .11f)), into, new Vector2(.22f, .14f));
-                if (rng.NextDouble() < .7) Stick(() => new Vector3(x, R(1.25f, 1.9f), -(y1 - R(.11f, .9f))), new Vector2(.2f, .28f), R(-4, 4));
-                if (rng.NextDouble() < .5) Stick(() => new Vector3(x, R(1.0f, 2.2f), -R(y0 + .6f, y1 - .6f)), new Vector2(.32f, .45f), R(-6, 6));
+                Decal(root, "D_Plate" + ((k * 2 + (side > 0 ? 1 : 0)) % 13), new Vector3(x, 2.35f, -(y0 + .11f)), into, new Vector2(.30f, .20f));
+                if (rng.NextDouble() < .35) Stick("D_AdFlyer", () => new Vector3(x, R(1.3f, 1.8f), -R(y0 + .3f, y1 - .3f)), new Vector2(.42f, .24f), R(-2, 2));
+                if (rng.NextDouble() < .7) { var (tex, size) = stencils[rng.Next(3)]; Stick(tex, () => new Vector3(x, R(.55f, 2.3f), -R(y0 + .1f + size.x / 2, y1 - .1f - size.x / 2)), size, R(-1.5f, 1.5f)); }
             }
         }
-        Decal(root, "D_ShopSign", new Vector3(-1.25f, 3.06f, -2.5f), Vector3.left, new Vector2(4.1f, .44f));
-        Decal(root, "D_RoomForRent", new Vector3(1.25f, 1.55f, -44.75f), Vector3.right, new Vector2(.75f, .25f));
-        foreach (var y in new[] { 4.5f, 11f, 17.5f, 26f, 33f, 41f }) Decal(root, "D_Cracks", new Vector3(R(-.6f, .3f), 0, -y), Vector3.down, new Vector2(R(1.2f, 2f), R(1.2f, 2f)), "D_Cracks_normal", R(0, 360));
+        SignBoard(root, "D_ShopSign", new Vector3(-AlleyWidth.Half, 3.34f, -2.0f), Vector3.left, new Vector2(3.5f, .95f), .12f, 2);
+        Decal(root, "D_RoomForRent", new Vector3(AlleyWidth.Half, 1.55f, -44.75f), Vector3.right, new Vector2(.75f, .25f));
+        foreach (var y in new[] { 4.5f, 11f, 17.5f, 26f, 33f, 41f }) Decal(root, "D_Cracks", new Vector3(R(-.84f, .42f), 0, -y), Vector3.down, new Vector2(R(1.2f, 2f), R(1.2f, 2f)), "D_Cracks_normal", R(0, 360));
         foreach (var y in new[] { 18.4f, 37.2f })
             foreach (var shift in new[] { 0, .6f, -.6f, 1.2f, -1.2f, 1.8f, -1.8f, 2.4f, -2.4f })
-                if (Decal(root, "D_Manhole", new Vector3(-.2f, 0, -(y + shift)), Vector3.down, new Vector2(.75f, .75f), "D_Manhole_normal", R(0, 360), true)) break;
+                if (Decal(root, "D_Manhole", new Vector3(-.28f, 0, -(y + shift)), Vector3.down, new Vector2(.75f, .75f), "D_Manhole_normal", R(0, 360), true)) break;
         foreach (var (y, k) in new[] { (3.2f, 0), (9.8f, 1), (14.5f, 2), (23.5f, 0), (28.9f, 1), (35.4f, 2), (45f, 1) })
-            Puddle(root, k, new Vector3(R(-.7f, .5f), .009f, -y), new Vector2(R(.9f, 1.6f), R(.7f, 1.3f)), R(0, 180));
+            Puddle(root, k, new Vector3(R(-.98f, .7f), .009f, -y), new Vector2(R(.9f, 1.6f), R(.7f, 1.3f)), R(0, 180));
     }
 
     static void DressGarage()
@@ -439,27 +525,81 @@ public static class RealisticSceneBuilder
         for (float x = -4f; x < 4.2f; x += R(1.2f, 2f))
             if (rng.NextDouble() < .7) { float h = R(1.2f, 2.2f); Decal(root, "D_Leak" + rng.Next(6), new Vector3(x, 2.8f - h / 2, -57.8f), Vector3.back, new Vector2(R(.8f, 1.5f), h)); }
         for (float x = -4.2f; x < 4.3f; x += 3f) Decal(root, "D_DampBase", new Vector3(x + 1.5f, .45f, -57.8f), Vector3.back, new Vector2(3.1f, .9f));
-        Decal(root, "D_PosterDrill", new Vector3(-4.5f, 1.5f, -49.6f), Vector3.left, new Vector2(.32f, .45f), null, 3, true);
+        Decal(root, "D_AdFlyer", new Vector3(-4.5f, 1.55f, -49.6f), Vector3.left, new Vector2(.42f, .24f), null, 1, true);
     }
 
-    static void ParkBikes() => ParkBikes(new[] { (-.925f, 6.5f, 0f), (.925f, 13.5f, 180f), (-.925f, 19f, 0f), (.925f, 22.5f, 180f), (-.925f, 31f, 180f), (.925f, 34.5f, 0f) }, "Parked Cub ", 0);
-
-    static void ParkBikes((float x, float y, float yaw)[] spots, string prefix, int paintOffset)
+    static Bounds MeshWorldBounds(MeshFilter f)
     {
-        var cubAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/prop_motorbike_cub.fbx"); if (cubAsset == null) return;
+        var b = f.sharedMesh.bounds; var t = f.transform;
+        var w = new Bounds(t.TransformPoint(b.center), Vector3.zero);
+        for (int i = 0; i < 8; i++) w.Encapsulate(t.TransformPoint(b.center + Vector3.Scale(b.extents, new Vector3(i & 1, (i >> 1) & 1, (i >> 2) & 1) * 2 - Vector3.one)));
+        return w;
+    }
+
+    static readonly float[] ParkedYaws = { 0f, 180f, 0f, 180f, 180f, 0f };
+
+    static void ParkBikes()
+    {
+        var covers = Object.FindObjectsByType<MeshFilter>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+            .Where(f => f.name.StartsWith("Cover_ParkedBike_") && f.transform.root.name == "night1_3_blockout" && f.sharedMesh != null).OrderBy(f => f.name)
+            .Select(MeshWorldBounds).ToArray();
+        ParkBikes(covers.Select((b, k) => (b.center.x, -b.center.z, ParkedYaws[k % ParkedYaws.Length])).ToArray(), "Parked Cub ", 0);
+    }
+
+    static void ParkBikes((float x, float y, float yaw)[] spots, string prefix, int paintOffset, string[] slots = null)
+    {
         for (int k = 0; k < spots.Length; k++)
         {
             var (x, y, yaw) = spots[k];
-            int bike = (k + paintOffset) % BikePaints.Length;
-            var cub = (GameObject)PrefabUtility.InstantiatePrefab(cubAsset);
-            PrefabUtility.UnpackPrefabInstance(cub, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
-            cub.name = prefix + k;
-            cub.transform.SetPositionAndRotation(new Vector3(x, 0, -y), Quaternion.Euler(0, yaw + (k % 3 - 1) * 6, 0));
-            foreach (var r in cub.GetComponentsInChildren<MeshRenderer>())
-                r.sharedMaterials = r.sharedMaterials.Select(t => BikeMaterial(t, bike)).ToArray();
-            var b = RendererBounds(cub); var box = cub.AddComponent<BoxCollider>();
-            box.center = cub.transform.InverseTransformPoint(b.center); box.size = new Vector3(.7f, b.size.y, 1.8f);
+            var bike = PlaceBike(prefix, k, paintOffset, slots?[k]);
+            if (bike == null) continue;
+            bike.transform.SetPositionAndRotation(new Vector3(x, 0, -y), Quaternion.Euler(0, yaw + (k % 3 - 1) * 6, 0));
+            FitBikeCollider(bike);
         }
+    }
+
+    const string BikeModelRoot = "Assets/Art/Models/Props/prop_motorbike_";
+    static readonly string[] BikeMix = { "cub", "bebek", "sh", "vino", "cub", "cubblack", "bebek", "sh", "cub", "vino", "bebek" };
+    static readonly (string prefix, int paint)[] BikeGroups = { ("Parked Cub ", 0), ("Garage Cub ", 6), (BoardingHouseBike, 3), (ShallowAlleyBike, 1), (RoadBikePrefix, 12) };
+
+    static string BikeModel(string prefix, int k, string slot)
+    {
+        if (slot == "Garage_Bike_Wave") return "bebek";
+        if (slot == "Garage_Bike_L02" || prefix == BoardingHouseBike) return "cub";
+        if (slot == "Garage_Bike_R04") return "goa";
+        int seed = prefix.Aggregate(7, (h, c) => (h * 31 + c) % 9973);
+        return BikeMix[(seed + k * 5) % BikeMix.Length];
+    }
+
+    static string[] GarageSlots() => Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+        .Where(r => r.name.StartsWith("Garage_Bike_")).Select(r => r.name).OrderBy(n => n).ToArray();
+
+    const int RedPaint = 3;
+
+    static GameObject PlaceBike(string prefix, int k, int paintOffset, string slot)
+    {
+        int paint = (k + paintOffset) % BikePaints.Length;
+        if (slot == "Garage_Bike_Wave") paint = RedPaint;
+        else if (prefix == "Garage Cub " && paint == RedPaint) paint = 5;
+        return SpawnBike(BikeModel(prefix, k, slot), paint, prefix + k);
+    }
+
+    internal static GameObject SpawnBike(string model, int paint, string name)
+    {
+        var asset = AssetDatabase.LoadAssetAtPath<GameObject>(BikeModelRoot + model + ".fbx");
+        if (asset == null) { Debug.LogError("REAL_BIKE missing model " + model); return null; }
+        var go = (GameObject)PrefabUtility.InstantiatePrefab(asset);
+        PrefabUtility.UnpackPrefabInstance(go, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+        go.name = name;
+        foreach (var r in go.GetComponentsInChildren<MeshRenderer>())
+            r.sharedMaterials = r.sharedMaterials.Select(t => BikeMaterial(t, paint % BikePaints.Length)).ToArray();
+        return go;
+    }
+
+    static void FitBikeCollider(GameObject bike)
+    {
+        var b = RendererBounds(bike); var box = bike.AddComponent<BoxCollider>();
+        box.center = bike.transform.InverseTransformPoint(b.center); box.size = new Vector3(.7f, b.size.y, 1.8f);
     }
 
     static readonly Color[] BikePaints = { new Color(.12f, .22f, .5f), new Color(.75f, .75f, .73f), new Color(.08f, .08f, .09f), new Color(.6f, .08f, .08f), new Color(.2f, .35f, .25f), new Color(.5f, .45f, .35f) };
@@ -467,23 +607,95 @@ public static class RealisticSceneBuilder
     static Material BikeMaterial(Material toon, int bike)
     {
         var m = ExistingPBR(toon);
-        if (m == null || m.name != "M_CubRed") return m;
-        var key = "M_CubRed_" + bike;
+        if (m == null || m.name != "M_CubRed" && !m.name.EndsWith("Paint")) return m;
+        var key = m.name + "_" + bike;
         var v = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{key}.mat");
         if (v != null) return v;
         v = new Material(m) { name = key }; v.SetColor("_BaseColor", BikePaints[bike]); Save(v);
         return v;
     }
 
+    static readonly (string name, string tex, bool normal, float metal, float smooth)[] NewBikeMaterials =
+    {
+        ("M_BikeSH", "T_BikeSH", true, 0, .35f), ("M_BikeGoa", "T_BikeGoa", true, 0, .35f),
+        ("M_BikeVino", "T_BikeVino", false, 0, .4f), ("M_BikeVinoChrome", "T_BikeVino", false, .85f, .6f),
+        ("M_BikeBebek", "T_BikeBebek", false, 0, .4f), ("M_BikeBebekChrome", "T_BikeBebek", false, .85f, .6f), ("M_BikeBebekPaint", null, false, 0, .55f),
+        ("M_BikeCubBlack", "T_BikeCubBlack", false, 0, .4f), ("M_BikeCubBlackChrome", "T_BikeCubBlack", false, .85f, .6f),
+    };
+
+    public static void EnsureBikeMaterials()
+    {
+        var template = AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/Materials/M_CubBlack.mat");
+        bool created = false;
+        foreach (var (name, tex, normal, metal, smooth) in NewBikeMaterials)
+        {
+            var albedo = tex == null ? null : AssetDatabase.LoadAssetAtPath<Texture2D>($"Assets/Art/Textures/{tex}_Albedo.png");
+            var toonPath = $"Assets/Art/Materials/{name}.mat";
+            if (AssetDatabase.LoadAssetAtPath<Material>(toonPath) == null)
+            {
+                var t = new Material(template) { name = name };
+                foreach (var p in new[] { "_BaseColor", "_Color", "_1st_ShadeColor", "_2nd_ShadeColor" }) if (t.HasProperty(p)) t.SetColor(p, Color.white);
+                foreach (var p in new[] { "_BaseMap", "_MainTex", "_1st_ShadeMap", "_2nd_ShadeMap" }) if (t.HasProperty(p)) t.SetTexture(p, albedo);
+                t.SetFloat("_Use_BaseAs1st", 1); t.SetFloat("_Use_1stAs2nd", 1);
+                AssetDatabase.CreateAsset(t, toonPath); created = true;
+            }
+            if (AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{name}.mat") != null) continue;
+            var m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = name };
+            m.SetColor("_BaseColor", Color.white);
+            if (albedo != null) m.SetTexture("_BaseMap", albedo);
+            var nrm = normal ? AssetDatabase.LoadAssetAtPath<Texture2D>($"Assets/Art/Textures/{tex}_Normal.png") : null;
+            if (nrm != null) { m.SetTexture("_BumpMap", nrm); m.EnableKeyword("_NORMALMAP"); }
+            m.SetFloat("_Metallic", metal); m.SetFloat("_Smoothness", smooth);
+            Save(m); created = true;
+        }
+        if (!created) return;
+        AssetDatabase.SaveAssets();
+        foreach (var stray in AssetDatabase.FindAssets("t:Material M_Bike", new[] { "Assets/Art/Models" }).Select(AssetDatabase.GUIDToAssetPath).Where(p => p.EndsWith(".mat")).ToList())
+            AssetDatabase.DeleteAsset(stray);
+        foreach (var model in new[] { "sh", "goa", "vino", "bebek", "cubblack" })
+            AssetDatabase.ImportAsset(BikeModelRoot + model + ".fbx", ImportAssetOptions.ForceUpdate);
+    }
+
+    public static void PatchBikeVariety()
+    {
+        EnsureBikeMaterials();
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var slots = GarageSlots();
+        int placed = 0;
+        var mix = new Dictionary<string, int>();
+        foreach (var (prefix, offset) in BikeGroups)
+            foreach (var old in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name.StartsWith(prefix) && t.parent == null).ToList())
+            {
+                int k = int.Parse(old.name.Substring(prefix.Length));
+                string slot = prefix == "Garage Cub " && k < slots.Length ? slots[k] : null;
+                var bike = PlaceBike(prefix, k, offset, slot);
+                if (bike == null) { EditorApplication.Exit(1); return; }
+                bike.transform.SetPositionAndRotation(old.position, old.rotation);
+                bike.transform.SetSiblingIndex(old.GetSiblingIndex());
+                Object.DestroyImmediate(old.gameObject);
+                FitBikeCollider(bike);
+                var model = BikeModel(prefix, k, slot);
+                mix[model] = mix.TryGetValue(model, out var c) ? c + 1 : 1;
+                if (slot != null) Debug.Log($"REAL_BIKE_VARIETY {bike.name} {slot} {model}");
+                placed++;
+            }
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        Debug.Log("REAL_BIKE_VARIETY placed=" + placed + " " + string.Join(" ", mix.OrderBy(p => p.Key).Select(p => p.Key + "=" + p.Value)));
+        EditorApplication.Exit(placed > 0 ? 0 : 1);
+    }
+
     public static void PatchBikeMaterials()
     {
         var scene = EditorSceneManager.OpenScene(ScenePath);
-        var source = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/prop_motorbike_cub.fbx").GetComponentsInChildren<MeshRenderer>();
+        var slots = GarageSlots();
         int bikes = 0;
-        foreach (var (prefix, offset) in new[] { ("Parked Cub ", 0), ("Garage Cub ", 6), (RoadBikePrefix, 12) })
+        foreach (var (prefix, offset) in BikeGroups)
             foreach (var root in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name.StartsWith(prefix)).ToList())
             {
-                int bike = (int.Parse(root.name.Substring(prefix.Length)) + offset) % BikePaints.Length;
+                int k = int.Parse(root.name.Substring(prefix.Length));
+                int bike = (k + offset) % BikePaints.Length;
+                var source = AssetDatabase.LoadAssetAtPath<GameObject>(BikeModelRoot + BikeModel(prefix, k, prefix == "Garage Cub " && k < slots.Length ? slots[k] : null) + ".fbx").GetComponentsInChildren<MeshRenderer>();
                 var renderers = root.GetComponentsInChildren<MeshRenderer>();
                 if (renderers.Length != source.Length) { Debug.LogError("REAL_BIKE_MATERIALS mismatch " + root.name); EditorApplication.Exit(1); return; }
                 for (int i = 0; i < renderers.Length; i++)
@@ -524,11 +736,25 @@ public static class RealisticSceneBuilder
             Point("Tube light", center + Vector3.down * .25f, new Color(.85f, .95f, 1f), 7, 3f);
             Halo(center, new Color(.85f, .95f, 1f, .35f), .9f);
         }
-        foreach (var center in Clusters(alley, "M_AltarRedGlow", .5f))
+        AltarLights(alley);
+    }
+
+    static int AltarLights(GameObject alley)
+    {
+        var centers = Clusters(alley, "M_AltarRedGlow", .5f).ToList();
+        int n = 0;
+        foreach (var center in centers.Where(c => c.y >= 1f))
         {
             Point("Altar light", center, new Color(1f, .16f, .08f), 1.4f, .3f, false);
-            Halo(center, new Color(1f, .2f, .1f, .25f), .18f);
+            Halo(center, new Color(1f, .2f, .1f, .25f), .18f); n++;
         }
+        foreach (var g in centers.Where(c => c.y < 1f).GroupBy(c => (Mathf.Round(c.x), Mathf.Round(c.z))))
+        {
+            var center = new Vector3(g.Average(p => p.x), g.Average(p => p.y), g.Average(p => p.z));
+            Point("Altar light", center + Vector3.up * .05f, new Color(1f, .14f, .07f), 2.6f, 1.2f, true);
+            Halo(center, new Color(1f, .2f, .1f, .3f), .14f); n++;
+        }
+        return n;
     }
 
     static IEnumerable<Vector3> Clusters(GameObject root, string material, float cell)
@@ -586,9 +812,9 @@ public static class RealisticSceneBuilder
         var g = new GameObject("Light probes").AddComponent<LightProbeGroup>();
         var pts = new List<Vector3>();
         for (float y = -1; y <= 58; y += 2)
-            foreach (var x in y > 48 ? new[] { -3.5f, 0f, 3.5f } : new[] { -.9f, 0f, .9f })
+            foreach (var x in y > 48 ? new[] { -3.5f, 0f, 3.5f } : new[] { -(AlleyWidth.Half - .35f), 0f, AlleyWidth.Half - .35f })
                 foreach (var h in new[] { .3f, 1.4f, 2.8f }) pts.Add(new Vector3(x, h, -y));
-        for (float y = 38.5f; y < 48; y += 2) for (float x = 2; x < 13; x += 2.5f) foreach (var h in new[] { 1.4f, 4.8f, 8.2f, 11.6f }) pts.Add(new Vector3(-x, h, -y));
+        for (float y = 38.5f; y < 48; y += 2) for (float x = 2 + AlleyWidth.Shift; x < 13 + AlleyWidth.Shift; x += 2.5f) foreach (var h in new[] { 1.4f, 4.8f, 8.2f, 11.6f }) pts.Add(new Vector3(-x, h, -y));
         g.probePositions = pts.ToArray();
     }
 
@@ -611,6 +837,7 @@ public static class RealisticSceneBuilder
         PrepareImports();
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         var envs = Models.Where(File.Exists).Select(Place).ToList();
+        foreach (var e in envs.Where(e => e.name == "env_room7")) e.transform.position = BoardingOffset;
         var street = Place("Assets/Prefabs/Environment/NightStreet.prefab"); envs.Add(street);
         var alley = Place(AlleyModel);
         var blockout = Place("Assets/Art/Blockout/night1_3_blockout.fbx");
@@ -650,7 +877,8 @@ public static class RealisticSceneBuilder
 
         var slots = blockout.GetComponentsInChildren<Renderer>().Where(r => r.name.StartsWith("Garage_Bike_")).OrderBy(r => r.name)
             .Select((r, k) => (r.name, r.bounds.center.x, -r.bounds.center.z, (r.bounds.center.x < 0 ? 90f : 270f) + (k % 4 == 2 ? 180 : 0) + (k % 3 - 1) * 5)).ToArray();
-        ParkBikes(slots.Select(s => (s.Item2, s.Item3, s.Item4)).ToArray(), "Garage Cub ", 6);
+        EnsureBikeMaterials();
+        ParkBikes(slots.Select(s => (s.Item2, s.Item3, s.Item4)).ToArray(), "Garage Cub ", 6, slots.Select(s => s.name).ToArray());
         ParkBikes();
         Physics.SyncTransforms();
         DressAlley();
@@ -674,7 +902,7 @@ public static class RealisticSceneBuilder
         var volume = new GameObject("Realistic post").AddComponent<Volume>(); volume.isGlobal = true; volume.priority = 50; volume.sharedProfile = profile;
 
         Point("Garage bulb", new Vector3(0, 2.5f, -53), new Color(1f, .72f, .42f), 9, 5f); Halo(new Vector3(0, 2.62f, -53), new Color(1f, .72f, .42f, .5f), .6f);
-        Point("Room7 tube", new Vector3(-3.3f, 12.9f, -44.5f), new Color(.86f, .94f, 1f), 8, 6f);
+        Point("Room7 tube", new Vector3(-3.8f, 12.9f, -44.5f), new Color(.86f, .94f, 1f), 8, 6f);
         foreach (var t in blockout.GetComponentsInChildren<Transform>().Where(t => t.name.Contains("MotionLight")).ToList())
         {
             var r = t.GetComponent<Renderer>();
@@ -682,8 +910,8 @@ public static class RealisticSceneBuilder
         }
         AlleyLights(alley);
         Probe(new Vector3(0, 1.6f, -53), new Vector3(9.5f, 3.6f, 10.5f));
-        Probe(new Vector3(-3.3f, 11.6f, -44.7f), new Vector3(4.2f, 3.5f, 6.4f));
-        for (int i = 0; i < 6; i++) Probe(new Vector3(0, 1.6f, -4 - i * 8), new Vector3(2.6f, 4f, 8.2f));
+        Probe(new Vector3(-3.8f, 11.6f, -44.7f), new Vector3(4.2f, 3.5f, 6.4f));
+        for (int i = 0; i < 6; i++) Probe(new Vector3(0, 1.6f, -4 - i * 8), new Vector3(2 * AlleyWidth.Half + .1f, 4f, 8.2f));
         Probe(new Vector3(0, 3, 10), new Vector3(60, 10, 25));
         Probes();
 
@@ -695,7 +923,7 @@ public static class RealisticSceneBuilder
         camObject.transform.SetParent(player.transform, false); camObject.transform.localPosition = Vector3.up * PlayerGeometry.StandingEye;
         var cam = camObject.AddComponent<Camera>(); cam.nearClipPlane = .03f; cam.fieldOfView = 70;
         cam.clearFlags = CameraClearFlags.Skybox; cam.backgroundColor = RenderSettings.fogColor;
-        var data = cam.GetUniversalAdditionalCameraData(); data.renderPostProcessing = true; data.antialiasing = AntialiasingMode.TemporalAntiAliasing;
+        var data = cam.GetUniversalAdditionalCameraData(); data.renderPostProcessing = true; data.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing; data.antialiasingQuality = AntialiasingQuality.High;
         camObject.AddComponent<AudioListener>();
         var controller = player.AddComponent<FirstPersonPlayer>(); controller.eyes = cam; controller.showTestHud = false;
         controller.inputTemplate = AssetDatabase.LoadAssetAtPath<InputActionAsset>("Assets/InputSystem_Actions.inputactions");
@@ -754,9 +982,14 @@ public static class RealisticSceneBuilder
     static void Shots(Camera cam, string prefix = "Real", string dir = "Logs")
     {
         var views = new (string name, Vector3 pos, Vector3 rot)[] {
-            ("bh_corridor", new Vector3(-2.2f, 11.8f, -41f), new Vector3(6, 270, 0)),
-            ("bh_door", new Vector3(-7.4f, 11.8f, -40.7f), new Vector3(10, 215, 0)),
-            ("bh_stairs", new Vector3(-5.5f, 11.8f, -39.7f), new Vector3(25, 95, 0)),
+            ("bh_corridor", new Vector3(-2.7f, 11.8f, -41), new Vector3(6, 270, 0)),
+            ("mouth_street", new Vector3(0.3f, 1.6f, 6.5f), new Vector3(12, 180, 0)),
+            ("mouth_sidewalk", new Vector3(-3f, 1.6f, 0.6f), new Vector3(50, 250, 0)),
+            ("mouth_top", new Vector3(0f, 7f, 5f), new Vector3(60, 180, 0)),
+            ("wires_garage", new Vector3(0f, 1.6f, -40f), new Vector3(-32.5f, 166.7f, 0)),
+            ("wires_mouth", new Vector3(0.5f, 1.6f, -8f), new Vector3(-37.4f, 342.8f, 0)),
+            ("bh_door", new Vector3(-7.9f, 11.8f, -40.7f), new Vector3(10, 215, 0)),
+            ("bh_stairs", new Vector3(-6f, 11.8f, -39.7f), new Vector3(25, 95, 0)),
             ("front_near", new Vector3(20f, 1.6f, 2.3f), new Vector3(6, 72, 0)),
             ("front_near2", new Vector3(-30f, 1.6f, 2.3f), new Vector3(6, 288, 0)),
             ("front_far", new Vector3(56f, 1.6f, 13.8f), new Vector3(6, 105, 0)),
@@ -766,16 +999,16 @@ public static class RealisticSceneBuilder
             ("front_trash", new Vector3(-3.6f, 1.4f, 3.2f), new Vector3(14, 243, 0)),
             ("front_tyres", new Vector3(-28.5f, 1.5f, 2.2f), new Vector3(14, 235, 0)),
             ("front_eatery", new Vector3(30.8f, 1.5f, 2.4f), new Vector3(14, 234, 0)),
-            ("bh_corridor_end", new Vector3(-4.6f, 11.8f, -40.95f), new Vector3(10, 262, 0)),
-            ("bh_plate", new Vector3(-3.4f, 11.8f, -40.8f), new Vector3(14, 318, 0)),
-            ("bh_landing", new Vector3(-4.1f, 6.9f, -39.7f), new Vector3(-8, 92, 0)),
-            ("bh_wc_sink", new Vector3(-11.55f, 11.65f, -39.5f), new Vector3(18, 270, 0)),
-            ("bh_room7", new Vector3(-2.3f, 11.8f, -42.4f), new Vector3(14, 165, 0)),
-            ("bh_stairs_up", new Vector3(-2.7f, 7.4f, -38.7f), new Vector3(-20, 270, 0)),
-            ("bh_wc", new Vector3(-11.6f, 11.8f, -39.8f), new Vector3(18, 250, 0)),
-            ("bh_wc_stall", new Vector3(-11.65f, 11.9f, -39.95f), new Vector3(42, 340, 0)),
-            ("bh_lien", new Vector3(-2.4f, 1.6f, -45.2f), new Vector3(12, 245, 0)),
-            ("bh_entry", new Vector3(-1.88f, 1.6f, -38.8f), new Vector3(6, 182, 0)),
+            ("bh_corridor_end", new Vector3(-5.1f, 11.8f, -40.95f), new Vector3(10, 262, 0)),
+            ("bh_plate", new Vector3(-3.9f, 11.8f, -40.8f), new Vector3(14, 318, 0)),
+            ("bh_landing", new Vector3(-4.6f, 6.9f, -39.7f), new Vector3(-8, 92, 0)),
+            ("bh_wc_sink", new Vector3(-12.05f, 11.65f, -39.5f), new Vector3(18, 270, 0)),
+            ("bh_room7", new Vector3(-2.8f, 11.8f, -42.4f), new Vector3(14, 165, 0)),
+            ("bh_stairs_up", new Vector3(-3.2f, 7.4f, -38.7f), new Vector3(-20, 270, 0)),
+            ("bh_wc", new Vector3(-12.1f, 11.8f, -39.8f), new Vector3(18, 250, 0)),
+            ("bh_wc_stall", new Vector3(-12.15f, 11.9f, -39.95f), new Vector3(42, 340, 0)),
+            ("bh_lien", new Vector3(-2.9f, 1.6f, -45.2f), new Vector3(12, 245, 0)),
+            ("bh_entry", new Vector3(-2.38f, 1.6f, -38.8f), new Vector3(6, 182, 0)),
             ("shop_homeware", new Vector3(-154f, 1.7f, 13.5f), new Vector3(6, 0, 0)),
             ("shop_homeware_in", new Vector3(-153.5f, 1.65f, 17.2f), new Vector3(10, 35, 0)),
             ("shop_rice", new Vector3(57f, 1.7f, 3.2f), new Vector3(6, 180, 0)),
@@ -792,22 +1025,33 @@ public static class RealisticSceneBuilder
             ("road_west", new Vector3(-20, 1.6f, 9), new Vector3(-6, 270, 0)),
             ("road_up", new Vector3(60, 1.6f, 11), new Vector3(-30, 60, 0)),
             ("alley", new Vector3(0, 1.6f, -1), new Vector3(5, 180, 0)),
-            ("alley_mid", new Vector3(.4f, 1.6f, -30), new Vector3(3, 180, 0)),
-            ("alley_shop", new Vector3(.8f, 1.55f, -4.2f), new Vector3(4, 300, 0)),
-            ("alley_up", new Vector3(.2f, 1.6f, -10), new Vector3(-28, 190, 0)),
-            ("alley_back", new Vector3(-.3f, 1.6f, -40), new Vector3(4, 0, 0)),
-            ("alley_gate", new Vector3(-.6f, 1.6f, -38.5f), new Vector3(6, 150, 0)),
+            ("alley_mid", new Vector3(0.9f, 1.6f, -30), new Vector3(3, 180, 0)),
+            ("signs_homeware", new Vector3(-154f, 1.6f, 7f), new Vector3(-14, 0, 0)),
+            ("signs_rice", new Vector3(57f, 1.6f, 9.5f), new Vector3(-14, 180, 0)),
+            ("signs_row_a", new Vector3(30f, 1.6f, 6f), new Vector3(-8, 35, 0)),
+            ("signs_row_b", new Vector3(-30f, 1.6f, 8f), new Vector3(-8, 325, 0)),
+            ("ads_sign", new Vector3(1.3f, 1.6f, -2.5f), new Vector3(-22, 270, 0)),
+            ("ads_walk_r", new Vector3(1.2f, 1.6f, -6), new Vector3(6, 212, 0)),
+            ("ads_walk_r2", new Vector3(1.2f, 1.6f, -24), new Vector3(6, 212, 0)),
+            ("ads_walk_l", new Vector3(-1.2f, 1.6f, -6), new Vector3(6, 148, 0)),
+            ("ads_walk_l2", new Vector3(-1.2f, 1.6f, -24), new Vector3(6, 148, 0)),
+            ("alley_shop", new Vector3(1.3f, 1.55f, -4.2f), new Vector3(4, 300, 0)),
+            ("alley_up", new Vector3(0.486f, 1.6f, -10), new Vector3(-28, 190, 0)),
+            ("alley_back", new Vector3(-0.729f, 1.6f, -40), new Vector3(4, 0, 0)),
+            ("alley_bike", new Vector3(1.4f, 1.4f, -1.2f), new Vector3(14, 330, 0)),
+            ("alley_gate", new Vector3(-1.1f, 1.6f, -38.5f), new Vector3(6, 150, 0)),
             ("garage", new Vector3(0, 1.6f, -48.5f), new Vector3(10, 180, 0)),
-            ("garage_entry", new Vector3(.3f, 1.6f, -45.5f), new Vector3(6, 185, 0)),
+            ("garage_entry", new Vector3(0.729f, 1.6f, -45.5f), new Vector3(6, 185, 0)),
             ("garage_back", new Vector3(-.5f, 1.6f, -57.2f), new Vector3(8, 15, 0)),
             ("garage_wave", new Vector3(-.4f, 1.5f, -50.2f), new Vector3(22, 120, 0)),
+            ("garage_phone", new Vector3(-.9f, 1.0f, -51.6f), new Vector3(36, 290, 0)),
             ("garage_left", new Vector3(1.2f, 1.6f, -55.5f), new Vector3(10, 315, 0)),
             ("garage_note", new Vector3(3.55f, 1.6f, -51.0f), new Vector3(4, 100, 0)),
             ("garage_fire", new Vector3(3.3f, 1.65f, -50.4f), new Vector3(6, 62, 0)),
-            ("room7", new Vector3(-2.3f, 11.8f, -42.3f), new Vector3(15, 200, 0)) };
+            ("room7", new Vector3(-2.8f, 11.8f, -42.3f), new Vector3(15, 200, 0)) };
         var rt = new RenderTexture(1280, 720, 24, RenderTextureFormat.ARGB32); var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
         Directory.CreateDirectory(dir);
-        foreach (var v in views.Where(s => ShotsOnly == null || s.name.StartsWith(ShotsOnly)))
+        foreach (var v in views.Where(s => ShotsOnly == null || ShotsOnly.Split(',').Any(p => s.name.StartsWith(p))))
         {
             cam.transform.SetPositionAndRotation(v.pos, Quaternion.Euler(v.rot));
             cam.targetTexture = rt; for (int i = 0; i < 8; i++) cam.Render(); RenderTexture.active = rt;
@@ -829,6 +1073,7 @@ public static class RealisticSceneBuilder
         EditorApplication.Exit(bounds.after == 0 ? 0 : 1);
     }
 
+    static readonly Vector3 BoardingOffset = new Vector3(-AlleyWidth.Shift, 0, 0);
     const string BoardingHouseModel = "Assets/Art/Models/Environment/env_boarding_house.fbx";
     const string BoardingHouseRoot = "env_boarding_house";
     const string BoardingHouseBike = "Boarding Cub ";
@@ -857,9 +1102,9 @@ public static class RealisticSceneBuilder
         {
             var prev = GameObject.Find(name); if (prev != null) Object.DestroyImmediate(prev);
         }
-        var house = Place(BoardingHouseModel); house.name = BoardingHouseRoot;
-        Point(BoardingHouseBulb, new Vector3(-3.6f, 2.75f, -42.4f), new Color(1f, .76f, .48f), 8.5f, 3.8f, false);
-        Point(BoardingEntryBulb, new Vector3(-3.8f, 2.7f, -39.6f), new Color(1f, .78f, .52f), 7f, 3.6f, false);
+        var house = Place(BoardingHouseModel); house.name = BoardingHouseRoot; house.transform.position = BoardingOffset;
+        Point(BoardingHouseBulb, new Vector3(-4.1f, 2.75f, -42.4f), new Color(1f, .76f, .48f), 8.5f, 3.8f, false);
+        Point(BoardingEntryBulb, new Vector3(-4.3f, 2.7f, -39.6f), new Color(1f, .78f, .52f), 7f, 3.6f, false);
         foreach (var r in house.GetComponentsInChildren<MeshRenderer>()) r.sharedMaterials = r.sharedMaterials.Select(ExistingPBR).ToArray();
         return boxes.Count;
     }
@@ -882,6 +1127,7 @@ public static class RealisticSceneBuilder
     const string StreetFrontsRoot = "env_street_fronts";
     const string StreetBikes = "Assets/Art/Models/Environment/env_street_bikes.txt";
     const string RoadBikePrefix = "Road Cub ";
+    static readonly (float x, float y, float yaw)[] MouthBikes = { (2.85f, -1.6f, 0), (3.6f, -1.5f, 0), (4.35f, -1.65f, 0), (5.1f, -1.55f, 0), (-3.0f, -1.55f, 0), (-3.75f, -1.65f, 0), (-6.45f, -1.5f, 0), (-7.2f, -1.6f, 0) };
 
     public static int StreetFronts()
     {
@@ -897,7 +1143,7 @@ public static class RealisticSceneBuilder
         var old = GameObject.Find("MainRoad_Props"); if (old != null) Object.DestroyImmediate(old);
         foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name.StartsWith(RoadBikePrefix)).ToList()) Object.DestroyImmediate(t.gameObject);
         var bikes = File.ReadAllLines(StreetBikes).Where(l => l.Length > 0).Select(l => l.Split(' ').Select(s => float.Parse(s, System.Globalization.CultureInfo.InvariantCulture)).ToArray());
-        ParkBikes(bikes.Select(v => (v[0], -v[1], v[2])).ToArray(), RoadBikePrefix, 12);
+        ParkBikes(bikes.Select(v => (v[0], -v[1], v[2])).Concat(MouthBikes).ToArray(), RoadBikePrefix, 12);
         return solids.GetComponents<BoxCollider>().Length;
     }
 
@@ -969,16 +1215,16 @@ public static class RealisticSceneBuilder
         }
         int k = 0;
         foreach (var z in new[] { 1.7f, 5.1f, 8.5f })
-            Point(BoardingLandingLamp + k++, new Vector3(-5.95f, z + 1.36f, -39.2f), new Color(1f, .78f, .52f), 5f, 5.5f, false);
-        Point(BoardingHouseBulb, new Vector3(-3.6f, 2.75f, -42.4f), new Color(1f, .76f, .48f), 8.5f, 3.8f, false);
-        Point(BoardingEntryBulb, new Vector3(-3.8f, 2.7f, -39.6f), new Color(1f, .78f, .52f), 7f, 3.6f, false);
-        Point("Boarding lien bulb", new Vector3(-3.6f, 2.75f, -45.8f), new Color(1f, .76f, .48f), 6.5f, 2.8f, false);
-        Point("Boarding wc bulb", new Vector3(-11.8f, 12.6f, -39.6f), new Color(1f, .82f, .56f), 4.8f, 2.4f, false);
+            Point(BoardingLandingLamp + k++, new Vector3(-6.45f, z + 1.36f, -39.2f), new Color(1f, .78f, .52f), 5f, 5.5f, false);
+        Point(BoardingHouseBulb, new Vector3(-4.1f, 2.75f, -42.4f), new Color(1f, .76f, .48f), 8.5f, 3.8f, false);
+        Point(BoardingEntryBulb, new Vector3(-4.3f, 2.7f, -39.6f), new Color(1f, .78f, .52f), 7f, 3.6f, false);
+        Point("Boarding lien bulb", new Vector3(-4.1f, 2.75f, -45.8f), new Color(1f, .76f, .48f), 6.5f, 2.8f, false);
+        Point("Boarding wc bulb", new Vector3(-12.3f, 12.6f, -39.6f), new Color(1f, .82f, .56f), 4.8f, 2.4f, false);
         var frosted = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/M_GlassFrosted.mat");
         if (frosted != null) { frosted.SetColor("_BaseColor", new Color(.22f, .26f, .30f)); frosted.SetFloat("_Smoothness", .38f); EditorUtility.SetDirty(frosted); }
         var stain = BoardingWall("M_BoardingWallStain", new Color(.78f, .7f, .52f));
         var mold = BoardingWall("M_BoardingWallMold", new Color(.5f, .5f, .4f));
-        var house = new Bounds(new Vector3(-7.25f, 7f, -43f), new Vector3(12.2f, 15f, 10.2f));
+        var house = new Bounds(new Vector3(-7.75f, 7f, -43f), new Vector3(12.2f, 15f, 10.2f));
         foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(r => r.transform.IsChildOf(GameObject.Find(BoardingHouseRoot).transform) || (house.Contains(r.bounds.min) && house.Contains(r.bounds.max))))
             r.sharedMaterials = r.sharedMaterials.Select(m => m == null || m.name == stain.name || m.name == mold.name || !m.HasProperty("_BaseMap") || m.GetTexture("_BaseMap") == null || m.GetTexture("_BaseMap").name != "peeling_painted_wall_albedo" ? m : m.name == "M_WallMoldStain" ? mold : stain).ToArray();
         return dress.GetComponentsInChildren<MeshRenderer>().Length;
@@ -1000,7 +1246,7 @@ public static class RealisticSceneBuilder
             for (int i = 0; i < tris.Length; i += 3)
             {
                 var a = tr.TransformPoint(verts[tris[i]]); var b = tr.TransformPoint(verts[tris[i + 1]]); var c = tr.TransformPoint(verts[tris[i + 2]]);
-                bool inner = Mathf.Abs(a.x + 1.44f) < .03f && Mathf.Abs(b.x + 1.44f) < .03f && Mathf.Abs(c.x + 1.44f) < .03f
+                bool inner = Mathf.Abs(a.x + 1.94f) < .03f && Mathf.Abs(b.x + 1.94f) < .03f && Mathf.Abs(c.x + 1.94f) < .03f
                     && Mathf.Min(a.z, Mathf.Min(b.z, c.z)) > -48.1f && Mathf.Max(a.z, Mathf.Max(b.z, c.z)) < -37.9f
                     && Vector3.Cross(b - a, c - a).x < 0;
                 if (!inner) { keep[s].Add(tris[i]); keep[s].Add(tris[i + 1]); keep[s].Add(tris[i + 2]); continue; }
@@ -1008,7 +1254,7 @@ public static class RealisticSceneBuilder
                 {
                     for (int k = 0; k < 3; k++)
                     {
-                        int v = tris[i + k]; var wp = tr.TransformPoint(verts[v]); wp.x = -1.30f;
+                        int v = tris[i + k]; var wp = tr.TransformPoint(verts[v]); wp.x = -1.80f;
                         verts[v] = tr.InverseTransformPoint(wp);
                     }
                     keep[s].Add(tris[i]); keep[s].Add(tris[i + 1]); keep[s].Add(tris[i + 2]);
@@ -1018,7 +1264,7 @@ public static class RealisticSceneBuilder
                 for (int k = 0; k < 3; k++)
                 {
                     int v = tris[i + k]; moved.Add(verts.Count);
-                    var wp = tr.TransformPoint(verts[v]); wp.x = -1.30f;
+                    var wp = tr.TransformPoint(verts[v]); wp.x = -1.80f;
                     verts.Add(tr.InverseTransformPoint(wp));
                     normals.Add(normals[v]);
                     if (tangents.Count > 0) tangents.Add(tangents[v]);
@@ -1030,9 +1276,9 @@ public static class RealisticSceneBuilder
         for (int vi = 0; vi < verts.Count; vi++)
         {
             var wp = tr.TransformPoint(verts[vi]);
-            if (wp.x < -1.30f && wp.x > -1.48f && wp.y > 3.0f && wp.z > -48.1f && wp.z < -37.9f)
+            if (wp.x < -1.80f && wp.x > -1.98f && wp.y > 3.0f && wp.z > -48.1f && wp.z < -37.9f)
             {
-                wp.x = -1.30f;
+                wp.x = -1.80f;
                 verts[vi] = tr.InverseTransformPoint(wp);
                 shiftedInPlace++;
             }
@@ -1047,9 +1293,9 @@ public static class RealisticSceneBuilder
             for (int vi = 0; vi < gv.Length; vi++)
             {
                 var wp = gt.TransformPoint(gv[vi]);
-                if (wp.x < -1.30f && wp.x > -1.48f && wp.y > 3.0f && wp.z > -48.1f && wp.z < -37.9f)
+                if (wp.x < -1.80f && wp.x > -1.98f && wp.y > 3.0f && wp.z > -48.1f && wp.z < -37.9f)
                 {
-                    wp.x = -1.30f;
+                    wp.x = -1.80f;
                     gv[vi] = gt.InverseTransformPoint(wp);
                     gChanged = true;
                     shiftedInPlace++;
@@ -1140,6 +1386,263 @@ public static class RealisticSceneBuilder
         EditorApplication.Exit(parts > 0 && bounds.after == 0 ? 0 : 1);
     }
 
+    const string BlockoutModel = "Assets/Art/Blockout/night1_3_blockout.fbx";
+    static readonly string[] WidenKeep = { "env_alley", "night1_3_blockout", "PlayBounds", "Player", "Light probes", "Alley dressing", "Garage dressing", "Realistic post",
+        "NightStreet", "Shutter backing", "Street trees", "Shallow alleys", StreetDetailsRoot, StreetFrontsRoot, BoardingDressRoot, "env_garage", "Garage puddles" };
+    static readonly string[] WarpRoots = { "Shutter backing" };
+    static readonly string[] WidenKeepPrefix = { "Parked Cub ", "Garage Cub ", RoadBikePrefix, ShallowAlleyBike, ShopDetailLight };
+
+    static Bounds SolidBounds(GameObject go, out bool any)
+    {
+        var rs = go.GetComponentsInChildren<Renderer>().Where(r => !(r is ParticleSystemRenderer)).ToArray();
+        any = rs.Length > 0;
+        if (!any) return new Bounds(go.transform.position, Vector3.zero);
+        var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds); return b;
+    }
+
+    static int SyncBlockoutEmpties(GameObject blockout)
+    {
+        var src = new Dictionary<string, Transform>();
+        foreach (var t in AssetDatabase.LoadAssetAtPath<GameObject>(BlockoutModel).GetComponentsInChildren<Transform>(true)) if (!src.ContainsKey(t.name)) src[t.name] = t;
+        int n = 0;
+        foreach (var t in blockout.GetComponentsInChildren<Transform>(true))
+            if (t != blockout.transform && t.GetComponent<MeshFilter>() == null && src.TryGetValue(t.name, out var s) && Mathf.Abs(t.localPosition.x - s.localPosition.x) > 1e-4f)
+            { t.localPosition = new Vector3(s.localPosition.x, t.localPosition.y, t.localPosition.z); n++; }
+        return n;
+    }
+
+    static (int exact, int shifted) SyncBlockoutCopies(GameObject blockout)
+    {
+        var src = AssetDatabase.LoadAllAssetsAtPath(BlockoutModel).OfType<Mesh>().GroupBy(m => m.name).ToDictionary(g => g.Key, g => g.First());
+        int exact = 0, shifted = 0;
+        foreach (var f in blockout.GetComponentsInChildren<MeshFilter>(true))
+        {
+            var mesh = f.sharedMesh;
+            if (mesh == null || AssetDatabase.GetAssetPath(mesh) == BlockoutModel || !src.TryGetValue(f.name, out var s)) continue;
+            var dv = mesh.vertices;
+            if (s.vertexCount == mesh.vertexCount)
+            {
+                var sv = s.vertices; bool same = true;
+                for (int i = 0; i < sv.Length && same; i++) same = (sv[i] - dv[i]).sqrMagnitude < 1e-10f;
+                if (same) continue;
+                mesh.vertices = sv; exact++;
+            }
+            else
+            {
+                float dx = s.bounds.center.x - mesh.bounds.center.x;
+                if (Mathf.Abs(dx) < 1e-4f) continue;
+                for (int i = 0; i < dv.Length; i++) dv[i].x += dx;
+                mesh.vertices = dv; shifted++;
+            }
+            mesh.RecalculateBounds(); EditorUtility.SetDirty(mesh);
+            var mc = f.GetComponent<MeshCollider>(); if (mc != null) { mc.sharedMesh = null; mc.sharedMesh = mesh; }
+        }
+        return (exact, shifted);
+    }
+
+    public static void PatchSidewalkTile()
+    {
+        var m = AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/M_SidewalkTile.mat");
+        if (m == null) { Debug.LogError("REAL_SIDEWALK missing"); EditorApplication.Exit(1); return; }
+        var s = Surfaces["M_SidewalkTile"];
+        m.SetTexture("_BaseMap", SurfaceTex(s.tex, "albedo")); m.SetTexture("_BumpMap", SurfaceTex(s.tex, "normal")); m.EnableKeyword("_NORMALMAP");
+        m.SetTexture("_MetallicGlossMap", SurfaceTex(s.tex, "mask")); m.EnableKeyword("_METALLICSPECGLOSSMAP");
+        m.SetFloat("_Smoothness", Mathf.Clamp01(.85f * s.smooth)); m.SetFloat("_BumpScale", 1.2f);
+        m.SetColor("_BaseColor", Color.white);
+        m.SetTextureScale("_BaseMap", new Vector2(1 / s.size, 1 / s.size));
+        EditorUtility.SetDirty(m); AssetDatabase.SaveAssets();
+        Debug.Log("REAL_SIDEWALK " + AssetDatabase.GetAssetPath(m.GetTexture("_BaseMap")));
+        EditorApplication.Exit(0);
+    }
+
+    public static void PatchAlleyWires() => PatchModelMesh(AlleyModel, "Alley_Wires");
+    public static void PatchMainRoadSurface() => PatchModelMesh("Assets/Art/Models/Environment/env_main_road.fbx", "MainRoad_Surface");
+
+    static readonly Dictionary<string, (Color color, float smooth)> AltarExtras = new Dictionary<string, (Color, float)> {
+        ["M_Porcelain"] = (new Color(.92f, .9f, .85f), .75f) };
+    static readonly string[] AlleyPropPrefixes = { "Altar_", "Stool_", "MeterPost", "ShoeRack", "ShopFront_" };
+    static bool AlleyProp(string n) => AlleyPropPrefixes.Any(n.StartsWith);
+
+    public static void PatchAlleyAltars()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var alley = GameObject.Find("env_alley");
+        var facades = GameObject.Find("Alley_Facades").GetComponent<MeshFilter>();
+        var fr = facades.GetComponent<MeshRenderer>();
+        var mesh = facades.sharedMesh; var verts = mesh.vertices; int cut = 0;
+        for (int s = 0; s < mesh.subMeshCount && s < fr.sharedMaterials.Length; s++)
+        {
+            var mat = fr.sharedMaterials[s]; if (mat == null || !mat.name.StartsWith("M_Altar")) continue;
+            var tris = mesh.GetTriangles(s); var keep = new List<int>(tris.Length);
+            for (int i = 0; i < tris.Length; i += 3)
+            {
+                bool low = Enumerable.Range(0, 3).All(k => facades.transform.TransformPoint(verts[tris[i + k]]).y < .75f);
+                if (low) { cut++; continue; }
+                keep.Add(tris[i]); keep.Add(tris[i + 1]); keep.Add(tris[i + 2]);
+            }
+            mesh.SetTriangles(keep, s);
+        }
+        EditorUtility.SetDirty(mesh);
+        var oldAltars = alley.transform.Find("Alley_Altars"); if (oldAltars) Object.DestroyImmediate(oldAltars.gameObject);
+        var assets = AssetDatabase.LoadAllAssetsAtPath(AlleyModel);
+        var src = assets.OfType<Mesh>().FirstOrDefault(m => m.name == "Alley_Altars");
+        var srcRenderer = assets.OfType<MeshRenderer>().FirstOrDefault(r => r.name == "Alley_Altars");
+        if (src == null || srcRenderer == null) { Debug.LogError("REAL_PATCH_ALTARS missing Alley_Altars in " + AlleyModel); EditorApplication.Exit(1); return; }
+        var go = new GameObject("Alley_Altars"); go.transform.SetParent(alley.transform, false);
+        GameObjectUtility.SetStaticEditorFlags(go, GameObjectUtility.GetStaticEditorFlags(facades.gameObject));
+        var f = go.AddComponent<MeshFilter>(); f.sharedMesh = src;
+        var r = go.AddComponent<MeshRenderer>();
+        r.sharedMaterials = srcRenderer.sharedMaterials.Select(m =>
+        {
+            var path = $"{MatRoot}/{m.name}.mat"; var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat != null) return mat;
+            var (c, sm) = AltarExtras.TryGetValue(m.name, out var e) ? e : (m.color, .3f);
+            mat = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = m.name }; mat.SetColor("_BaseColor", c); mat.SetFloat("_Smoothness", sm);
+            AssetDatabase.CreateAsset(mat, path); return mat;
+        }).ToArray();
+        r.shadowCastingMode = fr.shadowCastingMode; r.receiveGI = fr.receiveGI; r.scaleInLightmap = 1f;
+        BoxUV(f, r, true);
+        foreach (var t in alley.GetComponentsInChildren<Transform>(true).Where(t => AlleyProp(t.name)).ToList()) Object.DestroyImmediate(t.gameObject);
+        var stoolCover = new Vector3(1.525f, 0f, -36.25f);
+        var chairs = alley.GetComponentsInChildren<Transform>(true).Where(t => t.name.StartsWith("plastic_monobloc_chair_01") && Vector3.Distance(Vector3.Scale(t.position, new Vector3(1, 0, 1)), stoolCover) < .5f).ToList();
+        foreach (var t in chairs) Object.DestroyImmediate(t.gameObject);
+        var props = assets.OfType<MeshRenderer>().Where(p => AlleyProp(p.name)).ToList();
+        foreach (var p in props)
+        {
+            var g = new GameObject(p.name); g.transform.SetParent(alley.transform, false);
+            g.transform.localPosition = p.transform.localPosition; g.transform.localRotation = p.transform.localRotation; g.transform.localScale = p.transform.localScale;
+            GameObjectUtility.SetStaticEditorFlags(g, GameObjectUtility.GetStaticEditorFlags(facades.gameObject));
+            g.AddComponent<MeshFilter>().sharedMesh = p.GetComponent<MeshFilter>().sharedMesh;
+            var pr = g.AddComponent<MeshRenderer>(); pr.sharedMaterials = p.sharedMaterials.Select(Convert).ToArray();
+            pr.shadowCastingMode = fr.shadowCastingMode; pr.receiveGI = fr.receiveGI;
+            if (p.name.StartsWith("MeterPost") || p.name.StartsWith("ShopFront_")) g.AddComponent<BoxCollider>();
+        }
+        var ground = ReplaceModelMesh(AlleyModel, "Alley_Ground");
+        if (ground == null) { EditorApplication.Exit(1); return; }
+        var lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(l => l.name == "Altar light").ToList();
+        var halos = Object.FindObjectsByType<ParticleSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+            .Where(p => p.name == "Halo" && lights.Any(l => Vector3.Distance(l.transform.position, p.transform.position) < .1f)).ToList();
+        foreach (var h in halos) Object.DestroyImmediate(h.gameObject);
+        foreach (var l in lights) Object.DestroyImmediate(l.gameObject);
+        int made = AltarLights(alley);
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        AssetDatabase.SaveAssets();
+        Debug.Log($"REAL_PATCH_ALTARS cut_tris={cut} altar_verts={f.sharedMesh.vertexCount} materials={string.Join(",", r.sharedMaterials.Select(m => m.name))} lights_removed={lights.Count} halos_removed={halos.Count} lights_made={made} chairs_removed={chairs.Count} ground={ground} props={props.Count} prop_materials={string.Join(",", props.SelectMany(p => p.sharedMaterials).Select(m => m.name).Distinct())}");
+        EditorApplication.Exit(made > 0 && props.Count > 0 ? 0 : 1);
+    }
+
+    static void PatchModelMesh(string model, string name)
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var log = ReplaceModelMesh(model, name);
+        if (log == null) { EditorApplication.Exit(1); return; }
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        AssetDatabase.SaveAssets();
+        Debug.Log($"REAL_PATCH_MESH {name} {log}");
+        EditorApplication.Exit(0);
+    }
+
+    static string ReplaceModelMesh(string model, string name)
+    {
+        var go = Object.FindObjectsByType<MeshFilter>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(m => m.name == name).ToArray();
+        var src = AssetDatabase.LoadAllAssetsAtPath(model).OfType<Mesh>().FirstOrDefault(m => m.name == name);
+        var srcRenderer = AssetDatabase.LoadAllAssetsAtPath(model).OfType<MeshRenderer>().FirstOrDefault(m => m.name == name);
+        if (go.Length != 1 || src == null || srcRenderer == null) { Debug.LogError($"REAL_PATCH_MESH {name} scene={go.Length} src={src != null}"); return null; }
+        var f = go[0]; var r = f.GetComponent<MeshRenderer>();
+        var mats = srcRenderer.sharedMaterials.Select(m => AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{m.name}.mat")).ToArray();
+        if (mats.Any(m => m == null)) { Debug.LogError("REAL_PATCH_MESH missing material " + string.Join(",", srcRenderer.sharedMaterials.Where(m => AssetDatabase.LoadAssetAtPath<Material>($"{MatRoot}/{m.name}.mat") == null).Select(m => m.name))); return null; }
+        var old = AssetDatabase.GetAssetPath(f.sharedMesh); int before = f.sharedMesh.vertexCount;
+        var prev = string.Join(",", r.sharedMaterials.Select(m => m ? m.name : "null"));
+        r.sharedMaterials = mats;
+        f.sharedMesh = src;
+        BoxUV(f, r, true);
+        if (!string.IsNullOrEmpty(old) && old != AssetDatabase.GetAssetPath(f.sharedMesh)) AssetDatabase.DeleteAsset(old);
+        return $"before={before} after={f.sharedMesh.vertexCount} prev={prev} materials={string.Join(",", mats.Select(m => m.name))}";
+    }
+
+    public static void PatchBlockoutCopies()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var (exact, shifted) = SyncBlockoutCopies(GameObject.Find("night1_3_blockout"));
+        var bounds = PlayBoundsBuilder.Generate();
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        AssetDatabase.SaveAssets();
+        Debug.Log($"REAL_BLOCKOUT_COPIES exact={exact} shifted={shifted} walls={bounds.walls} leaks_after={bounds.after}");
+        EditorApplication.Exit(bounds.after == 0 ? 0 : 1);
+    }
+
+    public static void PatchAlleyWidth()
+    {
+        foreach (var path in new[] { BlockoutModel, AlleyModel, GarageModel, BoardingDressModel }) (AssetImporter.GetAtPath(path) as ModelImporter)?.SaveAndReimport();
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var alley = GameObject.Find("env_alley");
+        var ground = alley.transform.Find("Alley_Ground").GetComponent<MeshFilter>();
+        if (MeshWorldBounds(ground).size.x > 2 * AlleyWidth.OldHalf + .3f) { Debug.LogError("REAL_ALLEY_WIDTH already wide " + MeshWorldBounds(ground).size.x); EditorApplication.Exit(1); return; }
+        int verts = 0, props = 0, roots = 0;
+        var warped = new HashSet<Mesh>();
+        void WarpMesh(MeshFilter f)
+        {
+            var mesh = f.sharedMesh; if (mesh == null || !warped.Add(mesh)) return;
+            var v = mesh.vertices; var t = f.transform;
+            for (int i = 0; i < v.Length; i++) v[i] = t.InverseTransformPoint(AlleyWidth.Warp(t.TransformPoint(v[i])));
+            mesh.vertices = v; mesh.RecalculateBounds(); EditorUtility.SetDirty(mesh); verts += v.Length;
+            var mc = f.GetComponent<MeshCollider>(); if (mc != null) { mc.sharedMesh = null; mc.sharedMesh = mesh; }
+        }
+        foreach (Transform child in alley.transform)
+        {
+            var f = child.GetComponent<MeshFilter>();
+            if (child.name.StartsWith("Alley_") && f != null) WarpMesh(f);
+            else { child.position += AlleyWidth.Offset(SolidBounds(child.gameObject, out _).center); props++; }
+        }
+        foreach (var name in WarpRoots)
+        {
+            var go = GameObject.Find(name);
+            if (go == null) { Debug.LogError("REAL_ALLEY_WIDTH missing " + name); continue; }
+            foreach (var f in go.GetComponentsInChildren<MeshFilter>()) WarpMesh(f);
+        }
+        foreach (var root in scene.GetRootGameObjects().Where(g => WidenKeep.Contains(g.name) && !WarpRoots.Contains(g.name) && g.name != "env_alley"))
+        {
+            int inside = 0;
+            foreach (var f in root.GetComponentsInChildren<MeshFilter>().Where(f => f.sharedMesh != null && f.GetComponent<Renderer>() != null && f.GetComponent<Renderer>().enabled))
+                inside += f.sharedMesh.vertices.Count(v => { var w = f.transform.TransformPoint(v); return AlleyWidth.Weight(w) > 0 && Mathf.Abs(AlleyWidth.Offset(w).x) > 1e-4f; });
+            if (inside > 0) Debug.Log($"REAL_ALLEY_WIDTH_UNTOUCHED {root.name} vertices_in_alley={inside}");
+        }
+        foreach (var root in scene.GetRootGameObjects())
+        {
+            if (WidenKeep.Contains(root.name) || WidenKeepPrefix.Any(p => root.name.StartsWith(p))) continue;
+            var b = SolidBounds(root, out bool solid);
+            if (!solid && root.transform.childCount > 0 && root.GetComponent<Light>() == null && root.GetComponent<ReflectionProbe>() == null)
+                foreach (Transform t in root.transform) t.position += AlleyWidth.Offset(t.position);
+            else root.transform.position += AlleyWidth.Offset(b.center);
+            var probe = root.GetComponent<ReflectionProbe>();
+            if (probe != null && Mathf.Abs(probe.transform.position.x) < AlleyWidth.Core && AlleyWidth.Weight(probe.transform.position) > 0 && probe.size.x < 2 * AlleyWidth.Half)
+                probe.size += new Vector3(2 * AlleyWidth.Shift, 0, 0);
+            roots++;
+        }
+        var blockout = GameObject.Find("night1_3_blockout");
+        int empties = SyncBlockoutEmpties(blockout);
+        var (exactCopies, shiftedCopies) = SyncBlockoutCopies(blockout);
+        int lostMeshes = blockout.GetComponentsInChildren<MeshFilter>(true).Count(f => f.sharedMesh == null);
+        foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.parent == null && (t.name == "Light probes" || t.name == "Alley dressing" || t.name.StartsWith("Parked Cub "))).ToList())
+            Object.DestroyImmediate(t.gameObject);
+        Physics.SyncTransforms();
+        ParkBikes();
+        DressAlley();
+        Probes();
+        var (parts, _, _) = RebuildGarage();
+        int dress = BoardingDress();
+        var bounds = PlayBoundsBuilder.Generate();
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        AssetDatabase.SaveAssets();
+        if (System.Environment.GetCommandLineArgs().Contains("-bake")) { Bake(); EditorSceneManager.SaveScene(scene, ScenePath); }
+        Debug.Log($"REAL_ALLEY_WIDTH half={AlleyWidth.Half} verts={verts} props={props} roots={roots} empties={empties} copies={exactCopies}+{shiftedCopies} lost_meshes={lostMeshes} garage_parts={parts} dress={dress} walls={bounds.walls} leaks_after={bounds.after}");
+        EditorApplication.Exit(lostMeshes == 0 && parts > 0 && bounds.after == 0 ? 0 : 1);
+    }
+
     static (int parts, int hidden, int freed) RebuildGarage()
     {
         var imp = AssetImporter.GetAtPath(GarageModel) as ModelImporter;
@@ -1221,7 +1724,7 @@ public static class RealisticSceneBuilder
         for (int i = 0; i < sv.Length; i++)
         {
             var a = tr.TransformPoint(sv[i]); var b = tr.TransformPoint(dv[i]);
-            if (a.x < -1.30f && a.x > -1.48f && a.y > 3f && a.z > -48.1f && a.z < -37.9f) a.x = -1.30f;
+            if (a.x < -1.80f && a.x > -1.98f && a.y > 3f && a.z > -48.1f && a.z < -37.9f) a.x = -1.80f;
             if ((a - b).magnitude > .035f) bad++;
             if ((a - b).sqrMagnitude > 1e-8f) moved++;
             dv[i] = tr.InverseTransformPoint(a);
@@ -1248,9 +1751,9 @@ public static class RealisticSceneBuilder
         var old = GameObject.Find(Room7Stains); if (old != null) Object.DestroyImmediate(old);
         var root = new GameObject(Room7Stains).transform;
         int n = 0;
-        if (Decal(root, "D_Leak1", new Vector3(-2.05f, 12.62f, -47.4f), Vector3.back, new Vector2(1.05f, 1.6f))) n++;
-        if (Decal(root, "D_Leak4", new Vector3(-4.6f, 12.75f, -47.4f), Vector3.back, new Vector2(.8f, 1.3f))) n++;
-        if (Decal(root, "D_Leak3", new Vector3(-1.85f, 11.05f, -44.95f), Vector3.right, new Vector2(1.1f, 1.1f))) n++;
+        if (Decal(root, "D_Leak1", new Vector3(-2.55f, 12.62f, -47.4f), Vector3.back, new Vector2(1.05f, 1.6f))) n++;
+        if (Decal(root, "D_Leak4", new Vector3(-5.1f, 12.75f, -47.4f), Vector3.back, new Vector2(.8f, 1.3f))) n++;
+        if (Decal(root, "D_Leak3", new Vector3(-2.35f, 11.05f, -44.95f), Vector3.right, new Vector2(1.1f, 1.1f))) n++;
         if (n == 0) Object.DestroyImmediate(root.gameObject);
         return n;
     }
@@ -1262,7 +1765,8 @@ public static class RealisticSceneBuilder
         if (r == null) return 0;
         var mats = r.sharedMaterials; var mesh = r.GetComponent<MeshFilter>().sharedMesh;
         int wet = System.Array.FindIndex(mats, m => m != null && m.name == "M_ConcreteWet");
-        int dry = System.Array.FindIndex(mats, m => m != null && m.name == "M_ConcreteFloor");
+        int dry = System.Array.FindIndex(mats, m => m != null && m.name == "M_GarageFloor");
+        if (dry < 0) dry = System.Array.FindIndex(mats, m => m != null && m.name == "M_ConcreteFloor");
         if (wet < 0 || dry < 0 || wet >= mesh.subMeshCount || dry >= mesh.subMeshCount) return 0;
         var wetTris = mesh.GetTriangles(wet);
         var verts = mesh.vertices; var tr = r.transform;
@@ -1325,7 +1829,8 @@ public static class RealisticSceneBuilder
         int i = System.Array.IndexOf(args, "-shots");
         var dir = i >= 0 && i + 1 < args.Length ? args[i + 1] : "Logs";
         int only = System.Array.IndexOf(args, "-only"); if (only >= 0) ShotsOnly = args[only + 1];
-        EditorSceneManager.OpenScene(ScenePath);
+        int scene = System.Array.IndexOf(args, "-scene");
+        EditorSceneManager.OpenScene(scene >= 0 ? args[scene + 1] : ScenePath);
         var cam = Object.FindObjectsByType<Camera>(FindObjectsSortMode.None).First(c => c.CompareTag("MainCamera"));
         if (args.Contains("-flat")) FlatLight();
         Shots(cam, "Real", dir);

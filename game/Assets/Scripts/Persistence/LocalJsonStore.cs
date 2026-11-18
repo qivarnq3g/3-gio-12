@@ -12,6 +12,7 @@ namespace BaGio12.Persistence
         [Serializable] sealed class Envelope { public int version; public string payload, checksum; }
         readonly string path;
         readonly Func<T, bool> valid;
+        readonly object gate = new object();
         public LocalJsonStore(string path, Func<T, bool> valid) { this.path = path; this.valid = valid; }
         static string Hash(string text)
         { using (var sha = SHA256.Create()) return Convert.ToBase64String(sha.ComputeHash(Encoding.UTF8.GetBytes(text))); }
@@ -40,28 +41,40 @@ namespace BaGio12.Persistence
         }
         public bool Save(T value, out string message)
         {
+            var bytes = Encode(value, out _, out message);
+            return bytes != null && Write(bytes, out message);
+        }
+        public byte[] Encode(T value, out string payload, out string message)
+        {
+            payload = null; message = "";
+            if (value == null || !valid(value)) { message = "Dữ liệu chưa ở điểm có thể lưu."; return null; }
+            payload = JsonUtility.ToJson(value);
+            return Encoding.UTF8.GetBytes(JsonUtility.ToJson(new Envelope { version = 1, payload = payload, checksum = Hash(payload) }));
+        }
+        public bool Write(byte[] bytes, out string message)
+        {
             message = "";
-            if (value == null || !valid(value)) { message = "Dữ liệu chưa ở điểm có thể lưu."; return false; }
-            try
+            lock (gate)
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(path));
-                string payload = JsonUtility.ToJson(value);
-                var bytes = Encoding.UTF8.GetBytes(JsonUtility.ToJson(new Envelope { version = 1, payload = payload, checksum = Hash(payload) }));
-                using (var file = new FileStream(path + ".tmp", FileMode.Create, FileAccess.Write, FileShare.None))
-                { file.Write(bytes, 0, bytes.Length); file.Flush(true); }
-                // Do not replace a good backup with a corrupt primary after recovery.
-                if (Read(path, out _)) File.Copy(path, path + ".bak", true);
-                if (File.Exists(path)) File.Delete(path);
-                File.Move(path + ".tmp", path);
-                return true;
+                try
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(path));
+                    using (var file = new FileStream(path + ".tmp", FileMode.Create, FileAccess.Write, FileShare.None))
+                    { file.Write(bytes, 0, bytes.Length); file.Flush(true); }
+                    // Do not replace a good backup with a corrupt primary after recovery.
+                    if (Read(path, out _)) File.Copy(path, path + ".bak", true);
+                    if (File.Exists(path)) File.Delete(path);
+                    File.Move(path + ".tmp", path);
+                    return true;
+                }
+                catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is ArgumentException)
+                { message = "Không ghi được dữ liệu trên máy. Kiểm tra dung lượng và quyền ghi rồi thử lại."; return false; }
             }
-            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is ArgumentException)
-            { message = "Không ghi được dữ liệu trên máy. Kiểm tra dung lượng và quyền ghi rồi thử lại."; return false; }
         }
         public bool Delete(out string message)
         {
             message = "";
-            try { foreach (var suffix in new[] { "", ".bak", ".tmp" }) if (File.Exists(path + suffix)) File.Delete(path + suffix); return true; }
+            try { lock (gate) foreach (var suffix in new[] { "", ".bak", ".tmp" }) if (File.Exists(path + suffix)) File.Delete(path + suffix); return true; }
             catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
             { message = "Không xóa được bản lưu. Kiểm tra quyền ghi rồi thử lại."; return false; }
         }

@@ -346,7 +346,7 @@ namespace BaGio12.Prototype
             isPoweredOff = state.phone_powered_off;
             UpdatePowerUi();
 
-            bool batchAPending = state.phone_powered_off && IsBatchPending(state, "20:56");
+            bool batchAPending = state.phone_powered_off && (IsBatchPending(state, "20:57") || IsBatchPending(state, "20:56"));
             bool batchBPending = state.phone_powered_off && IsBatchPending(state, "21:26");
             bool batchCPending = state.phone_powered_off && IsBatchPending(state, "21:35");
             bool batchDPending = state.phone_powered_off && IsBatchPending(state, "03:40");
