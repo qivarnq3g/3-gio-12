@@ -495,7 +495,7 @@ public static class RealisticSceneBuilder
             for (int k = 0; k < houses.Length; k++)
             {
                 var (y0, y1) = houses[k];
-                Decal(root, "D_Plate" + ((k * 2 + (side > 0 ? 1 : 0)) % 13), new Vector3(x, 2.35f, -(y0 + .11f)), into, new Vector2(.22f, .14f));
+                Decal(root, "D_Plate" + ((k * 2 + (side > 0 ? 1 : 0)) % 13), new Vector3(x, 2.35f, -(y0 + .11f)), into, new Vector2(.30f, .20f));
                 if (rng.NextDouble() < .35) Stick("D_AdFlyer", () => new Vector3(x, R(1.3f, 1.8f), -R(y0 + .3f, y1 - .3f)), new Vector2(.42f, .24f), R(-2, 2));
                 if (rng.NextDouble() < .7) { var (tex, size) = stencils[rng.Next(3)]; Stick(tex, () => new Vector3(x, R(.55f, 2.3f), -R(y0 + .1f + size.x / 2, y1 - .1f - size.x / 2)), size, R(-1.5f, 1.5f)); }
             }
@@ -574,8 +574,15 @@ public static class RealisticSceneBuilder
     static string[] GarageSlots() => Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None)
         .Where(r => r.name.StartsWith("Garage_Bike_")).Select(r => r.name).OrderBy(n => n).ToArray();
 
-    static GameObject PlaceBike(string prefix, int k, int paintOffset, string slot) =>
-        SpawnBike(BikeModel(prefix, k, slot), (k + paintOffset) % BikePaints.Length, prefix + k);
+    const int RedPaint = 3;
+
+    static GameObject PlaceBike(string prefix, int k, int paintOffset, string slot)
+    {
+        int paint = (k + paintOffset) % BikePaints.Length;
+        if (slot == "Garage_Bike_Wave") paint = RedPaint;
+        else if (prefix == "Garage Cub " && paint == RedPaint) paint = 5;
+        return SpawnBike(BikeModel(prefix, k, slot), paint, prefix + k);
+    }
 
     internal static GameObject SpawnBike(string model, int paint, string name)
     {
@@ -1453,7 +1460,7 @@ public static class RealisticSceneBuilder
 
     static readonly Dictionary<string, (Color color, float smooth)> AltarExtras = new Dictionary<string, (Color, float)> {
         ["M_Porcelain"] = (new Color(.92f, .9f, .85f), .75f) };
-    static readonly string[] AlleyPropPrefixes = { "Altar_", "Stool_", "MeterPost" };
+    static readonly string[] AlleyPropPrefixes = { "Altar_", "Stool_", "MeterPost", "ShoeRack", "ShopFront_" };
     static bool AlleyProp(string n) => AlleyPropPrefixes.Any(n.StartsWith);
 
     public static void PatchAlleyAltars()
@@ -1508,7 +1515,7 @@ public static class RealisticSceneBuilder
             g.AddComponent<MeshFilter>().sharedMesh = p.GetComponent<MeshFilter>().sharedMesh;
             var pr = g.AddComponent<MeshRenderer>(); pr.sharedMaterials = p.sharedMaterials.Select(Convert).ToArray();
             pr.shadowCastingMode = fr.shadowCastingMode; pr.receiveGI = fr.receiveGI;
-            if (p.name.StartsWith("MeterPost")) g.AddComponent<BoxCollider>();
+            if (p.name.StartsWith("MeterPost") || p.name.StartsWith("ShopFront_")) g.AddComponent<BoxCollider>();
         }
         var ground = ReplaceModelMesh(AlleyModel, "Alley_Ground");
         if (ground == null) { EditorApplication.Exit(1); return; }
@@ -1758,7 +1765,8 @@ public static class RealisticSceneBuilder
         if (r == null) return 0;
         var mats = r.sharedMaterials; var mesh = r.GetComponent<MeshFilter>().sharedMesh;
         int wet = System.Array.FindIndex(mats, m => m != null && m.name == "M_ConcreteWet");
-        int dry = System.Array.FindIndex(mats, m => m != null && m.name == "M_ConcreteFloor");
+        int dry = System.Array.FindIndex(mats, m => m != null && m.name == "M_GarageFloor");
+        if (dry < 0) dry = System.Array.FindIndex(mats, m => m != null && m.name == "M_ConcreteFloor");
         if (wet < 0 || dry < 0 || wet >= mesh.subMeshCount || dry >= mesh.subMeshCount) return 0;
         var wetTris = mesh.GetTriangles(wet);
         var verts = mesh.vertices; var tr = r.transform;

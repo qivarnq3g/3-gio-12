@@ -220,6 +220,7 @@ public static class NightOneRealisticSetup
         else
         {
             story.ownBike = ownBike.gameObject;
+            NightOneProps.DressOilSticker(ownBike.gameObject);
             if (roadBike != null)
             {
                 story.mouthBike = MovableCopy(ownBike, "Linh bike at alley mouth", gameplay);
@@ -245,6 +246,7 @@ public static class NightOneRealisticSetup
         if (waveBike != null) foreach (var c in waveBike.GetComponents<Collider>()) c.enabled = false;
         story.nganPhone = Interact("Ngan phone", At(beside + Vector3.up * .007f, new Vector3(.08f, .012f, .16f)), 0, NightAction.Phone, "Nhặt chiếc máy", dark);
         story.nganPhone.transform.rotation = Quaternion.Euler(0, 28, 0);
+        NightOneProps.DressPhone(story);
         Interact("Parking notice", Box("Garage_Sign_Paper", new Vector3(4.18f, 1.4f, -51.55f), new Vector3(4.19f, 1.8f, -51.25f)), .08f, NightAction.Notice, "Đọc tờ giấy");
         var bulb = Box("Garage_Bulb", new Vector3(-.08f, 2.55f, -53.08f), new Vector3(.08f, 2.7f, -52.92f));
         story.parkingAlertLight = Lamp("Parking alert lamp", bulb.center + Vector3.down * .2f, new Color(1, .85f, .6f), 4, 9); story.parkingAlertLight.enabled = false;
@@ -341,6 +343,7 @@ public static class NightOneRealisticSetup
         bool corridor = NavMesh.SamplePosition(new Vector3(top.center.x + .2f, room.min.y, -41), out var landing, .8f, NavMesh.AllAreas);
         if (!corridor || !NavMesh.CalculatePath(story.parkingSpawn.position, landing.position, NavMesh.AllAreas, stairs) || stairs.status != NavMeshPathStatus.PathComplete)
             missing.Add("navmesh path parking->room7 corridor");
+        CharacterSetup.DressObservers(watchers);
         EditorSceneManager.SaveScene(scene); AssetDatabase.SaveAssets();
         Debug.Log($"NIGHT_ONE_REALISTIC_CREATED missing=[{string.Join(",", missing)}]");
     }
