@@ -1,89 +1,54 @@
-# Thiết kế Website câu đố ngoài game (ARG Site)
+# Website câu đố ngoài game
 
-Tài liệu thiết kế và hướng dẫn kỹ thuật cho Website câu đố ngoài game của đồ án "3 GIỜ 12" (thực hiện theo Issue #30, phục vụ Yêu cầu chức năng 7, 12, 14, khớp mục 8 kịch bản bản 5 và tài liệu kiến trúc hệ thống mục 2.5, 3.2).
+Website tĩnh của Ngân thực hiện issue #30. Bài ngày 28/10 dùng ảnh hoàng hôn công khai. Ảnh chụp ngày 08/11 mang gói bằng chứng và được phục vụ ở `/drop/`, nơi người chơi tìm đến từ phổ âm của `test_mic_12-11.wav` trong két trên điện thoại Ngân.
 
-## 1. Thiết kế cốt truyện và tính nhập vai
+## Luồng giải đố
 
-- **Nhân vật Nguyễn Thảo Ngân:** 19 tuổi, sinh viên năm hai ngành Công nghệ thông tin, thành viên câu lạc bộ CTF của trường, sống cùng mẹ (cô Hòa) tại Căn 44, tầng 4, Cư xá C4. (Phòng 7 nhà trọ cô Liên ở hẻm 12 là phòng Linh thuê ngày 22/11 cho Sinh viên).
-- **Linh:** Bạn thanh mai trúc mã từ lớp 6, hiện là sinh viên năm hai ngành Kế toán. Linh ít nói, không thích chụp ảnh mặt, và là người có những hành vi bất thường ở các đêm sau.
-- **Bé Na:** Bé gái 6 tuổi ở tầng dưới cư xá C4, hay chạy lên căn 44 chơi và có mật hiệu gõ cửa "một cái, rồi hai cái liền" với chị Ngân. Việc bé Na mất tích là nút thắt lõi của truyện (mục 2.4, 2.5).
-- **Tính bảo mật của blog:** Ngân giấu kín mọi nghi ngờ vào két bảo mật trên điện thoại vì sợ Linh đọc được (mục 2.7). Do đó, blog cá nhân tuyệt đối không đăng bài công khai về chuyện nghi ngờ hay việc bé Na mất tích để không làm lộ manh mối trước khi người chơi mở két.
+1. Mở phần trong của két để lấy tệp ghi âm và `khoa.txt` chứa chìa giải mã 16 ký tự.
+2. Xem phổ âm của tệp ghi âm để tìm đường dẫn `/drop`. Tải ảnh `hoang-hon-song-sai-gon.jpg` trên trang này.
+3. Mở ảnh tải xuống bằng 7-Zip hoặc WinRAR và giải nén ZIP AES-256 bằng chìa từ két. Gói chứa ảnh dép chỉ đỏ trong tủ giày nhà Linh lúc 23:40 ngày 08/11/2026, ảnh tờ tìm bé Na và ghi chú so sánh của Ngân.
+4. Sau khi đạt kết thúc “Về nhà”, gửi tệp `red-thread-sandal.jpg` qua tính năng gửi bằng chứng trong game. Game tính SHA-256 và gửi tới `POST /api/v1/puzzles/red-thread-sandal/submissions`. Máy chủ trả về `unlockId: ending_red_thread_sandal` khi chấp nhận.
 
-## 2. Cấu trúc thư mục `arg-site/`
+## Tệp và nguồn ảnh
 
-Thư mục `arg-site/` là website tĩnh thuần túy (không chứa mã giải mã client-side, không chứa tệp bằng chứng gốc chưa mã hóa, không chứa mật mã hay tài liệu giải pháp để tránh bị lộ khi triển khai công khai):
-
-```
-arg-site/
-├── index.html                           # Trang chủ blog: "Góc nhỏ của Bống"
-├── about.html                           # Giới thiệu bản thân Ngân, mẹ Hòa, bạn thân Linh, bé Na
-├── drop/
-│   └── index.html                       # Trang lưu trữ đính kèm /drop/ (tải ảnh hoàng hôn)
-├── drop.html                            # Trang lưu trữ đính kèm /drop (alias)
-├── posts/                               # Các bài viết blog theo dòng thời gian
-│   ├── 2026-09-28-hen-ngay-3-thang-12.html # Kỷ niệm ăn chè ngày 3/12 từ hồi lớp 6 và kế hoạch bay
-│   ├── 2026-10-15-chuyen-be-na.html     # Bé Na 6 tuổi tầng dưới và trò chơi gõ cửa mật hiệu
-│   ├── 2026-10-28-hoang-hon-song-sai-gon.html # Chiều hoàng hôn sông Sài Gòn sau buổi sinh hoạt CTF
-│   └── 2026-11-02-dem-nguoc-30-ngay.html# Đếm ngược một tháng trước khi bay
-└── assets/
-    ├── css/
-    │   └── style.css                    # Giao diện blog phong cách mộc mạc, hoài niệm, responsive
-    └── img/
-        ├── avatar.jpg                   # Ảnh đại diện của Ngân
-        ├── cu-xa-c4.jpg                 # Bối cảnh hành lang Cư xá C4
-        ├── theu-ca-bong.jpg             # Miếng vải thêu con cá bống lót ốp điện thoại
-        └── hoang-hon-song-sai-gon.jpg   # Ảnh hoàng hôn sông Sài Gòn (chứa tệp nén zip mã hóa ở đuôi)
-```
-
-## 3. Luồng giải đố (Walkthrough theo Mục 8 Kịch bản bản 5)
-
-1. **Khám phá trong game (Mục 8.1):**
-   - Người chơi dùng mật khẩu mở khóa màn hình để mở **phần trong của két bí mật** (ứng dụng Máy tính).
-   - Trong phần trong có tệp ghi âm `test_mic_12-11.wav`. Khi mở xem phổ âm thanh (spectrogram) của tệp ghi âm này, người chơi thấy dòng chữ ẩn dẫn tới đường dẫn `/drop` trên blog của Ngân.
-2. **Lấy chìa giải mã (Mục 8.4):**
-   - Trong phần trong của két có tệp văn bản `khoa.txt` chứa chìa khóa giải mã 16 ký tự ngẫu nhiên.
-3. **Tải và trích xuất bằng chứng (Mục 8.3):**
-   - Người chơi truy cập trang `/drop` của website, tải tệp ảnh `hoang-hon-song-sai-gon.jpg`.
-   - Sử dụng phần mềm quản lý lưu trữ (7-Zip, WinRAR, hoặc lệnh `unzip`): mở tệp ảnh này như một tệp nén (vì phần đuôi tệp đã được gắn gói nén ZIP theo kỹ thuật steganography).
-   - Nhập mật khẩu từ `khoa.txt` để giải nén ra tệp ảnh bằng chứng gốc: `red-thread-sandal.jpg` (ảnh chụp chiếc dép chỉ đỏ trong tủ giày nhà Linh lúc 23:40 ngày 08/11/2026).
-4. **Mở kết thúc thật (Mục 8.5):**
-   - Sau khi hoàn thành kết thúc "Về nhà" (6.6), game mở tính năng "Gửi bằng chứng cho công an".
-   - Người chơi chọn tệp `red-thread-sandal.jpg`. Game tự động đọc byte, tính SHA-256 và gửi lên `POST /api/v1/puzzles/red-thread-sandal/submissions`.
-   - Máy chủ so khớp với mã băm hợp lệ đã cấu hình và trả về `200 accepted` kèm `unlockId: ending_red_thread_sandal`, mở kết thúc 6.7.
-
-## 4. Thông số kỹ thuật & Cấu hình máy chủ
-
-| Mục | Giá trị |
+| Tệp | Nguồn và mục đích |
 |---|---|
-| **Puzzle ID** | `red-thread-sandal` |
-| **Tiêu đề câu đố** | `Đôi dép chỉ đỏ` |
-| **Unlock ID** | `ending_red_thread_sandal` |
-| **Tên tệp bằng chứng gốc** | `red-thread-sandal.jpg` (ảnh chụp tủ giày nhà Linh lúc 23:40 ngày 08/11/2026) |
-| **Chìa khóa giải mã (`khoa.txt`)** | `7bF#9qK$2vX@mP5!` (16 ký tự trong phần trong của két) |
-| **Mã băm SHA-256** | `d83e03fc5af7b42e26aebf45fef98db53b7d7873b39c2f8c5d5b8d0a27d926a3` |
+| `arg-site/assets/img/hoang-hon-song-sai-gon.jpg` | Ảnh minh họa tạo bằng ImageGen cho bài 28/10 và trang chủ |
+| `arg-site/assets/img/be-na.jpg` | Tranh minh họa nhân vật hư cấu tạo bằng ImageGen |
+| `arg-site/assets/img/theu-ca-bong.jpg` | Ảnh minh họa mẫu thêu tạo bằng ImageGen |
+| `cover-2026-11-08.jpg` | Ảnh hoàng hôn riêng, tạo bằng ImageGen để đóng gói tại `/drop/` |
+| `red-thread-sandal.jpg` | Ảnh bằng chứng hư cấu tạo bằng ImageGen, lưu riêng dưới dạng JPEG cố định |
+| `missing-child-notice.jpg` | Tờ tìm trẻ dựng từ tranh minh họa bé Na và chữ theo kịch bản |
+| `ghi-chu-so-sanh.txt` | Ghi chú của Ngân dùng để đối chiếu hai hình ảnh trong gói |
 
-### Câu lệnh SQL cấu hình máy chủ
+## Dựng lại gói bằng chứng
+
+Đặt ảnh bìa 08/11, ba tệp bằng chứng và `khoa.txt` trong thư mục đầu vào cục bộ, mặc định là `tools/out/arg-evidence/`. Có thể chỉ định thư mục khác bằng `--inputs`. Lấy chìa đang dùng từ bản nội dung két được quản lý riêng và lưu chìa mới cùng nhóm phụ trách tích hợp game khi xoay chìa.
+
+```bash
+python -m pip install pyzipper==0.3.6
+python tools/build_arg_site_assets.py
+7z l -slt arg-site/drop/hoang-hon-song-sai-gon.jpg
+```
+
+Ba mục trong ZIP phải có phương thức AES-256. Script in SHA-256 của ảnh dép từ byte nguồn cố định. Giữ nguyên tệp nguồn khi dựng lại để kết quả đối chiếu trên máy chủ ổn định.
+
+## Cấu hình máy chủ
+
+Mã băm SHA-256 hiện tại của `red-thread-sandal.jpg` là `8753395d6eba4a2133ef231c152e99a77e93965eea896ddb4ab95da6aa03684b`.
+
+Sau khi triển khai API câu đố và tạo mục `red-thread-sandal`, cấu hình lời giải trong cơ sở dữ liệu của môi trường tương ứng.
 
 ```sql
--- Thêm mã băm bằng chứng hợp lệ cho câu đố red-thread-sandal
 INSERT INTO puzzle_solutions (puzzle_id, sha256, note, created_at)
 VALUES (
     'red-thread-sandal',
-    'd83e03fc5af7b42e26aebf45fef98db53b7d7873b39c2f8c5d5b8d0a27d926a3',
+    '8753395d6eba4a2133ef231c152e99a77e93965eea896ddb4ab95da6aa03684b',
     'Ảnh chiếc dép chỉ đỏ trong tủ giày nhà Linh (23:40 08/11)',
     NOW()
 );
 
--- Bật câu đố
 UPDATE puzzles
 SET is_enabled = true, updated_at = NOW()
 WHERE id = 'red-thread-sandal';
-```
-
-## 5. Công cụ tạo tài nguyên
-
-Tệp ảnh bằng chứng gốc và chìa khóa giải mã được quản lý trong thư mục `tools/out/` (đã khai báo trong `.gitignore` để không đưa lên repository). Khi cần tạo lại các tài nguyên hoặc đổi chìa khóa:
-
-```bash
-python tools/build_arg_site_assets.py
 ```

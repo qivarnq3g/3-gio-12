@@ -220,7 +220,7 @@ Biến còn lại cần lưu cho đêm 2: `odo_2100`, `saw_shop_camera`, `found_
 
 ## 8. Model cho Tiên (đêm 1)
 
-Phong cách: hình cách điệu, màu phẳng, đường nét rõ, giống cách vẽ của Wuthering Waves, Genshin Impact. Ảnh mẫu đưa vào Tripo: một nhân vật hoặc một đồ vật đủ người, nền trơn, trông như ảnh dựng 3D có khối, không vẽ phẳng 2D, không vẽ viền; viền và màu phẳng do shader trong Unity làm.
+Phong cách: hình cách điệu, màu phẳng, đường nét rõ, giống cách vẽ của Wuthering Waves, Genshin Impact. Nhóm tự dựng model trong Blender theo `CONTRIBUTING.md`; viền và màu phẳng do shader trong Unity làm.
 
 Ưu tiên A cần cho bản thô chơi được; B làm sau khi bản khối xám chạy. Bối cảnh (hẻm, nhà trọ, phòng 7) là phần của Quang ở task #15.
 
