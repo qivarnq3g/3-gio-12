@@ -3,19 +3,19 @@ using System.Globalization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 
 namespace BaGio12.Gameplay
 {
     [RequireComponent(typeof(FirstPersonPlayer))]
     public sealed class PlaytestReadout : MonoBehaviour
     {
-        const float RefreshSeconds = .1f, ProbeDistance = 50;
+        const float RefreshSeconds = .1f;
 
         FirstPersonPlayer player;
         Canvas canvas;
         TextMeshProUGUI text;
-        float nextRefresh, smoothedFrame = 1 / 60f;
+        float nextRefresh;
+        bool visible;
 
         void Awake() { player = GetComponent<FirstPersonPlayer>(); }
 
@@ -23,19 +23,29 @@ namespace BaGio12.Gameplay
         {
             canvas = GameUi.Canvas(transform, "Playtest readout", 90);
             canvas.GetComponent<CanvasGroup>().blocksRaycasts = false;
-            var panel = GameUi.Place(GameUi.Box(canvas.transform, "Panel", new Color(0, 0, 0, .6f)), Vector2.one, Vector2.one, new Vector2(-24, -24), new Vector2(760, 206));
+            var panel = GameUi.Place(GameUi.Box(canvas.transform, "Panel", new Color(0, 0, 0, .6f)), Vector2.one, Vector2.one, new Vector2(-24, -24), new Vector2(640, 52));
             text = GameUi.Text(panel, "Readout", "", 24, GameUi.Ink);
-            text.alignment = TextAlignmentOptions.TopLeft;
-            GameUi.Place((RectTransform)text.transform, Vector2.up, Vector2.up, new Vector2(16, -12), new Vector2(728, 182));
+            text.alignment = TextAlignmentOptions.MidlineRight;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 17;
+            text.fontSizeMax = 24;
+            GameUi.Place(text.rectTransform, Vector2.one, Vector2.one, new Vector2(-14, 0), new Vector2(612, 52));
             canvas.gameObject.SetActive(false);
         }
 
         void Update()
         {
-            smoothedFrame = Mathf.Lerp(smoothedFrame, Time.unscaledDeltaTime, .05f);
-            var keys = Keyboard.current;
-            if (keys != null && keys.f3Key.wasPressedThisFrame) canvas.gameObject.SetActive(!canvas.gameObject.activeSelf);
-            if (!canvas.gameObject.activeSelf || Time.unscaledTime < nextRefresh) return;
+            if (!player.IsPaused && Keyboard.current?.f3Key.wasPressedThisFrame == true)
+                visible = !visible;
+
+            bool show = visible && !player.IsPaused;
+            if (canvas.gameObject.activeSelf != show)
+            {
+                canvas.gameObject.SetActive(show);
+                nextRefresh = 0;
+            }
+
+            if (!show || Time.unscaledTime < nextRefresh) return;
             nextRefresh = Time.unscaledTime + RefreshSeconds;
             text.text = Describe();
         }
@@ -45,26 +55,9 @@ namespace BaGio12.Gameplay
             var p = transform.position;
             float yaw = Mathf.Repeat(transform.eulerAngles.y, 360);
             float pitch = Mathf.DeltaAngle(0, player.ViewPitch);
-            var eye = player.eyes != null ? player.eyes.transform : transform;
             return string.Format(CultureInfo.InvariantCulture,
-                "X {0:F2}   Y {1:F2}   Z {2:F2}\nHướng {3:F0}°   Ngước {4:F0}°\nDưới chân: {5}\nĐang nhìn: {6}\n{7}   {8:F0} FPS   {9}\nV: bay   F5 hẻm, F6 giữa hẻm, F7 cổng, F8 nhà xe, F9 phòng 7",
-                p.x, p.y, p.z, yaw, pitch,
-                Hit(p + Vector3.up * .5f, Vector3.down),
-                Hit(eye.position, eye.forward),
-                SceneManager.GetActiveScene().name, 1 / Mathf.Max(smoothedFrame, .0001f), SystemInfo.graphicsDeviceType);
-        }
-
-        string Hit(Vector3 origin, Vector3 direction)
-        {
-            foreach (var hit in Sorted(Physics.RaycastAll(origin, direction, ProbeDistance, ~0, QueryTriggerInteraction.Ignore)))
-                if (!hit.collider.transform.IsChildOf(transform)) return hit.collider.name;
-            return "(trống)";
-        }
-
-        static RaycastHit[] Sorted(RaycastHit[] hits)
-        {
-            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-            return hits;
+                "X {0:F2}   Y {1:F2}   Z {2:F2}  |  Hướng {3:F0}° · Góc dọc {4:F0}°",
+                p.x, p.y, p.z, yaw, pitch);
         }
     }
 }
