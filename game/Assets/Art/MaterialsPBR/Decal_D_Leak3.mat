@@ -49,11 +49,11 @@ Material:
     - _DecalMeshBiasType: 0
     - _DecalMeshDepthBias: 0
     - _DecalMeshViewBias: 0
-    - _DrawOrder: 0
+    - _DrawOrder: 2
     m_Colors: []
   m_BuildTextureStacks: []
   m_AllowLocking: 1
---- !u!114 &5971751318298494469
+--- !u!114 &6372634491260411046
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}

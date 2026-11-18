@@ -20,6 +20,9 @@ public class ModelImportRules : AssetPostprocessor
         importer.npotScale = TextureImporterNPOTScale.None;
         importer.maxTextureSize = 1024;
         importer.textureCompression = TextureImporterCompression.CompressedHQ;
+        var name = System.IO.Path.GetFileNameWithoutExtension(assetPath);
+        if (name.EndsWith("_Normal")) { importer.textureType = TextureImporterType.NormalMap; importer.sRGBTexture = false; }
+        if (name.EndsWith("Leaves")) { importer.alphaIsTransparency = true; importer.mipMapsPreserveCoverage = true; importer.alphaTestReferenceValue = .4f; }
     }
 
     void OnPreprocessModel()
