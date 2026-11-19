@@ -1,6 +1,6 @@
 # Website câu đố ngoài game
 
-Website tĩnh của Ngân thực hiện issue #30. Bài ngày 28/10 dùng ảnh hoàng hôn bên hồ Bán Nguyệt. Ảnh chụp ngày 08/11 mang gói bằng chứng và được phục vụ ở `/drop/`, nơi người chơi tìm đến từ phổ âm của `test_mic_12-11.wav` trong két trên điện thoại Ngân.
+Website tĩnh của Ngân thực hiện issue #30. Bài ngày 28/10 dùng ảnh hoàng hôn sông Sài Gòn, mô típ chung với hình nền máy Ngân và ảnh trên `/drop/`. Ảnh chụp ngày 08/11 mang gói bằng chứng và được phục vụ ở `/drop/`, nơi người chơi tìm đến từ phổ âm của `test_mic_12-11.wav` trong két trên điện thoại Ngân.
 
 ## Luồng giải đố
 
@@ -13,9 +13,9 @@ Website tĩnh của Ngân thực hiện issue #30. Bài ngày 28/10 dùng ảnh 
 
 | Tệp | Nguồn và mục đích |
 |---|---|
-| `arg-site/assets/img/hoang-hon-song-sai-gon.png` | Ảnh hồ Bán Nguyệt của @jack_long304, tải từ bài viết trên [Phụ Nữ Online](https://tuoitre.vn/phunuonline/bo-tui-nhung-diem-san-hoang-hon-tuyet-dep-o-sai-gon-1101410746.htm) |
+| `arg-site/assets/img/hoang-hon-song-sai-gon.png` | Ảnh hoàng hôn sông Sài Gòn tự tạo bằng Canva AI (Generate image), prompt ở mục dưới. Không dùng ảnh bên ngoài. |
 | `arg-site/assets/img/be-na.jpg` | Tranh minh họa nhân vật hư cấu tạo bằng ImageGen |
-| `arg-site/assets/img/theu-ca-bong.jpg` | Ảnh minh họa miếng vải thêu cá bống, tự tạo bằng AI cho dự án. |
+| `arg-site/assets/img/theu-ca-bong.jpg` | Ảnh miếng vải thêu cá bống chỉ cam tự tạo bằng Canva AI (Generate image), prompt ở mục dưới. Không dùng ảnh bên ngoài. |
 | `cover-2026-11-08.jpg` | Ảnh hoàng hôn riêng, tạo bằng ImageGen để đóng gói tại `/drop/` |
 | `red-thread-sandal.jpg` | Ảnh bằng chứng hư cấu tạo bằng ImageGen, lưu riêng dưới dạng JPEG cố định |
 | `missing-child-notice.jpg` | Tờ tìm trẻ dựng từ tranh minh họa bé Na và chữ theo kịch bản |
@@ -52,3 +52,15 @@ UPDATE puzzles
 SET is_enabled = true, updated_at = NOW()
 WHERE id = 'red-thread-sandal';
 ```
+
+## Prompt tạo ảnh minh họa blog
+
+Tạo ngày 19/11/2026 bằng Canva AI (Generate image), chỉ dùng prompt văn bản, không dùng ảnh tham chiếu. Ảnh xuất từ Canva rồi chuyển định dạng, giữ tên tệp cũ.
+
+`hoang-hon-song-sai-gon.png` (tỉ lệ 4:5, xuất rộng 1000 px):
+
+> Realistic smartphone photo, portrait, sunset over the Saigon River seen from the Bach Dang riverside park in Ho Chi Minh City. Hazy pale grey-peach sky with soft clouds, a glowing orange sun low over the river, its golden reflection on the calm water. Silhouettes of tall coconut palm trees and a leafy tree in the foreground on the left and right, a riverside metal railing and wooden pier, distant city high-rise buildings on the far bank in haze, a small boat on the river, a few small lamp lights along the walkway. Warm evening atmosphere, natural photo colors, slight phone camera grain, no text, no people faces.
+
+`theu-ca-bong.jpg` (xuất rộng 1200 px):
+
+> Realistic top-down photo on a warm oak wooden table: a rectangular piece of sage-green linen fabric with frayed edges, hand-embroidered with a small goby fish (cá bống) in orange and golden-yellow thread, detailed satin stitches on the fins and scales, small black bead eye. Beside it, a clear transparent phone case. Bottom left, a loose strand of orange embroidery floss threaded through a brass needle. Background slightly blurred: a spool of orange thread and small embroidery scissors on beige linen cloth. Soft natural window light, shallow depth of field, cozy handmade mood, photographic, no text.
