@@ -15,6 +15,17 @@ namespace BaGio12.Persistence
         public string Status { get; private set; } = "";
         public bool Ready { get; private set; }
         public bool HasSave => saves != null && saves.Exists;
+        public string SaveSummary
+        {
+            get
+            {
+                if (saves == null || !saves.TryLoad(out var save, out _)) return null;
+                string text = $"Bạn quay lại lúc {save.state.clock} trong đêm, đúng chỗ của bản lưu gần nhất";
+                if (DateTime.TryParse(save.savedAt, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var at))
+                    text += $", lưu ngày {at.ToLocalTime():dd/MM} lúc {at.ToLocalTime():HH:mm}";
+                return text + ".";
+            }
+        }
         LocalJsonStore<NightSaveData> saves;
         LocalJsonStore<GamePreferences> preferences;
         NightSaveData initial, lastStable;

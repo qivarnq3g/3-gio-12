@@ -163,14 +163,14 @@ public static class FacadeZFight
         throw new System.Exception("FacadeZFight: no submesh " + material);
     }
 
-    public static int RecedeLosers(MeshFilter f, System.Func<string, int> rank, float depth, int passes)
+    public static int RecedeLosers(MeshFilter f, System.Func<string, int> rank, float depth, int passes, System.Func<Overlap, bool> only = null)
     {
         var tr = f.transform; var mesh = f.sharedMesh; int total = 0;
         var verts = mesh.vertices;
         var subTris = Enumerable.Range(0, mesh.subMeshCount).Select(mesh.GetTriangles).ToArray();
         for (int pass = 0; pass < passes; pass++)
         {
-            var overlaps = Find(f).Where(o => o.area > .002f).ToList();
+            var overlaps = Find(f).Where(o => o.area > .002f && (only == null || only(o))).ToList();
             if (overlaps.Count == 0) break;
             var world = verts.Select(tr.TransformPoint).ToArray();
             var moved = new HashSet<int>();
