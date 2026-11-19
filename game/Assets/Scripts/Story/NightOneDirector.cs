@@ -244,6 +244,7 @@ namespace BaGio12.Story
                     else
                     {
                         State.hasNganPhone = true;
+                        player.SignalPickup();
                         if (!State.phoneEverPicked)
                         {
                             State.phoneEverPicked = true;

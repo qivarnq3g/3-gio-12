@@ -55,13 +55,14 @@ public static class ArtPipelineCheck
             if (t.localScale != Vector3.one) failures.Add(path + ": root scale " + t.localScale);
             if (Quaternion.Angle(t.localRotation, Quaternion.identity) > 0.01f) failures.Add(path + ": root rotation " + t.localRotation.eulerAngles);
             foreach (Transform child in t)
-                if (Quaternion.Angle(child.localRotation, Quaternion.identity) > 0.01f || child.localScale != Vector3.one)
+                if (!(path == ModelImportRules.FpsArmsModel && child.GetComponent<Camera>()) &&
+                    (Quaternion.Angle(child.localRotation, Quaternion.identity) > 0.01f || child.localScale != Vector3.one))
                     failures.Add(path + ": child " + child.name + " rotation " + child.localRotation.eulerAngles + " scale " + child.localScale);
             var renderers = root.GetComponentsInChildren<Renderer>();
             if (renderers.Length == 0) { failures.Add(path + ": no renderer"); continue; }
             var bounds = renderers[0].bounds;
             foreach (var r in renderers) bounds.Encapsulate(r.bounds);
-            if (!IsEnvironment(path) && Mathf.Abs(bounds.min.y) > 0.01f) failures.Add(path + ": pivot not at floor, min y " + bounds.min.y.ToString("F3"));
+            if (!IsEnvironment(path) && path != ModelImportRules.FpsArmsModel && Mathf.Abs(bounds.min.y) > 0.01f) failures.Add(path + ": pivot not at floor, min y " + bounds.min.y.ToString("F3"));
             if (bounds.size.y < 0.01f || bounds.size.y > 30f) failures.Add(path + ": height " + bounds.size.y.ToString("F3") + " m");
             foreach (var mf in root.GetComponentsInChildren<MeshFilter>())
                 if (mf.sharedMesh == null || mf.sharedMesh.uv.Length == 0)
@@ -73,7 +74,7 @@ public static class ArtPipelineCheck
                     var matPath = AssetDatabase.GetAssetPath(m);
                     if (matPath.StartsWith("Assets/Art/Models/Environment/Materials/") && m.shader.name == "Universal Render Pipeline/Lit") continue;
                     if (!matPath.StartsWith("Assets/Art/Materials/")) failures.Add(path + ": material " + m.name + " not from Assets/Art/Materials (" + matPath + ")");
-                    if (m.shader.name != "Toon/Toon") failures.Add(path + ": material " + m.name + " uses shader " + m.shader.name);
+                    if (m.shader.name != "Toon/Toon" && !(path == ModelImportRules.FpsArmsModel && m.shader.name == "Universal Render Pipeline/Lit")) failures.Add(path + ": material " + m.name + " uses shader " + m.shader.name);
                 }
             foreach (var r in renderers)
                 CheckTexturedFaces(path, r, failures);

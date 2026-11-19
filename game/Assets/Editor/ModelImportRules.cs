@@ -4,6 +4,7 @@ public class ModelImportRules : AssetPostprocessor
 {
     public const string ModelsRoot = "Assets/Art/Models/";
     public const string TexturesRoot = "Assets/Art/Textures/";
+    public const string FpsArmsModel = ModelsRoot + "Characters/char_fps_arms.fbx";
 
     public static bool IsTiling(string path) => System.IO.Path.GetFileName(path).StartsWith("T_Tile");
 
@@ -21,6 +22,7 @@ public class ModelImportRules : AssetPostprocessor
         importer.maxTextureSize = 1024;
         importer.textureCompression = TextureImporterCompression.CompressedHQ;
         var name = System.IO.Path.GetFileNameWithoutExtension(assetPath);
+        if (name.EndsWith("_MetallicSmoothness")) importer.sRGBTexture = false;
         if (name.EndsWith("_Normal")) { importer.textureType = TextureImporterType.NormalMap; importer.sRGBTexture = false; }
         if (name.EndsWith("Leaves")) { importer.alphaIsTransparency = true; importer.mipMapsPreserveCoverage = true; importer.alphaTestReferenceValue = .4f; }
     }
@@ -32,7 +34,8 @@ public class ModelImportRules : AssetPostprocessor
         importer.globalScale = 1f;
         importer.useFileScale = true;
         importer.bakeAxisConversion = false;
-        importer.importCameras = false;
+        // The first-person model carries the reference transform for pickup camera motion.
+        importer.importCameras = assetPath == FpsArmsModel;
         importer.importLights = false;
         importer.importVisibility = false;
         importer.materialImportMode = ModelImporterMaterialImportMode.ImportStandard;
