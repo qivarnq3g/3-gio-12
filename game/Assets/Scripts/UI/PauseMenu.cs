@@ -208,9 +208,11 @@ namespace BaGio12.Gameplay
             };
             if (Session != null || HasSessionInScene())
             {
-                rows.Add(Choice("Chất lượng đồ họa", "Chọn mức thấp hơn nếu game chạy giật trên máy yếu.", QualitySettings.names,
-                    () => Session != null ? Session.Quality : QualitySettings.GetQualityLevel(),
-                    v => { if (Session != null) Session.Quality = v; else QualitySettings.SetQualityLevel(v, true); }));
+                var order = GameSettings.QualityOrder();
+                rows.Add(Choice("Chất lượng đồ họa", "Chọn Thấp nếu game chạy giật trên máy yếu. Ở mức này, game vẽ hình nhỏ hơn rồi phóng lên màn hình và làm bóng đổ bớt nét để chạy nhẹ hơn.",
+                    Array.ConvertAll(order, i => GameSettings.QualityLabel(i)),
+                    () => Array.IndexOf(order, Session != null ? Session.Quality : QualitySettings.GetQualityLevel()),
+                    v => { if (Session != null) Session.Quality = order[v]; else QualitySettings.SetQualityLevel(order[v], true); }));
                 rows.Add(Toggle("Cảnh báo nội dung", "Hiện cảnh báo nội dung ở màn hình đầu khi mở game.",
                     () => Session == null || Session.ShowWarning ? 1 : 0, v => { if (Session != null) Session.ShowWarning = v > .5f; }));
             }
