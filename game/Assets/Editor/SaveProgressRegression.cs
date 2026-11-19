@@ -105,7 +105,7 @@ public static class SaveProgressRegression
                     next = EditorApplication.timeSinceStartup + 3; return;
                 }
                 Check(persistence.ContinueSaved(), "new process could not continue"); story.player.SetPaused(true);
-                Check(story.State.stage == NightStage.Room && story.State.clock == "21:35" && story.State.prologue_beaten == 2, "state/clock/injury lost");
+                Check(story.State.stage == NightStage.Room && story.State.clock == "21:35" && story.State.prologue_beaten == 2, "state/clock/injury lost: stage=" + story.State.stage + " clock=" + story.State.clock + " beaten=" + story.State.prologue_beaten);
                 Check(Vector3.Distance(story.player.transform.position, story.roomSpawn.position) < .02f && Mathf.Abs(Mathf.DeltaAngle(story.player.transform.eulerAngles.y, 73)) < .01f, "pose lost: actual=" + story.player.transform.position + " expected=" + story.roomSpawn.position + " yaw=" + story.player.transform.eulerAngles.y);
                 Check(story.player.IsCrouched && Mathf.Abs(story.player.ViewPitch - 23) < .01f && story.player.ActivePhone == 1, "view/crouch/phone lost");
                 Check(story.State.phone_powered_off && story.State.pendingMessages.Count > 0 && story.State.sent.Contains("camera:unknown"), "phone queues/choices lost");

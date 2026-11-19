@@ -14,8 +14,9 @@ namespace BaGio12.Gameplay
 
         FirstPersonPlayer player;
         Canvas canvas;
-        TextMeshProUGUI text;
+        TextMeshProUGUI coordinates, diagnostics;
         float nextRefresh, smoothedFrame = 1 / 60f;
+        bool visible;
 
         void Awake() { player = GetComponent<FirstPersonPlayer>(); }
 
@@ -23,35 +24,51 @@ namespace BaGio12.Gameplay
         {
             canvas = GameUi.Canvas(transform, "Playtest readout", 90);
             canvas.GetComponent<CanvasGroup>().blocksRaycasts = false;
-            var panel = GameUi.Place(GameUi.Box(canvas.transform, "Panel", new Color(0, 0, 0, .6f)), Vector2.one, Vector2.one, new Vector2(-24, -24), new Vector2(760, 206));
-            text = GameUi.Text(panel, "Readout", "", 24, GameUi.Ink);
-            text.alignment = TextAlignmentOptions.TopLeft;
-            GameUi.Place((RectTransform)text.transform, Vector2.up, Vector2.up, new Vector2(16, -12), new Vector2(728, 182));
+            var panel = GameUi.Place(GameUi.Box(canvas.transform, "Panel", new Color(0, 0, 0, .6f)),
+                Vector2.one, Vector2.one, new Vector2(-24, -24), new Vector2(760, 182));
+
+            coordinates = GameUi.Text(panel, "Coordinates", "", 24, GameUi.Ink, TextAlignmentOptions.TopLeft);
+            coordinates.enableAutoSizing = true;
+            coordinates.fontSizeMin = 17;
+            coordinates.fontSizeMax = 24;
+            GameUi.Place(coordinates.rectTransform, Vector2.up, Vector2.up, new Vector2(16, -12), new Vector2(728, 32));
+
+            diagnostics = GameUi.Text(panel, "Diagnostics", "", 18, GameUi.Ink, TextAlignmentOptions.TopLeft);
+            diagnostics.overflowMode = TextOverflowModes.Ellipsis;
+            GameUi.Place(diagnostics.rectTransform, Vector2.up, Vector2.up, new Vector2(16, -50), new Vector2(728, 120));
             canvas.gameObject.SetActive(false);
         }
 
         void Update()
         {
             smoothedFrame = Mathf.Lerp(smoothedFrame, Time.unscaledDeltaTime, .05f);
-            var keys = Keyboard.current;
-            if (keys != null && keys.f3Key.wasPressedThisFrame) canvas.gameObject.SetActive(!canvas.gameObject.activeSelf);
-            if (!canvas.gameObject.activeSelf || Time.unscaledTime < nextRefresh) return;
-            nextRefresh = Time.unscaledTime + RefreshSeconds;
-            text.text = Describe();
-        }
+            if (!player.IsPaused && Keyboard.current?.f3Key.wasPressedThisFrame == true)
+                visible = !visible;
 
-        string Describe()
-        {
-            var p = transform.position;
+            bool show = visible && !player.IsPaused;
+            if (canvas.gameObject.activeSelf != show)
+            {
+                canvas.gameObject.SetActive(show);
+                nextRefresh = 0;
+            }
+
+            if (!show || Time.unscaledTime < nextRefresh) return;
+            nextRefresh = Time.unscaledTime + RefreshSeconds;
+
+            var position = transform.position;
             float yaw = Mathf.Repeat(transform.eulerAngles.y, 360);
             float pitch = Mathf.DeltaAngle(0, player.ViewPitch);
+            coordinates.text = string.Format(CultureInfo.InvariantCulture,
+                "X {0:F2}   Y {1:F2}   Z {2:F2}  |  Hướng {3:F0}° · Góc dọc {4:F0}°",
+                position.x, position.y, position.z, yaw, pitch);
+
             var eye = player.eyes != null ? player.eyes.transform : transform;
-            return string.Format(CultureInfo.InvariantCulture,
-                "X {0:F2}   Y {1:F2}   Z {2:F2}\nHướng {3:F0}°   Ngước {4:F0}°\nDưới chân: {5}\nĐang nhìn: {6}\n{7}   {8:F0} FPS   {9}\nV: bay   F5 hẻm, F6 giữa hẻm, F7 cổng, F8 nhà xe, F9 phòng 7",
-                p.x, p.y, p.z, yaw, pitch,
-                Hit(p + Vector3.up * .5f, Vector3.down),
+            diagnostics.text = string.Format(CultureInfo.InvariantCulture,
+                "Dưới chân: {0}\nĐang nhìn: {1}\n{2}   {3:F0} FPS   {4}\nV: bay   F5 hẻm, F6 giữa hẻm, F7 cổng, F8 nhà xe, F9 phòng 7",
+                Hit(position + Vector3.up * .5f, Vector3.down),
                 Hit(eye.position, eye.forward),
-                SceneManager.GetActiveScene().name, 1 / Mathf.Max(smoothedFrame, .0001f), SystemInfo.graphicsDeviceType);
+                SceneManager.GetActiveScene().name,
+                1 / Mathf.Max(smoothedFrame, .0001f), SystemInfo.graphicsDeviceType);
         }
 
         string Hit(Vector3 origin, Vector3 direction)

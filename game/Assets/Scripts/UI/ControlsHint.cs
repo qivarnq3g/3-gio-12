@@ -39,8 +39,6 @@ namespace BaGio12.Gameplay
                 Row(panel, "Nhìn quanh", "Chuột", "Mũi tên"),
                 Row(panel, "Chạy", "Shift"),
                 Row(panel, "Cúi người", "C"),
-                Row(panel, "Tương tác", "E"),
-                Row(panel, "Tạm dừng", "Esc"),
             };
             lastYaw = transform.eulerAngles.y; lastPitch = player.ViewPitch;
         }
