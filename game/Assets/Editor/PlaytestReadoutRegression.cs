@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using TMPro;
 using BaGio12.Gameplay;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -74,6 +76,17 @@ public static class PlaytestReadoutRegression
                             value.Contains("Y ") && value.Contains("Z ") && value.Contains("Hướng") &&
                             value.Contains("Góc dọc"),
                         "readout should show coordinates and view direction on one line");
+                    var labels = readout.GetComponentsInChildren<TextMeshProUGUI>();
+                    var coordinates = labels.Single(label => label.name == "Coordinates");
+                    var diagnostics = labels.Single(label => label.name == "Diagnostics");
+                    Require(coordinates.text == value, "coordinate label differs from the public readout");
+                    Require(diagnostics.text.Contains("Dưới chân:") && diagnostics.text.Contains("Đang nhìn:") &&
+                            diagnostics.text.Contains("FPS") && diagnostics.text.Contains("F9 phòng 7") &&
+                            diagnostics.text.Split('\n').Length == 4,
+                        "F3 must retain all four diagnostic lines below the coordinates");
+                    diagnostics.ForceMeshUpdate();
+                    Require(!diagnostics.isTextTruncated && diagnostics.preferredHeight <= diagnostics.rectTransform.rect.height,
+                        "diagnostic lines are clipped");
                     player.SetPaused(true);
                     PressF3();
                     break;

@@ -5,10 +5,16 @@ namespace BaGio12.Gameplay
     public static class MenuSounds
     {
         const int Rate = 44100;
-        static AudioClip relay, tick, hum;
+        static AudioClip relay, tick, hum, open, close, confirm, deny, message, note;
 
         public static AudioClip Relay => relay != null ? relay : relay = Click("Sensor relay", .16f, 38, 1900, 115, .95f);
         public static AudioClip Tick => tick != null ? tick : tick = Click("Menu tick", .045f, 110, 3200, 0, .6f);
+        public static AudioClip Open => open != null ? open : open = Click("Panel open", .24f, 20, 620, 88, .55f);
+        public static AudioClip Close => close != null ? close : close = Click("Panel close", .13f, 42, 470, 70, .42f);
+        public static AudioClip Confirm => confirm != null ? confirm : confirm = Click("Choice confirm", .2f, 28, 980, 120, .6f);
+        public static AudioClip Deny => deny != null ? deny : deny = Click("Choice deny", .11f, 58, 210, 135, .5f);
+        public static AudioClip Message => message != null ? message : message = Click("Message in", .2f, 26, 1260, 0, .42f);
+        public static AudioClip Note => note != null ? note : note = Click("Objective note", .32f, 13, 740, 0, .3f);
 
         public static AudioClip Hum
         {

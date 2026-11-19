@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using TMPro;
@@ -16,19 +17,20 @@ namespace BaGio12.Gameplay
         const string Regular = "Fonts/BeVietnamPro-Regular", Medium = "Fonts/BeVietnamPro-Medium";
         static readonly Color Warm = new Color(1, .8f, .52f);
         static readonly Color Paper = new Color(.97f, .93f, .85f);
-        enum Kind { Slider, Toggle, Action }
+        static readonly Color Night = new Color(.03f, .027f, .024f);
+        enum Kind { Slider, Toggle, Choice, Action }
 
         sealed class Entry
         {
             public RawImage stripe;
             public RectTransform rect, label;
             public TextMeshProUGUI text;
-            public float glow;
+            public float glow, y;
         }
 
         sealed class Item
         {
-            public string label, confirm;
+            public string label, confirm, about;
             public Action run;
         }
 
@@ -51,9 +53,16 @@ namespace BaGio12.Gameplay
 
         FirstPersonPlayer player;
         GameSettings settings, defaults;
-        CanvasGroup group, ceiling, light, settingsPage, controlsPage, mainFooter, startFooter, pageFooter;
-        RawImage grain;
-        TextMeshProUGUI hint, darkHint, paused, warning, status;
+        CanvasGroup group, ceiling, light, settingsPage, controlsPage, mainFooter, startFooter, pageFooter, controlsFooter, controlsStartFooter;
+        RawImage grain, backdrop;
+        Image dim;
+        RectTransform marker, wordRule;
+        RenderTexture blurred;
+        CanvasGroup settingsShade;
+        TextMeshProUGUI hint, darkHint, paused, warning, status, wordmark, about;
+        bool backdropStale;
+        float openedAt = -10, confirmAt = -10, markerY, aboutAlpha;
+        int aboutIndex = -1;
         readonly List<Item> items = new List<Item>();
         int settingsIndex, controlsIndex, confirmIndex = -1;
         IGameSession Session => player.Session;
@@ -79,6 +88,42 @@ namespace BaGio12.Gameplay
         void OnDestroy()
         {
             if (player != null) player.PauseMenuLocked = false;
+            if (blurred != null) { blurred.Release(); Destroy(blurred); }
+        }
+
+        static float OutCubic(float t) { t = 1 - Mathf.Clamp01(t); return 1 - t * t * t; }
+
+        static float Damp(float from, float to, float speed, float dt) => Mathf.Lerp(from, to, 1 - Mathf.Exp(-speed * dt));
+
+        IEnumerator CaptureBackdrop()
+        {
+            backdrop.color = new Color(1, 1, 1, 0);
+            if (Application.isBatchMode) yield break;
+            yield return new WaitForEndOfFrame();
+            Texture2D shot = null;
+            try { shot = ScreenCapture.CaptureScreenshotAsTexture(); }
+            catch (Exception) { shot = null; }
+            if (shot == null) yield break;
+            int w = Mathf.Max(8, shot.width / 16), h = Mathf.Max(8, shot.height / 16);
+            if (blurred == null || blurred.width != w || blurred.height != h)
+            {
+                if (blurred != null) { blurred.Release(); Destroy(blurred); }
+                blurred = new RenderTexture(w, h, 0) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+            }
+            var source = (Texture)shot;
+            var temps = new List<RenderTexture>();
+            for (int div = 2; div <= 8; div *= 2)
+            {
+                var step = RenderTexture.GetTemporary(Mathf.Max(8, shot.width / div), Mathf.Max(8, shot.height / div), 0);
+                step.filterMode = FilterMode.Bilinear;
+                Graphics.Blit(source, step);
+                source = step; temps.Add(step);
+            }
+            Graphics.Blit(source, blurred);
+            foreach (var step in temps) RenderTexture.ReleaseTemporary(step);
+            Destroy(shot);
+            backdrop.texture = blurred;
+            backdropStale = false;
         }
 
         AudioSource MakeSource(bool loop)
@@ -109,9 +154,15 @@ namespace BaGio12.Gameplay
             group = canvas.GetComponent<CanvasGroup>(); group.alpha = 0; group.blocksRaycasts = false;
             var root = canvas.transform;
 
-            var ceilingRect = GameUi.Fill(GameUi.Box(root, "Ceiling", new Color(.045f, .04f, .036f, 1)));
+            var ceilingRect = GameUi.Fill(GameUi.Box(root, "Ceiling", Color.clear));
             ceiling = ceilingRect.gameObject.AddComponent<CanvasGroup>();
-            GameUi.Fill(GameUi.Raw(ceilingRect, "Plaster", GameUi.Mottle(192, 108, 37), new Color(.11f, .1f, .085f, .9f)).rectTransform);
+            backdrop = GameUi.Raw(ceilingRect, "Backdrop", null, new Color(1, 1, 1, 0)); GameUi.Fill(backdrop.rectTransform);
+            dim = GameUi.Fill(GameUi.Box(ceilingRect, "Dim", Night)).GetComponent<Image>();
+            var side = GameUi.Raw(ceilingRect, "Side shade", GameUi.Gradient(new Color(0, 0, 0, .88f), new Color(0, 0, 0, 0)), Color.white).rectTransform;
+            side.anchorMin = Vector2.zero; side.anchorMax = new Vector2(.7f, 1); side.offsetMin = side.offsetMax = Vector2.zero;
+            var floor = GameUi.Raw(ceilingRect, "Floor shade", GameUi.Gradient(new Color(0, 0, 0, .8f), new Color(0, 0, 0, 0), true), Color.white).rectTransform;
+            floor.anchorMin = Vector2.zero; floor.anchorMax = new Vector2(1, .32f); floor.offsetMin = floor.offsetMax = Vector2.zero;
+            GameUi.Fill(GameUi.Raw(ceilingRect, "Plaster", GameUi.Mottle(192, 108, 37), new Color(.11f, .1f, .085f, .2f)).rectTransform);
 
             var lightRect = GameUi.Fill(GameUi.Box(root, "Light", Color.clear));
             light = lightRect.gameObject.AddComponent<CanvasGroup>(); light.alpha = 0;
@@ -119,17 +170,25 @@ namespace BaGio12.Gameplay
             entries = new Entry[EntryCount];
             for (int i = 0; i < EntryCount; i++) entries[i] = MakeEntry(lightRect, i);
 
-            var wordmark = Words(root, "Wordmark", "3 GIỜ 12", 26, new Color(Paper.r, Paper.g, Paper.b, .3f), true);
-            wordmark.characterSpacing = 24;
-            GameUi.Place(wordmark.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(160, -90), new Vector2(500, 40));
-            paused = Words(root, "Paused", "Tạm dừng", 20, new Color(Paper.r, Paper.g, Paper.b, .3f));
-            GameUi.Place(paused.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(162, -128), new Vector2(300, 30));
-            warning = Words(root, "Content warning", "Cảnh báo nội dung: bạo lực, truy đuổi, âm thanh bất ngờ và tình huống gây căng thẳng.", 20, new Color(1, .72f, .6f, .75f));
-            GameUi.Place(warning.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(162, -128), new Vector2(1500, 30));
+            marker = GameUi.Place(GameUi.Box(lightRect, "Marker", Warm), new Vector2(0, .5f), new Vector2(.5f, .5f), new Vector2(150, 190), new Vector2(3, 46));
+            markerY = 190;
+            about = Words(lightRect, "About", "", 22, new Color(Paper.r, Paper.g, Paper.b, .62f));
+            GameUi.Place(about.rectTransform, Vector2.zero, Vector2.zero, new Vector2(162, 150), new Vector2(1500, 32));
+
+            wordmark = Words(root, "Wordmark", "3 GIỜ 12", 60, new Color(Paper.r, Paper.g, Paper.b, .9f), true);
+            wordmark.characterSpacing = 30;
+            GameUi.Place(wordmark.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(158, -74), new Vector2(1000, 80));
+            wordRule = GameUi.Place(GameUi.Box(root, "Wordmark rule", new Color(Warm.r, Warm.g, Warm.b, .55f)), new Vector2(0, 1), new Vector2(0, .5f), new Vector2(162, -160), new Vector2(0, 1));
+            paused = Words(root, "Paused", "Tạm dừng", 22, new Color(Paper.r, Paper.g, Paper.b, .6f));
+            paused.characterSpacing = 10;
+            GameUi.Place(paused.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(162, -176), new Vector2(400, 30));
+            warning = Words(root, "Content warning", "Cảnh báo nội dung: bạo lực, truy đuổi, âm thanh bất ngờ và tình huống gây căng thẳng.", 20, new Color(1, .72f, .6f, .8f));
+            GameUi.Place(warning.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(162, -176), new Vector2(1500, 30));
             status = Words(root, "Status", "", 20, new Color(Paper.r, Paper.g, Paper.b, .55f));
             GameUi.Place(status.rectTransform, Vector2.zero, Vector2.zero, new Vector2(162, 110), new Vector2(1500, 30));
 
             settingsPage = Page(lightRect, "Cài đặt");
+            settingsShade = settingsPage.transform.Find("Shade").GetComponent<CanvasGroup>();
             rows = new List<Setting>
             {
                 Slider("Độ nhạy chuột", "Tốc độ xoay góc nhìn khi di chuột.", .02f, .3f, .01f,
@@ -141,15 +200,16 @@ namespace BaGio12.Gameplay
                 Slider("Rung camera khi đi", "Giảm xuống nếu thấy chóng mặt khi đi hoặc chạy.", 0, 1, .1f,
                     () => settings.headBob, v => settings.headBob = v, Percent),
                 Slider("Độ sáng", "Tăng tới khi vừa thấy đồ vật trong chỗ tối, đừng để màu đen bị bạc. Nền tối mờ đi để thấy cảnh phía sau.", -1.25f, 1.25f, .25f,
-                    () => settings.brightness, v => settings.brightness = v, v => Number(v / .25f + 5, 0), true),
+                    () => settings.brightness, v => settings.brightness = v, Signed, true),
                 Slider("Âm lượng", "Âm lượng chung của game.", 0, 1, .05f,
                     () => settings.volume, v => settings.volume = v, Percent),
+                Choice("Khử răng cưa", "Làm mịn mép răng cưa của đồ vật. SMAA nét và ổn định nên được chọn sẵn, FXAA nhẹ hơn nhưng hình hơi mờ, còn TAA mịn nhất nhưng song sắt và dây điện có thể lấp lóa.", GameSettings.AntialiasingNames,
+                    () => settings.antialiasing, v => settings.antialiasing = v),
             };
             if (Session != null)
             {
-                int last = QualitySettings.names.Length - 1;
-                rows.Add(Slider("Chất lượng đồ họa", "Giảm xuống nếu game chạy giật trên máy yếu.", 0, last, 1,
-                    () => Session.Quality, v => Session.Quality = Mathf.RoundToInt(v), v => QualitySettings.names[Mathf.Clamp(Mathf.RoundToInt(v), 0, last)]));
+                rows.Add(Choice("Chất lượng đồ họa", "Chọn mức thấp hơn nếu game chạy giật trên máy yếu.", QualitySettings.names,
+                    () => Session.Quality, v => Session.Quality = v));
                 rows.Add(Toggle("Cảnh báo nội dung", "Hiện cảnh báo nội dung ở màn hình đầu khi mở game.",
                     () => Session.ShowWarning ? 1 : 0, v => Session.ShowWarning = v > .5f));
             }
@@ -164,7 +224,7 @@ namespace BaGio12.Gameplay
             var controls = new (string action, string keys)[]
             {
                 ("Đi lại", "W   A   S   D"), ("Nhìn quanh", "Chuột hoặc phím mũi tên"), ("Chạy", "Shift"), ("Cúi người", "C"),
-                ("Tương tác", "E"), ("Điện thoại", "1   2"), ("Tạm dừng", "Esc"),
+                ("Tương tác", "E"), ("Điện thoại", "1   2"), ("Sổ tay", "N"), ("Tạm dừng", "Esc"),
             };
             for (int i = 0; i < controls.Length; i++)
             {
@@ -180,6 +240,10 @@ namespace BaGio12.Gameplay
             startFooter.alpha = 0;
             pageFooter = Footer(root, "W S chọn", "A D chỉnh", "Esc quay lại");
             pageFooter.alpha = 0;
+            controlsFooter = Footer(root, "W S chọn", "Esc chơi tiếp");
+            controlsFooter.alpha = 0;
+            controlsStartFooter = Footer(root, "W S chọn");
+            controlsStartFooter.alpha = 0;
 
             darkHint = Words(root, "Dark hint", "Di chuột hoặc bấm phím để bật đèn", 20, new Color(Paper.r, Paper.g, Paper.b, .35f), false, TextAlignmentOptions.Center);
             GameUi.Place(darkHint.rectTransform, new Vector2(.5f, .5f), new Vector2(.5f, .5f), Vector2.zero, new Vector2(900, 40));
@@ -194,6 +258,12 @@ namespace BaGio12.Gameplay
 
         static string Percent(float value) => Mathf.RoundToInt(value * 100) + "%";
 
+        static string Signed(float value)
+        {
+            int step = Mathf.RoundToInt(value / .25f);
+            return step > 0 ? "+" + step : step.ToString(CultureInfo.InvariantCulture);
+        }
+
         Entry MakeEntry(RectTransform parent, int index)
         {
             float y = 190 - index * 84;
@@ -202,13 +272,19 @@ namespace BaGio12.Gameplay
             var text = Words(rect, "Label", "", 38, Paper);
             text.characterSpacing = 2;
             var labelRect = GameUi.Place(text.rectTransform, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(20, 0), new Vector2(600, 70));
-            return new Entry { stripe = stripe, rect = rect, label = labelRect, text = text };
+            return new Entry { stripe = stripe, rect = rect, label = labelRect, text = text, y = y };
         }
 
         static CanvasGroup Page(RectTransform parent, string heading)
         {
             var page = GameUi.Fill(GameUi.Box(parent, "Page " + heading, Color.clear));
             var group = page.gameObject.AddComponent<CanvasGroup>(); group.alpha = 0;
+            var shade = GameUi.Fill(GameUi.Box(page, "Shade", Color.clear));
+            var ramp = GameUi.Raw(shade, "Ramp", GameUi.Gradient(new Color(Night.r, Night.g, Night.b, 0), new Color(Night.r, Night.g, Night.b, .72f)), Color.white).rectTransform;
+            ramp.anchorMin = new Vector2(.36f, 0); ramp.anchorMax = new Vector2(.47f, 1); ramp.offsetMin = ramp.offsetMax = Vector2.zero;
+            var body = GameUi.Box(shade, "Body", new Color(Night.r, Night.g, Night.b, .72f));
+            body.anchorMin = new Vector2(.47f, 0); body.anchorMax = Vector2.one; body.offsetMin = body.offsetMax = Vector2.zero;
+            shade.gameObject.AddComponent<CanvasGroup>().blocksRaycasts = false;
             var title = Words(page, "Heading", heading, 20, new Color(Paper.r, Paper.g, Paper.b, .45f));
             title.characterSpacing = 12;
             GameUi.Place(title.rectTransform, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(940, 300), new Vector2(400, 30));
@@ -221,6 +297,11 @@ namespace BaGio12.Gameplay
 
         static Setting Toggle(string name, string hint, Func<float> get, Action<float> set) =>
             new Setting { name = name, hint = hint, kind = Kind.Toggle, min = 0, max = 1, step = 1, get = get, set = set };
+
+        static Setting Choice(string name, string hint, string[] options, Func<int> get, Action<int> set) =>
+            new Setting { name = name, hint = hint, kind = Kind.Choice, min = 0, max = options.Length - 1, step = 1,
+                get = () => get(), set = v => set(Mathf.Clamp(Mathf.RoundToInt(v), 0, options.Length - 1)),
+                format = v => options[Mathf.Clamp(Mathf.RoundToInt(v), 0, options.Length - 1)] };
 
         void MakeRow(Setting s, int index)
         {
@@ -275,12 +356,13 @@ namespace BaGio12.Gameplay
             var session = Session;
             if (AtStart)
             {
-                if (session.HasSave) Add("Tiếp tục bản đã lưu", () => session.ContinueSaved());
-                Add("Chơi mới Đêm 1", () => session.StartNewGame(), session.HasSave ? "Nhấn lần nữa để chơi lại từ đầu" : null);
+                if (session.HasSave) Add("Tiếp tục bản đã lưu", () => session.ContinueSaved(), null, "Bạn quay lại đúng chỗ của bản lưu gần nhất.");
+                Add("Chơi mới Đêm 1", () => session.StartNewGame(), session.HasSave ? "Nhấn lần nữa để chơi lại từ đầu" : null,
+                    session.HasSave ? "Bạn bắt đầu lại Đêm 1 từ lúc 20:56, và bản lưu cũ sẽ bị xóa." : "Bạn bắt đầu Đêm 1 từ lúc 20:56 trong con hẻm.");
             }
             else
             {
-                Add("Tiếp tục", player.ResumeControl);
+                Add("Tiếp tục", player.ResumeControl, null, "Bạn trở lại con hẻm, đúng chỗ vừa dừng.");
 #if UNITY_EDITOR || DEVELOPMENT_BUILD || PLAYTEST_BUILD
                 var readout = player.GetComponent<PlaytestReadout>();
                 if (readout != null)
@@ -290,12 +372,13 @@ namespace BaGio12.Gameplay
                         player.ResumeControl();
                     });
 #endif
-                if (session != null) Add("Chơi lại Đêm 1", () => session.StartNewGame(), "Nhấn lần nữa để chơi lại từ đầu");
+                if (session != null) Add("Chơi lại Đêm 1", () => session.StartNewGame(), "Nhấn lần nữa để chơi lại từ đầu", "Bạn bỏ tiến độ đêm nay và bắt đầu lại Đêm 1 từ 20:56.");
             }
-            settingsIndex = items.Count; Add("Cài đặt", null);
-            controlsIndex = items.Count; Add("Điều khiển", null);
-            if (AtStart && session.HasSave) Add("Xóa tiến độ", () => session.DeleteProgress(), "Nhấn lần nữa để xóa tiến độ");
-            Add(session != null && !AtStart ? "Lưu và thoát" : "Thoát game", QuitGame, "Nhấn lần nữa để thoát");
+            settingsIndex = items.Count; Add("Cài đặt", null, null, "Bạn chỉnh chuột, góc nhìn, độ sáng, âm lượng và đồ họa ở đây.");
+            controlsIndex = items.Count; Add("Điều khiển", null, null, "Bạn xem các phím để đi lại, tương tác, mở điện thoại và sổ tay.");
+            if (AtStart && session.HasSave) Add("Xóa tiến độ", () => session.DeleteProgress(), "Nhấn lần nữa để xóa tiến độ", "Bản lưu của game sẽ bị xóa và không lấy lại được.");
+            if (session != null && !AtStart) Add("Lưu và thoát", QuitGame, "Nhấn lần nữa để thoát", "Game lưu tiến độ hiện tại rồi đóng lại.");
+            else Add("Thoát game", QuitGame, "Nhấn lần nữa để thoát", "Game đóng lại, tiến độ đã lưu vẫn được giữ.");
             for (int i = 0; i < entries.Length; i++)
             {
                 bool used = i < items.Count;
@@ -306,7 +389,7 @@ namespace BaGio12.Gameplay
             confirmIndex = -1;
         }
 
-        void Add(string label, Action run, string confirm = null) => items.Add(new Item { label = label, run = run, confirm = confirm });
+        void Add(string label, Action run, string confirm = null, string about = null) => items.Add(new Item { label = label, run = run, confirm = confirm, about = about });
 
         public void ShowSettings()
         {
@@ -365,8 +448,12 @@ namespace BaGio12.Gameplay
             if (Session != null) { Session.ImportSettings(settings); settings.Apply(player); RefreshRows(); }
             group.gameObject.SetActive(true);
             lastInput = Time.unscaledTime;
+            openedAt = Time.unscaledTime;
+            markerY = entries[selected].y;
+            aboutIndex = -1; aboutAlpha = 0;
             lightLevel = 0;
             SwitchLights(true);
+            StartCoroutine(CaptureBackdrop());
         }
 
         void Close()
@@ -409,7 +496,7 @@ namespace BaGio12.Gameplay
             if (index == settingsIndex) { inPage = true; Tick(); return; }
             var item = items[index];
             if (item.run == null) return;
-            if (item.confirm != null && confirmIndex != index) { confirmIndex = index; quitUntil = Time.unscaledTime + 4; Tick(); return; }
+            if (item.confirm != null && confirmIndex != index) { confirmIndex = index; confirmAt = Time.unscaledTime; quitUntil = Time.unscaledTime + 4; Tick(); return; }
             confirmIndex = -1;
             Tick();
             item.run();
@@ -486,6 +573,7 @@ namespace BaGio12.Gameplay
             if (confirm)
             {
                 if (current.kind == Kind.Toggle) Change(current, 1);
+                else if (current.kind == Kind.Choice) Cycle(current);
                 else if (current.kind == Kind.Action) current.run();
             }
             if (keys.escapeKey.wasPressedThisFrame || keys.backspaceKey.wasPressedThisFrame) LeavePage();
@@ -499,6 +587,7 @@ namespace BaGio12.Gameplay
             if (Contains(s.minus, point)) Change(s, -1);
             else if (Contains(s.plus, point)) Change(s, 1);
             else if (s.kind == Kind.Toggle) Change(s, 1);
+            else if (s.kind == Kind.Choice) Cycle(s);
             else { dragging = index; SetFromPointer(s, point); }
         }
 
@@ -506,6 +595,12 @@ namespace BaGio12.Gameplay
         {
             if (s.kind == Kind.Toggle) { s.set(s.get() > .5f ? 0 : 1); Changed(); return; }
             Assign(s, s.get() + direction * s.step);
+        }
+
+        void Cycle(Setting s)
+        {
+            float next = s.get() + 1;
+            Assign(s, next > s.max + .01f ? s.min : next);
         }
 
         void SetFromPointer(Setting s, Vector2 point)
@@ -525,6 +620,7 @@ namespace BaGio12.Gameplay
 
         void Changed()
         {
+            if (inPage && rows[row].peek) backdropStale = true;
             settings.Apply(player);
             dirty = true;
             Tick();
@@ -546,8 +642,9 @@ namespace BaGio12.Gameplay
                 float t = s.kind == Kind.Toggle ? value : Mathf.InverseLerp(s.min, s.max, value);
                 if (s.fill != null) { s.fill.sizeDelta = new Vector2(TrackWidth * t, 2); s.handle.anchoredPosition = new Vector2(TrackWidth * t, 0); }
                 s.value.text = s.kind == Kind.Toggle ? value > .5f ? "Bật" : "Tắt" : s.format(value);
-                bool atMin = s.kind == Kind.Slider && value <= s.min + s.step * .01f;
-                bool atMax = s.kind == Kind.Slider && value >= s.max - s.step * .01f;
+                bool ranged = s.kind == Kind.Slider || s.kind == Kind.Choice;
+                bool atMin = ranged && value <= s.min + s.step * .01f;
+                bool atMax = ranged && value >= s.max - s.step * .01f;
                 s.minusText.alpha = atMin ? .15f : .6f;
                 s.plusText.alpha = atMax ? .15f : .6f;
             }
@@ -565,42 +662,80 @@ namespace BaGio12.Gameplay
 
         void Animate(float dt)
         {
+            float now = Time.unscaledTime, since = now - openedAt;
             lightLevel = Mathf.MoveTowards(lightLevel, lightsOn ? 1 : 0, dt * (lightsOn ? 12 : 2.5f));
             bool peek = inPage && selected == settingsIndex && rows[row].peek;
             light.alpha = lightLevel * (lightsOn ? Flicker() : 1);
-            ceiling.alpha = Mathf.MoveTowards(ceiling.alpha, peek ? .12f : 1, dt * 4);
+            ceiling.alpha = Damp(ceiling.alpha, peek ? .12f : 1, 8, dt);
+            settingsShade.alpha = Damp(settingsShade.alpha, peek ? .15f : 1, 8, dt);
+            float dimTarget = !lightsOn ? .9f : AtStart ? .22f : .5f;
+            dim.color = new Color(Night.r, Night.g, Night.b, Damp(dim.color.a, dimTarget, lightsOn ? 6 : 1.2f, dt));
+            bool haveBackdrop = backdrop.texture != null && !backdropStale;
+            backdrop.color = new Color(1, 1, 1, Damp(backdrop.color.a, haveBackdrop ? 1 : 0, 5, dt));
             hum.volume = Mathf.MoveTowards(hum.volume, lightsOn && shown ? .08f : 0, dt * .5f);
             if (!lightsOn && hum.volume <= 0 && hum.isPlaying) hum.Stop();
+
+            float mark = OutCubic(since / .7f);
+            wordmark.characterSpacing = 30 + 36 * (1 - mark);
+            wordmark.alpha = (AtStart ? .92f : .6f) * mark * (since < .5f && Mathf.Repeat(since * 23, 1) < .3f ? .45f : 1);
+            wordRule.sizeDelta = new Vector2(360 * OutCubic((since - .2f) / .8f), 1);
 
             for (int i = 0; i < items.Count; i++)
             {
                 var entry = entries[i];
+                float appear = OutCubic((since - .15f - i * .05f) / .45f);
                 float target = i == selected ? inPage ? .55f : 1 : 0;
-                entry.glow = Mathf.MoveTowards(entry.glow, target, dt * 6);
-                entry.stripe.color = new Color(Warm.r, Warm.g, Warm.b, entry.glow * .22f);
-                entry.label.anchoredPosition = new Vector2(20 + entry.glow * 12, 0);
-                entry.text.alpha = .34f + entry.glow * .66f;
+                entry.glow = Damp(entry.glow, target, 12, dt);
+                entry.stripe.color = new Color(Warm.r, Warm.g, Warm.b, entry.glow * .22f * appear);
                 bool confirming = i == confirmIndex;
+                float kick = now - confirmAt;
+                float shake = confirming ? Mathf.Sin(kick * 55) * 7 * Mathf.Exp(-kick * 9) : 0;
+                entry.rect.anchoredPosition = new Vector2(150 - 48 * (1 - appear) + shake, entry.y);
+                entry.label.anchoredPosition = new Vector2(20 + entry.glow * 14, 0);
+                entry.text.alpha = (.34f + entry.glow * .66f) * appear;
                 entry.text.color = confirming ? new Color(1, .55f, .45f, entry.text.alpha) : new Color(Paper.r, Paper.g, Paper.b, entry.text.alpha);
                 entry.text.text = confirming ? items[i].confirm : items[i].label;
             }
+            markerY = Damp(markerY, entries[selected].y, 18, dt);
+            marker.anchoredPosition = new Vector2(150, markerY);
+            float markerShow = OutCubic((since - .35f) / .3f) * (inPage ? .4f : 1);
+            marker.GetComponent<Image>().color = new Color(Warm.r, Warm.g, Warm.b, .9f * markerShow);
+            marker.sizeDelta = new Vector2(3, 46 * (.4f + .6f * entries[selected].glow));
+
+            int wantAbout = inPage ? -1 : selected;
+            if (wantAbout != aboutIndex)
+            {
+                aboutAlpha = Mathf.MoveTowards(aboutAlpha, 0, dt * 10);
+                if (aboutAlpha <= 0) { aboutIndex = wantAbout; about.text = aboutIndex >= 0 && aboutIndex < items.Count ? items[aboutIndex].about ?? "" : ""; }
+            }
+            else aboutAlpha = Mathf.MoveTowards(aboutAlpha, 1, dt * 5);
+            about.alpha = .62f * aboutAlpha * OutCubic((since - .45f) / .4f);
+            about.rectTransform.anchoredPosition = new Vector2(162 + 10 * (1 - aboutAlpha), 150);
+
             paused.text = AtStart ? "" : "Tạm dừng";
-            warning.alpha = AtStart && Session.ShowWarning ? 1 : 0;
+            paused.alpha = .6f * OutCubic((since - .3f) / .5f);
+            warning.alpha = AtStart && Session.ShowWarning ? .8f * OutCubic((since - .3f) / .6f) : 0;
             status.text = Session != null ? Session.Status : "";
 
-            settingsPage.alpha = Mathf.MoveTowards(settingsPage.alpha, selected == settingsIndex ? inPage ? 1 : .6f : 0, dt * 6);
-            controlsPage.alpha = Mathf.MoveTowards(controlsPage.alpha, selected == controlsIndex ? 1 : 0, dt * 6);
+            settingsPage.alpha = Damp(settingsPage.alpha, selected == settingsIndex ? inPage ? 1 : .6f : 0, 12, dt);
+            controlsPage.alpha = Damp(controlsPage.alpha, selected == controlsIndex ? 1 : 0, 12, dt);
+            ((RectTransform)settingsPage.transform).anchoredPosition = new Vector2(36 * (1 - settingsPage.alpha), 0);
+            ((RectTransform)controlsPage.transform).anchoredPosition = new Vector2(36 * (1 - controlsPage.alpha), 0);
             for (int i = 0; i < rows.Count; i++)
             {
                 var s = rows[i];
-                s.glow = Mathf.MoveTowards(s.glow, inPage && i == row ? 1 : 0, dt * 8);
+                s.glow = Damp(s.glow, inPage && i == row ? 1 : 0, 16, dt);
                 s.stripe.color = new Color(Warm.r, Warm.g, Warm.b, s.glow * .16f);
                 s.text.alpha = .5f + s.glow * .5f;
+                s.text.rectTransform.anchoredPosition = new Vector2(20 + s.glow * 8, 0);
             }
             hint.text = inPage ? rows[row].hint : "";
             darkHint.alpha = Mathf.MoveTowards(darkHint.alpha, lightsOn ? 0 : .35f, dt * (lightsOn ? 8 : .4f));
-            mainFooter.alpha = Mathf.MoveTowards(mainFooter.alpha, inPage || AtStart ? 0 : 1, dt * 7);
-            startFooter.alpha = Mathf.MoveTowards(startFooter.alpha, !inPage && AtStart ? 1 : 0, dt * 7);
+            bool onControls = !inPage && selected == controlsIndex;
+            mainFooter.alpha = Mathf.MoveTowards(mainFooter.alpha, !inPage && !AtStart && !onControls ? 1 : 0, dt * 7);
+            startFooter.alpha = Mathf.MoveTowards(startFooter.alpha, !inPage && AtStart && !onControls ? 1 : 0, dt * 7);
+            controlsFooter.alpha = Mathf.MoveTowards(controlsFooter.alpha, onControls && !AtStart ? 1 : 0, dt * 7);
+            controlsStartFooter.alpha = Mathf.MoveTowards(controlsStartFooter.alpha, onControls && AtStart ? 1 : 0, dt * 7);
             pageFooter.alpha = Mathf.MoveTowards(pageFooter.alpha, inPage ? 1 : 0, dt * 7);
 
             if (Time.unscaledTime >= grainAt)

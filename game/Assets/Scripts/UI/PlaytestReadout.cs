@@ -6,13 +6,14 @@ using System.Runtime.InteropServices;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 namespace BaGio12.Gameplay
 {
     [RequireComponent(typeof(FirstPersonPlayer))]
     public sealed class PlaytestReadout : MonoBehaviour
     {
-        const float RefreshSeconds = .1f, ShortcutDebounce = .075f;
+        const float RefreshSeconds = .1f, ShortcutDebounce = .075f, ProbeDistance = 50;
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
         const int VirtualKeyF3 = 0x72;
         [DllImport("user32.dll")]
@@ -23,11 +24,11 @@ namespace BaGio12.Gameplay
         FirstPersonPlayer player;
         InputAction toggleReadout;
         Canvas canvas;
-        TextMeshProUGUI text;
-        float nextRefresh, nextShortcut;
+        TextMeshProUGUI coordinates, diagnostics;
+        float nextRefresh, nextShortcut, smoothedFrame = 1 / 60f;
         bool visible, shortcutRequested;
         GUIStyle boxStyle, labelStyle;
-        string cachedReadout = "";
+        string cachedReadout = "", cachedDiagnostics = "";
 
         public bool IsVisible => visible;
         public void Toggle()
@@ -36,8 +37,7 @@ namespace BaGio12.Gameplay
             UpdateCanvasVisibility();
             if (visible)
             {
-                cachedReadout = Describe();
-                if (text != null) text.text = cachedReadout;
+                RefreshText();
             }
             Debug.Log($"[PlaytestReadout] Toggled -> Visible = {visible}");
         }
@@ -72,20 +72,27 @@ namespace BaGio12.Gameplay
             {
                 canvas = GameUi.Canvas(transform, "Playtest readout", 90);
                 canvas.GetComponent<CanvasGroup>().blocksRaycasts = false;
-                var panel = GameUi.Place(GameUi.Box(canvas.transform, "Panel", new Color(0, 0, 0, .75f)), Vector2.one, Vector2.one, new Vector2(-24, -24), new Vector2(640, 52));
-                text = GameUi.Text(panel, "Readout", "", 24, GameUi.Ink, TextAlignmentOptions.Right);
-                text.font = GameUi.Font("Fonts/BeVietnamPro-Regular");
-                text.enableAutoSizing = true;
-                text.fontSizeMin = 17;
-                text.fontSizeMax = 24;
-                GameUi.Place(text.rectTransform, Vector2.one, Vector2.one, new Vector2(-14, 0), new Vector2(612, 52));
+                var panel = GameUi.Place(GameUi.Box(canvas.transform, "Panel", new Color(0, 0, 0, .6f)),
+                    Vector2.one, Vector2.one, new Vector2(-24, -24), new Vector2(760, 182));
+
+                coordinates = GameUi.Text(panel, "Coordinates", "", 24, GameUi.Ink, TextAlignmentOptions.TopLeft);
+                coordinates.font = GameUi.Font("Fonts/BeVietnamPro-Regular");
+                coordinates.enableAutoSizing = true;
+                coordinates.fontSizeMin = 17;
+                coordinates.fontSizeMax = 24;
+                GameUi.Place(coordinates.rectTransform, Vector2.up, Vector2.up, new Vector2(16, -12), new Vector2(728, 32));
+
+                diagnostics = GameUi.Text(panel, "Diagnostics", "", 18, GameUi.Ink, TextAlignmentOptions.TopLeft);
+                diagnostics.font = coordinates.font;
+                diagnostics.overflowMode = TextOverflowModes.Ellipsis;
+                GameUi.Place(diagnostics.rectTransform, Vector2.up, Vector2.up, new Vector2(16, -50), new Vector2(728, 120));
                 UpdateCanvasVisibility();
             }
             catch (System.Exception ex)
             {
                 if (canvas != null) Destroy(canvas.gameObject);
                 canvas = null;
-                text = null;
+                coordinates = diagnostics = null;
                 Debug.LogWarning($"[PlaytestReadout] Canvas UI init warning: {ex.Message}. Falling back to OnGUI.");
             }
         }
@@ -94,11 +101,15 @@ namespace BaGio12.Gameplay
         {
             bool show = visible && !player.IsPaused;
             if (canvas != null && canvas.gameObject.activeSelf != show)
+            {
                 canvas.gameObject.SetActive(show);
+                nextRefresh = 0;
+            }
         }
 
         void Update()
         {
+            smoothedFrame = Mathf.Lerp(smoothedFrame, Time.unscaledDeltaTime, .05f);
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
             shortcutRequested |= PhysicalKeyboardHook.ConsumeReadoutToggle();
 #endif
@@ -115,10 +126,17 @@ namespace BaGio12.Gameplay
             }
             shortcutRequested = false;
             UpdateCanvasVisibility();
-            if (!visible || Time.unscaledTime < nextRefresh) return;
+            if (!visible || player.IsPaused || Time.unscaledTime < nextRefresh) return;
             nextRefresh = Time.unscaledTime + RefreshSeconds;
+            RefreshText();
+        }
+
+        void RefreshText()
+        {
             cachedReadout = Describe();
-            if (text != null) text.text = cachedReadout;
+            cachedDiagnostics = DescribeDiagnostics();
+            if (coordinates != null) coordinates.text = cachedReadout;
+            if (diagnostics != null) diagnostics.text = cachedDiagnostics;
         }
 
         void OnGUI()
@@ -133,7 +151,8 @@ namespace BaGio12.Gameplay
                 {
                     fontSize = 17,
                     fontStyle = FontStyle.Bold,
-                    alignment = TextAnchor.MiddleRight,
+                    alignment = TextAnchor.UpperLeft,
+                    wordWrap = true,
                     normal = { textColor = Color.white }
                 };
             }
@@ -145,13 +164,14 @@ namespace BaGio12.Gameplay
             {
                 GUI.depth = -2000;
                 GUI.matrix = Matrix4x4.identity;
-                var content = new GUIContent(cachedReadout);
+                var content = new GUIContent(cachedReadout + "\n" + cachedDiagnostics);
                 float w = Mathf.Min(labelStyle.CalcSize(content).x + 28, Screen.width - 48);
-                var rect = new Rect(Screen.width - w - 24, 24, w, 34);
+                float height = labelStyle.CalcHeight(content, w - 28) + 24;
+                var rect = new Rect(Screen.width - w - 24, 24, w, height);
                 GUI.color = new Color(0, 0, 0, .85f);
                 GUI.Box(rect, GUIContent.none);
                 GUI.color = Color.white;
-                GUI.Label(new Rect(rect.x + 14, rect.y, rect.width - 28, rect.height), content, labelStyle);
+                GUI.Label(new Rect(rect.x + 14, rect.y + 12, rect.width - 28, rect.height - 24), content, labelStyle);
             }
             finally
             {
@@ -169,6 +189,29 @@ namespace BaGio12.Gameplay
             return string.Format(CultureInfo.InvariantCulture,
                 "X {0:F2}   Y {1:F2}   Z {2:F2}  |  Hướng {3:F0}° · Góc dọc {4:F0}°",
                 p.x, p.y, p.z, yaw, pitch);
+        }
+        string DescribeDiagnostics()
+        {
+            var eye = player.eyes != null ? player.eyes.transform : transform;
+            return string.Format(CultureInfo.InvariantCulture,
+                "Dưới chân: {0}\nĐang nhìn: {1}\n{2}   {3:F0} FPS   {4}\nV: bay   F5 hẻm, F6 giữa hẻm, F7 cổng, F8 nhà xe, F9 phòng 7",
+                Hit(transform.position + Vector3.up * .5f, Vector3.down),
+                Hit(eye.position, eye.forward),
+                SceneManager.GetActiveScene().name,
+                1 / Mathf.Max(smoothedFrame, .0001f), SystemInfo.graphicsDeviceType);
+        }
+
+        string Hit(Vector3 origin, Vector3 direction)
+        {
+            foreach (var hit in Sorted(Physics.RaycastAll(origin, direction, ProbeDistance, ~0, QueryTriggerInteraction.Ignore)))
+                if (!hit.collider.transform.IsChildOf(transform)) return hit.collider.name;
+            return "(trống)";
+        }
+
+        static RaycastHit[] Sorted(RaycastHit[] hits)
+        {
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            return hits;
         }
     }
 }
