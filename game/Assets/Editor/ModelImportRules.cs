@@ -39,6 +39,8 @@ public class ModelImportRules : AssetPostprocessor
         importer.importLights = false;
         importer.importVisibility = false;
         importer.materialImportMode = ModelImporterMaterialImportMode.ImportStandard;
+        // Preserve the explicit material remaps of the animated FPS model.
+        if (assetPath == FpsArmsModel) return;
         importer.materialLocation = ModelImporterMaterialLocation.External;
         importer.materialName = ModelImporterMaterialName.BasedOnMaterialName;
         importer.materialSearch = ModelImporterMaterialSearch.Everywhere;
