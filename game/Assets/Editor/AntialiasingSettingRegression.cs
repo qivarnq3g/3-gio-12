@@ -38,6 +38,9 @@ public static class AntialiasingSettingRegression
             var high = QualitySettings.GetRenderPipelineAssetAt(windows[1]) as UniversalRenderPipelineAsset;
             Check(low != null && high != null && low.renderScale < high.renderScale && low.upscalingFilter == UpscalingFilterSelection.FSR
                 && low.mainLightShadowmapResolution < high.mainLightShadowmapResolution && low.additionalLightsShadowmapResolution < high.additionalLightsShadowmapResolution, "low quality is not cheaper than high");
+            foreach (var level in windows)
+                Check(new SerializedObject(QualitySettings.GetRenderPipelineAssetAt(level)).FindProperty("m_SoftShadowQuality").intValue == (int)SoftShadowQuality.Medium,
+                    "soft shadows of " + QualitySettings.names[level] + " are not Medium");
             Check(QualitySettings.names[GameSettings.DefaultQuality()] == "PC", "default quality is not PC");
             QualitySettings.SetQualityLevel(windows[0], true);
             new BaGio12.Persistence.GamePreferences().Apply(player);
