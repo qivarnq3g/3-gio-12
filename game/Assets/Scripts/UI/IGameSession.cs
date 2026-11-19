@@ -5,6 +5,7 @@ namespace BaGio12.Gameplay
         bool AtStart { get; }
         bool HasSave { get; }
         string Status { get; }
+        string SaveSummary { get; }
         bool ShowWarning { get; set; }
         int Quality { get; set; }
         bool ContinueSaved();

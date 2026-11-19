@@ -206,12 +206,15 @@ namespace BaGio12.Gameplay
                 Choice("Khử răng cưa", "Làm mịn mép răng cưa của đồ vật. SMAA nét và ổn định nên được chọn sẵn, FXAA nhẹ hơn nhưng hình hơi mờ, còn TAA mịn nhất nhưng song sắt và dây điện có thể lấp lóa.", GameSettings.AntialiasingNames,
                     () => settings.antialiasing, v => settings.antialiasing = v),
             };
-            if (Session != null)
+            if (Session != null || HasSessionInScene())
             {
-                rows.Add(Choice("Chất lượng đồ họa", "Chọn mức thấp hơn nếu game chạy giật trên máy yếu.", QualitySettings.names,
-                    () => Session.Quality, v => Session.Quality = v));
+                var order = GameSettings.QualityOrder();
+                rows.Add(Choice("Chất lượng đồ họa", "Chọn Thấp nếu game chạy giật trên máy yếu. Ở mức này, game vẽ hình nhỏ hơn rồi phóng lên màn hình và làm bóng đổ bớt nét để chạy nhẹ hơn.",
+                    Array.ConvertAll(order, i => GameSettings.QualityLabel(i)),
+                    () => Array.IndexOf(order, Session != null ? Session.Quality : QualitySettings.GetQualityLevel()),
+                    v => { if (Session != null) Session.Quality = order[v]; else QualitySettings.SetQualityLevel(order[v], true); }));
                 rows.Add(Toggle("Cảnh báo nội dung", "Hiện cảnh báo nội dung ở màn hình đầu khi mở game.",
-                    () => Session.ShowWarning ? 1 : 0, v => Session.ShowWarning = v > .5f));
+                    () => Session == null || Session.ShowWarning ? 1 : 0, v => { if (Session != null) Session.ShowWarning = v > .5f; }));
             }
             rows.Add(new Setting { name = "Khôi phục mặc định", hint = "Đưa mọi cài đặt ở trên về như lúc đầu.", kind = Kind.Action, run = ResetDefaults });
             for (int i = 0; i < rows.Count; i++) MakeRow(rows[i], i);
@@ -356,7 +359,7 @@ namespace BaGio12.Gameplay
             var session = Session;
             if (AtStart)
             {
-                if (session.HasSave) Add("Tiếp tục bản đã lưu", () => session.ContinueSaved(), null, "Bạn quay lại đúng chỗ của bản lưu gần nhất.");
+                if (session.HasSave) Add("Tiếp tục bản đã lưu", () => session.ContinueSaved(), null, session.SaveSummary ?? "Bạn quay lại đúng chỗ của bản lưu gần nhất.");
                 Add("Chơi mới Đêm 1", () => session.StartNewGame(), session.HasSave ? "Nhấn lần nữa để chơi lại từ đầu" : null,
                     session.HasSave ? "Bạn bắt đầu lại Đêm 1 từ lúc 20:56, và bản lưu cũ sẽ bị xóa." : "Bạn bắt đầu Đêm 1 từ lúc 20:56 trong con hẻm.");
             }
@@ -378,6 +381,18 @@ namespace BaGio12.Gameplay
             }
             selected = Mathf.Clamp(selected, 0, items.Count - 1);
             confirmIndex = -1;
+        }
+
+        static bool HasSessionInScene()
+        {
+            foreach (var b in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None)) if (b is IGameSession) return true;
+            return false;
+        }
+
+        public bool HasSettingRow(string name)
+        {
+            if (group == null) Build();
+            return rows.Exists(r => r.name == name);
         }
 
         void Add(string label, Action run, string confirm = null, string about = null) => items.Add(new Item { label = label, run = run, confirm = confirm, about = about });
