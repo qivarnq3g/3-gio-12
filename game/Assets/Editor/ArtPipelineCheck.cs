@@ -50,7 +50,7 @@ public static class ArtPipelineCheck
         foreach (var path in ModelPaths())
         {
             var name = Path.GetFileNameWithoutExtension(path);
-            bool fpsArms = path == ModelImportRules.FpsArmsModel;
+            bool fpsArms = path == ModelImportRules.FpsArmsModel || path == ModelImportRules.RaincoatArmsModel;
             bool lien = path == ModelImportRules.LienModel;
             var root = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             var t = root.transform;

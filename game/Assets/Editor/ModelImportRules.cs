@@ -5,6 +5,7 @@ public class ModelImportRules : AssetPostprocessor
     public const string ModelsRoot = "Assets/Art/Models/";
     public const string TexturesRoot = "Assets/Art/Textures/";
     public const string FpsArmsModel = ModelsRoot + "Characters/char_fps_arms.fbx";
+    public const string RaincoatArmsModel = ModelsRoot + "Characters/char_fps_raincoat.fbx";
     public const string LienModel = ModelsRoot + "Characters/char_landlady_lien.fbx";
 
     public static bool IsTiling(string path) => System.IO.Path.GetFileName(path).StartsWith("T_Tile");
@@ -41,7 +42,7 @@ public class ModelImportRules : AssetPostprocessor
         importer.importVisibility = false;
         importer.materialImportMode = ModelImporterMaterialImportMode.ImportStandard;
         // Preserve explicit material remaps on these animated rigs.
-        if (assetPath == FpsArmsModel || assetPath == LienModel) return;
+        if (assetPath == FpsArmsModel || assetPath == RaincoatArmsModel || assetPath == LienModel) return;
         importer.materialLocation = ModelImporterMaterialLocation.External;
         importer.materialName = ModelImporterMaterialName.BasedOnMaterialName;
         importer.materialSearch = ModelImporterMaterialSearch.Everywhere;

@@ -6,6 +6,16 @@ namespace BaGio12.Gameplay
     [RequireComponent(typeof(Animator))]
     public sealed class FpsArmsAnimator : MonoBehaviour
     {
+        [SerializeField] Renderer raincoatLeftSleeve;
+        [SerializeField] Renderer raincoatRightSleeve;
+        [SerializeField] Renderer raincoatLeftGlove;
+        [SerializeField] Renderer raincoatRightGlove;
+        [SerializeField] Renderer bareLeftArm;
+        [SerializeField] Renderer bareRightArm;
+        [SerializeField] Renderer[] studentBandages;
+
+        int outfit = -2;
+
         static readonly int Idle = Animator.StringToHash("Base Layer.Idle");
         static readonly int Walk = Animator.StringToHash("Base Layer.Walk");
         static readonly int Run = Animator.StringToHash("Base Layer.Run");
@@ -44,6 +54,7 @@ namespace BaGio12.Gameplay
 
         void Update()
         {
+            UpdateOutfit();
             if (player == null || Time.time < pickupUntil) return;
             bool holdingPhone = player.ActivePhone != 0 || (Story != null && Story.CarryingProloguePhone);
             int next = holdingPhone ? HoldPhone : player.IsRunning ? Run : player.IsMoving ? Walk : Idle;
@@ -65,6 +76,27 @@ namespace BaGio12.Gameplay
         {
             if (armsCamera != null && animatedCamera != null)
                 armsCamera.transform.SetPositionAndRotation(animatedCamera.position, animatedCamera.rotation);
+        }
+
+        void UpdateOutfit()
+        {
+            if (raincoatRightSleeve == null) return;
+
+            // The first capture tears the left sleeve. The second leaves the left glove behind.
+            int damage = Story != null && Story.State.stage == NightStage.Prologue
+                ? Story.State.prologue_beaten : -1;
+            if (damage == outfit) return;
+            outfit = damage;
+
+            bool raincoat = damage >= 0;
+            raincoatLeftSleeve.forceRenderingOff = damage != 0;
+            raincoatRightSleeve.forceRenderingOff = !raincoat;
+            raincoatLeftGlove.forceRenderingOff = !raincoat || damage >= 2;
+            raincoatRightGlove.forceRenderingOff = !raincoat;
+            bareLeftArm.forceRenderingOff = raincoat && damage < 2;
+            bareRightArm.forceRenderingOff = raincoat;
+            foreach (var bandage in studentBandages)
+                bandage.forceRenderingOff = raincoat;
         }
     }
 }
