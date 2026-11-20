@@ -24,6 +24,18 @@ namespace BaGio12.Gameplay
         float phase, weight, roll, eye, dip, dipVelocity, baseFov, fov, airSpeed;
         bool wasGrounded = true;
 
+        public const float SpringStep = 1f / 60;
+
+        public static void SettleDip(ref float dip, ref float velocity, float dt)
+        {
+            for (float left = dt; left > 0; left -= SpringStep)
+            {
+                float h = Mathf.Min(SpringStep, left);
+                velocity += (-dip * 160 - velocity * 18) * h;
+                dip += velocity * h;
+            }
+        }
+
         void Awake()
         {
             player = GetComponent<FirstPersonPlayer>();
@@ -48,8 +60,7 @@ namespace BaGio12.Gameplay
             if (grounded && !wasGrounded) dipVelocity -= Mathf.Clamp(airSpeed * .05f, 0, .6f);
             airSpeed = grounded ? 0 : Mathf.Max(airSpeed, -velocity.y);
             wasGrounded = grounded;
-            dipVelocity += (-dip * 160 - dipVelocity * 18) * dt;
-            dip += dipVelocity * dt;
+            SettleDip(ref dip, ref dipVelocity, dt);
 
             bool moving = grounded && Speed > .25f;
             weight = Mathf.MoveTowards(weight, moving ? 1 : 0, dt * (moving ? 4 : 2.5f));

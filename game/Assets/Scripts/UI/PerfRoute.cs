@@ -93,6 +93,9 @@ namespace BaGio12.Gameplay
             if (variant.Contains("vsync")) QualitySettings.vSyncCount = 1;
             if (variant.Contains("cap60")) Application.targetFrameRate = 60;
             if (variant.Contains("half")) Screen.SetResolution(960, 540, FullScreenMode.Windowed);
+            if (variant.Contains("nodust"))
+                foreach (var ps in FindObjectsByType<ParticleSystem>(FindObjectsSortMode.None))
+                    if (ps.name == "Dust") ps.gameObject.SetActive(false);
             foreach (var l in shadowLights)
             {
                 bool lamp = l.type == LightType.Spot && l.name.StartsWith("StreetLamp");

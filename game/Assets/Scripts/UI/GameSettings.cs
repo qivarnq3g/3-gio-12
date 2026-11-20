@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -20,6 +21,20 @@ namespace BaGio12.Gameplay
         public float brightness;
         public int antialiasing = (int)AntialiasingMode.SubpixelMorphologicalAntiAliasing;
         public static readonly string[] AntialiasingNames = { "Tắt", "FXAA", "SMAA", "TAA" };
+
+        public static int[] QualityOrder(int[] levels) => levels.OrderBy(i => QualityRank(QualitySettings.names[i])).ToArray();
+
+        public static int[] QualityOrder() => QualityOrder(Enumerable.Range(0, QualitySettings.names.Length).ToArray());
+
+        public static int DefaultQuality() => QualityOrder().Last();
+
+        public static string QualityLabel(int level)
+        {
+            var name = QualitySettings.names[level];
+            return name == "PC Low" ? "Thấp" : name == "PC" ? "Cao" : name == "Mobile" ? "Di động" : name;
+        }
+
+        static int QualityRank(string name) => name == "Mobile" ? 0 : name == "PC Low" ? 1 : 2;
 
         public GameSettings Copy() => (GameSettings)MemberwiseClone();
 

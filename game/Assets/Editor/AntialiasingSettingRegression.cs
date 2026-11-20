@@ -10,6 +10,7 @@ public static class AntialiasingSettingRegression
     public static void Run()
     {
         int code = 0;
+        int original = QualitySettings.GetQualityLevel();
         try
         {
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -31,9 +32,23 @@ public static class AntialiasingSettingRegression
             }
             new GameSettings { antialiasing = 9 }.Apply(player);
             Check((int)data.antialiasing == GameSettings.AntialiasingNames.Length - 1, "out-of-range choice not clamped");
-            Debug.Log("ANTIALIASING_SETTING_REGRESSION_PASSED");
+            var windows = GameSettings.QualityOrder(QualitySettings.GetActiveQualityLevelsForPlatform("Standalone"));
+            Check(windows.Length == 2 && GameSettings.QualityLabel(windows[0]) == "Thấp" && GameSettings.QualityLabel(windows[1]) == "Cao", "Windows quality levels are not Thấp then Cao");
+            var low = QualitySettings.GetRenderPipelineAssetAt(windows[0]) as UniversalRenderPipelineAsset;
+            var high = QualitySettings.GetRenderPipelineAssetAt(windows[1]) as UniversalRenderPipelineAsset;
+            Check(low != null && high != null && low.renderScale < high.renderScale && low.upscalingFilter == UpscalingFilterSelection.FSR
+                && low.mainLightShadowmapResolution < high.mainLightShadowmapResolution && low.additionalLightsShadowmapResolution < high.additionalLightsShadowmapResolution, "low quality is not cheaper than high");
+            foreach (var level in windows)
+                Check(new SerializedObject(QualitySettings.GetRenderPipelineAssetAt(level)).FindProperty("m_SoftShadowQuality").intValue == (int)SoftShadowQuality.Medium,
+                    "soft shadows of " + QualitySettings.names[level] + " are not Medium");
+            Check(QualitySettings.names[GameSettings.DefaultQuality()] == "PC", "default quality is not PC");
+            QualitySettings.SetQualityLevel(windows[0], true);
+            new BaGio12.Persistence.GamePreferences().Apply(player);
+            Check(QualitySettings.GetQualityLevel() == windows[1], "fresh preferences did not select Cao");
+            Debug.Log("ANTIALIASING_SETTING_REGRESSION_PASSED quality_windows=" + string.Join(",", Array.ConvertAll(windows, i => QualitySettings.names[i])));
         }
         catch (Exception error) { Debug.LogException(error); code = 1; }
+        finally { QualitySettings.SetQualityLevel(original, true); }
         EditorApplication.Exit(code);
     }
 
