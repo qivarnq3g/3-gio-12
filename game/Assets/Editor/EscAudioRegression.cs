@@ -34,7 +34,7 @@ public static class EscAudioRegression
             Environment.SetEnvironmentVariable("THREEGIO12_DATA_ROOT",
                 Path.GetFullPath(Path.Combine("Library", SessionKey, Guid.NewGuid().ToString("N"))));
             Environment.SetEnvironmentVariable("THREEGIO12_SKIP_START_MENU", "1");
-            EditorSceneManager.OpenScene("Assets/Scenes/Night01/NightOneGraybox.unity");
+            EditorSceneManager.OpenScene("Assets/Scenes/Night01/NightOneRealistic.unity");
             SessionState.SetBool(SessionKey, true);
             EditorApplication.playModeStateChanged += Changed;
             EditorApplication.EnterPlaymode();
