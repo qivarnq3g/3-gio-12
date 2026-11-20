@@ -1,3 +1,4 @@
+using BaGio12.Gameplay;
 using UnityEngine;
 namespace BaGio12.Story
 {
@@ -11,6 +12,13 @@ namespace BaGio12.Story
 
         void Start()
         {
+            if (director != null && director.player.GetComponentInChildren<FpsArmsAnimator>(true) != null)
+            {
+                if (view != null) view.SetActive(false);
+                enabled = false;
+                return;
+            }
+
             if (view != null) rest = view.transform.localPosition;
             if (director != null) last = director.player.transform.position;
         }
@@ -18,7 +26,7 @@ namespace BaGio12.Story
         void LateUpdate()
         {
             if (director == null || view == null) return;
-            bool show = director.State.stage == NightStage.Prologue && !director.State.phonePlaced;
+            bool show = director.CarryingProloguePhone;
             if (view.activeSelf != show) view.SetActive(show);
             var p = director.player.transform.position;
             float speed = Time.deltaTime > 0 ? new Vector2(p.x - last.x, p.z - last.z).magnitude / Time.deltaTime : 0;

@@ -68,6 +68,8 @@ Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** c
 
 Tay FPS dùng URP Lit và camera tham chiếu trong FBX để lấy chuyển động cúi khi nhặt vật. File Blender nguồn được quản lý riêng theo quy ước lưu nguồn trên Drive nhóm.
 
+| `Models/Characters/char_landlady_lien.fbx`, `Textures/T_Lien*.png` | Xuất nhân vật cô Liên, chổi và các đoạn animation từ bản dựng Blender 5.2 của nhóm. Ảnh vân được bake từ vật liệu của bản dựng. | Của nhóm | 20/11/2026 |
+
 # Phông chữ
 
 | Tệp | Nguồn | Giấy phép | Ngày |

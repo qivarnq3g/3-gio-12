@@ -1,3 +1,4 @@
+using BaGio12.Story;
 using UnityEngine;
 
 namespace BaGio12.Gameplay
@@ -15,6 +16,8 @@ namespace BaGio12.Gameplay
         public Camera armsCamera;
         public Transform animatedCamera;
         Animator animator;
+        MeshRenderer phone;
+        internal NightOneDirector Story { get; set; }
         float pickupDuration;
         float pickupUntil;
         int state;
@@ -22,6 +25,8 @@ namespace BaGio12.Gameplay
         void Awake()
         {
             animator = GetComponent<Animator>();
+            phone = System.Array.Find(GetComponentsInChildren<MeshRenderer>(true), r => r.name == "prop_ngan_phone");
+            if (phone != null) phone.forceRenderingOff = true;
             if (player == null) player = GetComponentInParent<FirstPersonPlayer>();
             pickupDuration = System.Array.Find(animator.runtimeAnimatorController.animationClips, clip => clip.name == "PickUp").length;
         }
@@ -34,12 +39,14 @@ namespace BaGio12.Gameplay
             pickupUntil = Time.time + pickupDuration;
             animator.Play(PickUp, 0, 0);
             state = PickUp;
+            if (phone != null) phone.forceRenderingOff = true;
         }
 
         void Update()
         {
             if (player == null || Time.time < pickupUntil) return;
-            int next = player.ActivePhone != 0 ? HoldPhone : player.IsRunning ? Run : player.IsMoving ? Walk : Idle;
+            bool holdingPhone = player.ActivePhone != 0 || (Story != null && Story.CarryingProloguePhone);
+            int next = holdingPhone ? HoldPhone : player.IsRunning ? Run : player.IsMoving ? Walk : Idle;
             if (next == state) return;
             if ((state == Walk || state == Run) && (next == Walk || next == Run))
             {
@@ -51,6 +58,7 @@ namespace BaGio12.Gameplay
                 animator.CrossFadeInFixedTime(next, .10f);
             }
             state = next;
+            if (phone != null) phone.forceRenderingOff = state != HoldPhone;
         }
 
         void LateUpdate()

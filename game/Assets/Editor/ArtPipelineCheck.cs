@@ -51,20 +51,22 @@ public static class ArtPipelineCheck
         {
             var name = Path.GetFileNameWithoutExtension(path);
             bool fpsArms = path == ModelImportRules.FpsArmsModel;
+            bool lien = path == ModelImportRules.LienModel;
             var root = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             var t = root.transform;
             if (t.localScale != Vector3.one) failures.Add(path + ": root scale " + t.localScale);
             if (Quaternion.Angle(t.localRotation, Quaternion.identity) > 0.01f) failures.Add(path + ": root rotation " + t.localRotation.eulerAngles);
             foreach (Transform child in t)
-                // The FPS FBX keeps per-child axis conversion to match its animated camera and skin.
-                if (child.localScale != Vector3.one ||
-                    (!fpsArms && Quaternion.Angle(child.localRotation, Quaternion.identity) > 0.01f))
+                // The cô Liên FBX retains child bind transforms for its skinned meshes.
+                if (!lien && (child.localScale != Vector3.one ||
+                    (!fpsArms && Quaternion.Angle(child.localRotation, Quaternion.identity) > 0.01f)))
                     failures.Add(path + ": child " + child.name + " rotation " + child.localRotation.eulerAngles + " scale " + child.localScale);
             var renderers = root.GetComponentsInChildren<Renderer>();
             if (renderers.Length == 0) { failures.Add(path + ": no renderer"); continue; }
             var bounds = renderers[0].bounds;
             foreach (var r in renderers) bounds.Encapsulate(r.bounds);
-            if (!IsEnvironment(path) && !fpsArms && Mathf.Abs(bounds.min.y) > 0.01f) failures.Add(path + ": pivot not at floor, min y " + bounds.min.y.ToString("F3"));
+            float floor = lien ? IdleFloor(root, path) : bounds.min.y;
+            if (!IsEnvironment(path) && !fpsArms && Mathf.Abs(floor) > 0.01f) failures.Add(path + ": pivot not at floor, min y " + floor.ToString("F3"));
             if (bounds.size.y < 0.01f || bounds.size.y > 30f) failures.Add(path + ": height " + bounds.size.y.ToString("F3") + " m");
             foreach (var mf in root.GetComponentsInChildren<MeshFilter>())
                 if (mf.sharedMesh == null || mf.sharedMesh.uv.Length == 0)
@@ -84,6 +86,31 @@ public static class ArtPipelineCheck
         }
         CheckTextures(failures);
         return failures;
+    }
+
+    static float IdleFloor(GameObject model, string path)
+    {
+        // Animated bounds include the lowered broom and foot motion outside the standing pose.
+        var instance = UnityEngine.Object.Instantiate(model);
+        var baked = new Mesh();
+        try
+        {
+            foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(path))
+                if (asset is AnimationClip clip && clip.name == "Idle") { clip.SampleAnimation(instance, 0f); break; }
+            float min = float.PositiveInfinity;
+            foreach (var renderer in instance.GetComponentsInChildren<SkinnedMeshRenderer>())
+            {
+                renderer.BakeMesh(baked);
+                foreach (var vertex in baked.vertices)
+                    min = Mathf.Min(min, renderer.transform.TransformPoint(vertex).y);
+            }
+            return min;
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(baked);
+            UnityEngine.Object.DestroyImmediate(instance);
+        }
     }
 
     static Texture BaseMap(Material m) => m != null && m.HasProperty("_BaseMap") ? m.GetTexture("_BaseMap") : null;
