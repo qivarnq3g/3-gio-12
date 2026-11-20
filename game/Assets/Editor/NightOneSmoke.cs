@@ -98,6 +98,14 @@ public static class NightOneSmoke
                     Require(story.State.bikeArrived && story.player.SprintAllowed,"bike arrival did not restore control");
                     story.Act(NightAction.ParkBike);story.Act(NightAction.Phone);
                     Require(story.HasNgan && story.State.messages.Count==6,"pickup/batch A");
+                    var nganPhone = BaGio12.Prototype.PhonePrototype.Instance;
+                    Require(nganPhone!=null && nganPhone.IsOpen && nganPhone.HasDelivered("A"),"picking up the phone did not open the prototype with batch A");
+                    story.player.SetPhone(2);
+                    Require(story.player.ActivePhone==2 && !nganPhone.IsOpen,"student phone opened the Ngân prototype");
+                    story.player.SetPhone(1);
+                    Require(story.player.ActivePhone==1 && nganPhone.IsOpen,"switching back did not open the Ngân prototype");
+                    nganPhone.RefusePasscode();
+                    Require(story.Subtitle=="Máy người ta, đặt mã lỡ người ta không mở được.","refusal to set lock code missing");
                     Require(story.State.notebook.Count==1,"odometer notebook entry");
                     story.Send("camera:yes","Có, tiệm đầu hẻm.");Require(!story.State.linh_knows_shop_camera,"camera answer gate bypassed");
                     story.player.SetPhone(0);story.Act(NightAction.Camera);
@@ -116,9 +124,9 @@ public static class NightOneSmoke
                     story.Act(NightAction.Deposit);story.Act(NightAction.Bag);
                     story.player.SetPhone(1);story.Send("why","Vì sao máy ở nhà xe?");
                     Require(story.State.clock=="21:26" && story.State.timeJumped,"six-minute jump missing");
-                    Require(story.State.messages.Any(x=>x.Contains(story.Dialogue.batchB)),"batch B missing");
+                    Require(story.State.messages.Any(x=>x.Contains(story.Dialogue.batchB)),"batch B missing");Require(BaGio12.Prototype.PhonePrototype.Instance==null||BaGio12.Prototype.PhonePrototype.Instance.HasDelivered("B"),"prototype missing batch B");
                     int count=story.State.messages.Count;story.JumpTime();Require(count==story.State.messages.Count,"time jump duplicated batch");
-                    story.player.SetPhone(0);story.ArriveStranger();story.ChooseNumber("blocked");
+                    story.player.SetPhone(0);story.ArriveStranger();story.ChooseNumber("blocked");Require(BaGio12.Prototype.PhonePrototype.Instance==null||BaGio12.Prototype.PhonePrototype.Instance.HasDelivered("C"),"prototype missing batch C");
                     story.WaitUntilLate();story.Rest(true);next=EditorApplication.timeSinceStartup+2.5;return;
                 case 8:
                     Require(story.State.stage==NightStage.Ended && story.State.batchD,"sleep ending missing");
@@ -136,8 +144,20 @@ public static class NightOneSmoke
                     story.State.hasNganPhone=true;story.LeavePhone();Require(story.State.phone_left_count==2,"second leave failed");
                     story.FinishNight();Require(story.State.ending=="bystander","second leave should end at dawn");
                     story.RestoreCheckpoint();story.TogglePower();int before=story.State.messages.Count;story.State.numberArrived=false;story.ArriveStranger();
-                    Require(story.State.messages.Count==before && story.State.pendingMessages.Count>0,"powered-off phone received visible message");
-                    story.TogglePower();Require(story.State.pendingMessages.Count==0 && story.State.messages.Count>before,"power-on did not flush messages");
+                    Require(story.State.messages.Count==before && story.State.pendingMessages.Count>0,"powered-off phone received visible message");Require(BaGio12.Prototype.PhonePrototype.Instance==null||BaGio12.Prototype.PhonePrototype.Instance.IsPoweredOff,"powered-off prototype state missing");
+                    story.TogglePower();Require(story.State.pendingMessages.Count==0 && story.State.messages.Count>before,"power-on did not flush messages");Require(BaGio12.Prototype.PhonePrototype.Instance==null||!BaGio12.Prototype.PhonePrototype.Instance.IsPoweredOff,"power-on prototype state missing");
+                    var phone = BaGio12.Prototype.PhonePrototype.Instance;
+                    Require(phone != null, "phone prototype unavailable for reset regression");
+                    story.ResetPrologue();
+                    story.TogglePower();
+                    story.State.stage = NightStage.Room;
+                    story.JumpTime();
+                    Require(story.State.timeJumped && story.State.pendingMessages.Count > 0,
+                        "batch B was not queued while the phone was off");
+                    Require(phone.IsPoweredOff && !phone.HasDelivered("B"), "batch B appeared while off");
+                    story.ResetPrologue();
+                    Require(!phone.IsPoweredOff && !phone.HasDelivered("B") && story.State.pendingMessages.Count == 0,
+                        "reset carried batch B into a fresh night");
                     Debug.Log("NIGHT_ONE_RUNTIME_VALIDATION_PASSED");Finish(0);return;
             }
             next=EditorApplication.timeSinceStartup+1.5;
