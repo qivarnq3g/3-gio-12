@@ -11,6 +11,8 @@ namespace BaGio12.Story
     public sealed partial class NightOneDirector : MonoBehaviour
     {
         public FirstPersonPlayer player;
+        [SerializeField] Animator lienAnimator;
+        static readonly int LienSpeaking = Animator.StringToHash("Speaking");
         public GameObject nganPhone, bag, greyGlove;
         public Light parkingAlertLight;
         public NightPassingBike[] passingBikes;
@@ -82,7 +84,8 @@ namespace BaGio12.Story
             return !Physics.Raycast(light.transform.position,delta.normalized,delta.magnitude,PlayerGeometry.WorldMask,QueryTriggerInteraction.Ignore);
         }
         public bool Hidden => hidingPoints.Any(x => Vector3.Distance(x.position, player.transform.position) < 1.3f) && !player.IsRunning;
-        public bool CanPlace => State.stage == NightStage.Prologue && !State.phonePlaced && !Busy && !observers.Any(x => x.ActiveThreat);
+        public bool CarryingProloguePhone => State.stage == NightStage.Prologue && !State.phonePlaced;
+        public bool CanPlace => CarryingProloguePhone && !Busy && !observers.Any(x => x.ActiveThreat);
         public bool NotebookOpen { get; private set; }
         public bool HasNgan => State.hasNganPhone;
         float subtitleUntil, roomSeconds, immuneUntil;
@@ -110,6 +113,8 @@ namespace BaGio12.Story
         }
         void Start()
         {
+            var arms = player.GetComponentInChildren<FpsArmsAnimator>(true);
+            if (arms != null) arms.Story = this;
             player.showTestHud = false;
             player.CanOpenPhone = phone => !Busy && State.stage != NightStage.Prologue && State.stage != NightStage.Ended && (phone == 2 || State.hasNganPhone);
             player.PhoneChanged += PhoneChanged;
@@ -135,6 +140,8 @@ namespace BaGio12.Story
         {
             if(player.IsPaused)return;
             if (Time.time > subtitleUntil) Subtitle = "";
+            if (lienAnimator != null)
+                lienAnimator.SetBool(LienSpeaking, Subtitle?.StartsWith("Cô Liên", StringComparison.Ordinal) == true && Subtitle.IndexOf(':') >= 0);
             if (HoldProgress > 0) HoldProgress = Mathf.Max(0, HoldProgress - Time.deltaTime * .1f);
             var flat = Vector3.ProjectOnPlane(player.transform.position - lastPlayerPoint, Vector3.up);
             stillSeconds = flat.magnitude < Time.deltaTime * .3f ? stillSeconds + Time.deltaTime : 0;
@@ -248,6 +255,7 @@ namespace BaGio12.Story
                     else
                     {
                         State.hasNganPhone = true;
+                        player.SignalPickup();
                         if (!State.phoneEverPicked)
                         {
                             State.phoneEverPicked = true;

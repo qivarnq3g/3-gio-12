@@ -59,6 +59,18 @@ Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** c
 | `Characters/char_person_*.fbx`, `Textures/T_Person*` | Dựng bằng MPFB 2 (MakeHuman cho Blender) trong Blender 5.2 qua `assets/env/build_people.py`: thân người, da, tóc, quần áo, giày lấy từ thư viện tài sản chuẩn của MakeHuman, nhóm tô lại màu áo quần | CC0 1.0 (tài sản và người xuất ra từ MakeHuman) | 17/11/2026 |
 | `Characters/Animations/UAL1_Standard.fbx` | Universal Animation Library (Standard) của Quaternius (quaternius.com), giữ nguyên tệp; dùng các đoạn Idle, Walk, Jog, Sprint | CC0 1.0 | 17/11/2026 |
 
+## Tay FPS Đêm 1 (#16)
+
+| Asset | Nguồn | Giấy phép | Ngày |
+|---|---|---|---|
+| `Models/Characters/char_fps_arms.fbx` | Nhóm dựng tay, băng và rig trong Blender 5.2, có các clip `Idle`, `Walk`, `Run`, `HoldPhone`, `PickUp` và bản lưu `Walk_before_mirror`. Điện thoại là biến thể mô hình máy Ngân do nhóm dựng. | Của nhóm | 19/11/2026 |
+| `Textures/T_Fps*.png` | Màu da, băng và bản đồ vật liệu điện thoại do nhóm tạo. Kích thước tối đa 1024; bản đồ metallic/smoothness là dữ liệu tuyến tính. | Của nhóm | 19/11/2026 |
+
+Tay FPS dùng URP Lit và camera tham chiếu trong FBX để lấy chuyển động cúi khi nhặt vật. File Blender nguồn được quản lý riêng theo quy ước lưu nguồn trên Drive nhóm.
+
+| `Models/Characters/char_landlady_lien.fbx`, `Textures/T_Lien*.png` | Xuất nhân vật cô Liên, chổi và các đoạn animation từ bản dựng Blender 5.2 của nhóm. Ảnh vân được bake từ vật liệu của bản dựng. | Của nhóm | 20/11/2026 |
+| `Models/Characters/char_fps_raincoat.fbx`, `Textures/T_TileFpsRaincoat*.png` | Xuất tay áo mưa và găng từ bản dựng Blender 5.2 của nhóm, dùng cùng rig tay FPS. Texture bake từ vật liệu áo mưa và găng trong bản dựng. | Của nhóm | 20/11/2026 |
+
 # Phông chữ
 
 | Tệp | Nguồn | Giấy phép | Ngày |
