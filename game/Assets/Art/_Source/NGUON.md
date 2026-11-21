@@ -70,17 +70,17 @@ Ngày dựng: 18/11/2026. Nhóm tự dựng lưới bằng script Python `tools/
 | `prop_collapsible_gate_shop.fbx` | Đặc tả issue #96: bộ cửa vừa ô 3,20 × 2,60 m; bước thanh U 0,10 m; ba dải nan cao 0,18 m | Ảnh cửa xếp cửa hàng trên đường Nguyễn An Ninh, lưu trên Drive nhóm (không đưa vào repo) | Tiết diện U thực, nan chéo ngắn hai lớp, đinh tán, ray trên/dưới, bánh dẫn, hai đố giữa, tay nắm, bát khóa và khóa; không dựng biển hoặc nhãn hiệu cửa hàng |
 | `prop_collapsible_gate_small.fbx` | Đặc tả issue #96: bộ cửa vừa ô 1,20 × 2,20 m; bước U 0,10 m, dải nan 0,18 m | Cùng ảnh cửa xếp trên Drive nhóm | Cùng kết cấu; khung và hai cánh trượt là ba lưới riêng |
 | `prop_curb_ramp_concrete_a.fbx` | Đặc tả issue #96: rộng 1,20 m, sâu 0,50 m, cao 0,15 m | Mô tả trong issue #96; không có ảnh bê tông riêng | Bản mới đúc: mặt khía quả trám sâu 3 mm, hai góc sứt nhỏ bất đối xứng, rãnh thông ngang dưới đáy rộng 55 mm, cao 26 mm |
-| `prop_curb_ramp_concrete_b.fbx` | Đặc tả issue #96: rộng 2,00 m, sâu 0,55 m, cao 0,15 m | Mô tả trong issue #96 | Bản đã dùng: khía mòn còn 2,2 mm, góc sứt lớn hơn, năm vết lõm có mảng ẩm (`M_ConcreteWet`) |
-| `prop_curb_ramp_concrete_c.fbx` | Đặc tả issue #96: rộng 3,00 m, sâu 0,60 m, cao 0,15 m | Mô tả trong issue #96 | Bản cũ: khía mòn còn 1,4 mm, bốn góc sứt, tám vết lõm, mép trước bị mài và mốc đen (`M_WallMoldStain`); dưới 1.000 tam giác |
+| `prop_curb_ramp_concrete_b.fbx` | Đặc tả issue #96: rộng 2,00 m, sâu 0,55 m, cao 0,15 m | Mô tả trong issue #96 | Bản đã dùng: khía mòn còn 2,2 mm, ba góc sứt rộng khoảng 0,13 m (hai góc sau, góc trước phải), năm vết lõm sâu tới 1,8 cm có mảng ẩm (`M_ConcreteWet`) |
+| `prop_curb_ramp_concrete_c.fbx` | Đặc tả issue #96: rộng 3,00 m, sâu 0,60 m, cao 0,15 m | Mô tả trong issue #96 | Bản cũ: khía mòn còn 1,4 mm, bốn góc sứt rộng khoảng 0,21 m, tám vết lõm sâu tới 2,8 cm, mép trước bị mài và mốc đen (`M_WallMoldStain`); dưới 1.000 tam giác |
 | `prop_curb_ramp_rubber.fbx` | Đặc tả issue #96: rộng 0,50 m, sâu 0,25 m, cao 0,15 m | Mô tả trong issue #96; không có ảnh cao su riêng | Khối cao su bo mép, hai lỗ neo, ba vạch vàng và gờ chống trượt |
-| `prop_mattress_room7.fbx` | Mẫu A đã duyệt trong issue #96: thân nệm rộng 1,20 m, dài 1,90 m, dày 0,10 m | Mô tả của người dùng: nệm mút trải sàn bọc ga trơn và một gối; không có ảnh riêng | Ga xanh một màu kéo căng, nếp nhăn chéo ở bốn góc, nếp dồn dọc hai cạnh dài và quanh gối; viền bo và đường may cùng màu, một gối trắng; vùng mặt phẳng trống 0,80 × 0,85 m. Bao gồm gối thì chiều cao toàn model là 0,205 m |
+| `prop_mattress_room7.fbx` | Mẫu A đã duyệt trong issue #96: thân nệm rộng 1,20 m, dài 1,90 m, dày 0,10 m | Mô tả của người dùng: nệm mút trải sàn bọc ga trơn và một gối; không có ảnh riêng | Ga xanh một màu kéo căng, tám nếp ga là gờ tròn nông rộng 4,5–6 cm, nhạt dần về hai đầu: bốn nếp chéo ở bốn góc, hai nếp lõm ở góc đầu nệm, hai nếp quanh gối; viền bo và đường may cùng màu, một gối trắng; vùng mặt phẳng trống 0,80 × 0,85 m. Bao gồm gối thì chiều cao toàn model là 0,205 m |
 
 Nguồn tra cứu cột điện: [trang thông số cột điện ly tâm tiền áp của Thủ Đức - Long An](https://www.thuduclongan.com/productservice/detail/thong-so-ky-thuat-cot-dien-ly-tam-tien-ap-1), liên kết [ảnh catalogue trang 15](https://www.thuduclongan.com/uploads/files/2017/07/04/TDCLA-Catalogue-P15-Pole-Specifications.jpg). Trang HTML đọc được nhưng ảnh bảng gốc chưa tải được trong phiên dựng này. Số liệu triển khai lấy đúng đặc tả người dùng và được đối chiếu với [bảng công bố của Bê tông Thủ Đức 1](https://betongthuduc1.vn/cot-dien-be-tong-cot-thep-ly-tam), có dòng 8.5-200 (8.500 mm, ngọn 160 mm, gốc 255 mm) và 10.5-350 (10.500 mm, ngọn 190 mm, gốc 330 mm). Không coi hai doanh nghiệp là cùng một nguồn.
 
 Ảnh tham chiếu chưa rõ tác giả và giấy phép nên chỉ lưu trên Drive nhóm, không đưa vào repo công khai. Hình học tự dựng, không sao chép chữ, số điện thoại hoặc thương hiệu thật. Chỉ dùng các vật liệu `M_...` đã có trong `Materials/`. Dựng lại bằng:
 
 ```powershell
-& "C:\Program Files\Blender Foundation\Blender 5.2lender.exe" --background --python-exit-code 1 --python tools/generate_issue96_props.py -- --render
+& "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --background --python-exit-code 1 --python tools/generate_issue96_props.py -- --render
 ```
 
 # Phông chữ

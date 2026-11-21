@@ -415,24 +415,28 @@ def concrete(width, depth, wear):
     # Explicit shell: no Boolean on the densely segmented tread boundary.
     # wear 0 new cast, 1 used, 2 old: bigger spalls, eroded tread, sunken pits.
     slope=lambda y:.012+.138*(y/depth+.5)
-    spall=.04+.04*wear
+    spall=.05+.08*wear
     pits=[((math.sin(i*12.9898+wear*78.233)*.5)*width*.9,
            (math.sin(i*39.346+wear*11.135)*.5)*depth*.8,
-           .08+.06*abs(math.sin(i*7.1)), .003+.004*wear) for i in range(2+3*wear) if wear]
+           .20+.08*wear+.06*abs(math.sin(i*7.1)), .008+.010*wear) for i in range(2+3*wear) if wear]
     def erosion(x,y):
         # Zero on the back edge so the 150 mm envelope stays exact.
         back=max(0,(depth/2-y)/depth)
         wave=math.sin(x*9.1+wear)*math.sin(y*13.7+2*wear)
         pit=sum(d*max(0,1-math.hypot(x-px,y-py)/r) for px,py,r,d in pits)
-        return back*(.002*wear*(1+wave))+pit
+        # Cap at half the local thickness so pits never pierce the drain or base.
+        return min(back*(.002*wear*(1+wave))+pit,.5*slope(y))
     verts,faces=[],[]
     boundaries={"front":set(),"back":set(),"left":set(),"right":set()}
     def surface(x,y,drop=0):
         # Small asymmetric corner spalls are part of the silhouette.
         k=max(0,1-(depth/2-y)/spall)*max(0,1-(width/2-abs(x))/spall)
-        f=max(0,1-(y+depth/2)/spall)*max(0,1-(width/2-abs(x))/spall) if wear==2 else 0
-        return (x-math.copysign(.008*(k+f),x),y,
-                slope(y)-drop-(.009 if x<0 else .006)*(1+wear)*k-.004*f-erosion(x,y))
+        f=max(0,1-(y+depth/2)/spall)*max(0,1-(width/2-abs(x))/spall)
+        # Front spalls: both corners on the old ramp, the right one on the used ramp.
+        f*=1 if wear==2 else (wear==1 and x>0)
+        return (x-math.copysign((.008+.03*wear)*(k+f),x),y,
+                # Keep at least 3 mm of concrete at the worn front lip.
+                max(.003,slope(y)-drop-(.009 if x<0 else .006)*(1+3*wear)*k-.012*f-erosion(x,y)))
     sx,sy=.30,.20
     n=math.ceil(width/sx+depth/sy)+2
     for u in range(-n,n):
@@ -548,22 +552,40 @@ def mattress():
     for z in (.023,.076):
         tube("Same_colour_sewn_piping",rounded_rect(1.193,1.893,.108,z,12),
              .0025,"M_ClothBlue",6,True)
-    # Fitted-sheet creases: pulled diagonals at each corner, slack folds along
-    # the long sides and a few near the pillow, all outside the flat patch.
-    folds=[]
-    for sx in (-1,1):
-        for sy in (-1,1):
-            for t in (0,1,2):
-                a=(sx*(.6-.012),sy*(.95-.11-.07*t))
-                b=(sx*(.6-.10-.07*t),sy*(.95-.012))
-                folds.append([a,((a[0]+b[0])/2+sx*.008,(a[1]+b[1])/2+sy*.008),b])
-        for y0,y1 in ((-.55,-.25),(-.05,.25),(.4,.62)):
-            folds.append([(sx*.56,y0),(sx*(.5+.015*math.sin(y0*9)),(y0+y1)/2),(sx*.54,y1)])
-    folds += [[(-.42,.34),(-.33,.38),(-.22,.36)],[(.25,.37),(.34,.39),(.43,.35)],
-              [(-.5,-.72),(-.3,-.76),(-.1,-.73)],[(.12,-.75),(.3,-.71),(.47,-.74)]]
-    for i,f in enumerate(folds):
-        pts=[(x,y,.1-.004+(.006 if 0<j<len(f)-1 else 0)) for j,(x,y) in enumerate(f)]
-        tube(f"Sheet_crease_{i:02d}",pts,.008,"M_ClothBlue",6)
+    # Fitted-sheet creases: eight rounded ridges about 1 cm high (cosine cross-section,
+    # height fading to zero at both ends) at the corners and around the pillow,
+    # all outside the flat backpack patch. No sharp edges.
+    folds=[
+        # (start, control, end, width m, height m); kept inside the 1.14 x 1.84 m flat top.
+        ((-.52,-.74),(-.48,-.81),(-.42,-.86),.07,.011),
+        ((.52,-.74),(.48,-.81),(.42,-.86),.07,.011),
+        ((-.52,.72),(-.48,.79),(-.42,.84),.07,.011),
+        ((.52,.72),(.48,.79),(.42,.84),.07,.011),
+        ((-.53,.50),(-.47,.62),(-.40,.72),.07,.009),
+        ((.53,.50),(.47,.62),(.40,.72),.07,.009),
+        ((-.36,.34),(-.18,.39),(.0,.36),.07,.010),
+        ((.08,.37),(.24,.40),(.38,.35),.07,.010),
+    ]
+    for i,(a,c,b,w,h) in enumerate(folds):
+        rows,cols=14,7
+        verts,faces=[],[]
+        for r in range(rows):
+            t=r/(rows-1)
+            px=(1-t)**2*a[0]+2*t*(1-t)*c[0]+t*t*b[0]
+            py=(1-t)**2*a[1]+2*t*(1-t)*c[1]+t*t*b[1]
+            dx=2*(1-t)*(c[0]-a[0])+2*t*(b[0]-c[0])
+            dy=2*(1-t)*(c[1]-a[1])+2*t*(b[1]-c[1])
+            n=math.hypot(dx,dy); nx,ny=-dy/n,dx/n
+            for k in range(cols):
+                s_=k/(cols-1)*2-1
+                bump=h*math.sin(math.pi*t)**1.5*(.5+.5*math.cos(math.pi*s_))
+                # Lift 0.4 mm so the flat ridge rim never z-fights the sheet.
+                verts.append((px+nx*s_*w/2,py+ny*s_*w/2,.1004+bump))
+        for r in range(rows-1):
+            for k in range(cols-1):
+                q=r*cols+k
+                faces.append((q,q+1,q+cols+1,q+cols))
+        mesh(f"Sheet_crease_{i:02d}",verts,faces,"M_ClothBlue",True)
     ellipsoid("Single_white_pillow",(0,.63,.1525),(.62,.40,.105),
               "M_PaperWhite",40,20,exponent=.42)
     return {"mattress_body_m":[1.2,.1,1.9],"pillow_count":1,
@@ -798,7 +820,7 @@ def main():
         offset=normalize(stem)
         before=stats()
         if "nominal_m" in details:
-            assert max(abs(a-b) for a,b in zip(before["dimensions_unity_m"],details["nominal_m"]))<1e-5
+            assert max(abs(a-b) for a,b in zip(before["dimensions_unity_m"],details["nominal_m"]))<1e-5,(stem,before["dimensions_unity_m"])
         if "opening_m" in details:
             assert max(abs(a-b) for a,b in zip(before["dimensions_unity_m"][:2],details["opening_m"]))<1e-5
         if "shaft_m" in details:
