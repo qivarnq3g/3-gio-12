@@ -72,3 +72,6 @@ Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** c
 | Tệp | Nguồn | Giấy phép | Ngày |
 |---|---|---|---|
 | `Resources/Audio/Footsteps/footstep_concrete_000.ogg` đến `_004.ogg` | Gói Impact Sounds của Kenney (kenney.nl/assets/impact-sounds), giữ nguyên tệp | CC0 1.0, không cần ghi tên | 03/11/2026 |
+
+| Ba lô phòng 7 và đồ bên trong (#24): prop_backpack_room7_closed.fbx, prop_backpack_room7_open.fbx, prop_charging_cable.fbx, prop_face_mask.fbx, prop_medication_blister.fbx, prop_power_bank.fbx, prop_rain_poncho.fbx, prop_rain_poncho_torn.fbx, prop_sun_glove_left.fbx, prop_sun_glove_right.fbx, prop_water_bottle.fbx | Ba lô chỉnh từ mesh Blender do thành viên nhóm cung cấp. Đồ bên trong và biến thể dựng theo kịch bản đêm 1–3. | Asset nội bộ dự án. | 21/11/2026 |
+| T_TileBackpackWeave.png, T_TileBackpackWeave_Normal.png, T_MedicationBlisterLabel.png | Vân vải tạo bằng thuật toán, nhãn vỉ thuốc vẽ theo kịch bản bằng phông Be Vietnam Pro đã có trong repo. | Texture của dự án. Phông SIL OFL 1.1. | 21/11/2026 |
