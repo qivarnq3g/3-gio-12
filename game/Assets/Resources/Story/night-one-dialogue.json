@@ -1,6 +1,7 @@
 {
   "batchA": ["Ai đang cầm máy của Ngân vậy cháu?", "Cô là mẹ Ngân. Con bé đang đi Đà Lạt, giận cô.", "Cô đang ở Bến Tre, chưa lên lấy được.", "Cháu giữ máy giúp cô vài hôm, nhớ sạc giúp cô nhé.", "Cháu đừng đem lên công an, con bé đang làm hồ sơ học bổng.", "Chỗ cháu nhặt máy có camera không cháu?"],
   "batchB": "Cô cảm ơn cháu đã giữ máy giúp.",
+  "batchBSilent": "Cháu ơi, cháu còn giữ máy của Ngân không? Cháu nhắn cô một tiếng nhé.",
   "cameraYes": "Cô biết rồi, tiệm đầu hẻm phải không cháu.",
   "cameraNo": "Ừ, cô hiểu rồi cháu.",
   "why": "Con bé cố tình bỏ máy lại vì giận cô.",

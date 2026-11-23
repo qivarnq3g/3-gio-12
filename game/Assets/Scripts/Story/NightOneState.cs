@@ -59,6 +59,6 @@ namespace BaGio12.Story
     [Serializable] public sealed class NightDialogue
     {
         public string[] batchA;
-        public string batchB, cameraYes, cameraNo, why, warning, stranger, batchD, callReply;
+        public string batchB, batchBSilent, cameraYes, cameraNo, why, warning, stranger, batchD, callReply;
     }
 }
