@@ -18,7 +18,26 @@ namespace BaGio12.Gameplay
         float nextRefresh, smoothedFrame = 1 / 60f;
         bool visible;
 
-        void Awake() { player = GetComponent<FirstPersonPlayer>(); }
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern short GetAsyncKeyState(int virtualKey);
+        bool windowsF3Down;
+#endif
+        InputAction toggleAction;
+        bool shortcutRequested;
+        float nextShortcut;
+
+        void Awake()
+        {
+            player = GetComponent<FirstPersonPlayer>();
+            toggleAction = new InputAction("Toggle readout", InputActionType.Button, "<Keyboard>/f3");
+            toggleAction.AddBinding("<Keyboard>/backquote");
+            toggleAction.AddBinding("<Keyboard>/f1");
+            toggleAction.performed += _ => shortcutRequested = true;
+        }
+
+        void OnEnable() => toggleAction.Enable();
+        void OnDisable() => toggleAction.Disable();
+        void OnDestroy() => toggleAction.Dispose();
 
         void Start()
         {
@@ -42,8 +61,22 @@ namespace BaGio12.Gameplay
         void Update()
         {
             smoothedFrame = Mathf.Lerp(smoothedFrame, Time.unscaledDeltaTime, .05f);
-            if (!player.IsPaused && Keyboard.current?.f3Key.wasPressedThisFrame == true)
+            // The low-level hook and the Windows key state catch F3 when the Input System device misses a quick tap.
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            shortcutRequested |= PhysicalKeyboardHook.ConsumeReadoutToggle();
+#endif
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+            bool f3Down = (GetAsyncKeyState(0x72) & 0x8000) != 0;
+            shortcutRequested |= Application.isFocused && f3Down && !windowsF3Down;
+            windowsF3Down = f3Down;
+#endif
+            // The same press can arrive from several sources on neighbouring frames.
+            if (shortcutRequested && !player.IsPaused && Time.unscaledTime >= nextShortcut)
+            {
                 visible = !visible;
+                nextShortcut = Time.unscaledTime + .075f;
+            }
+            shortcutRequested = false;
 
             bool show = visible && !player.IsPaused;
             if (canvas.gameObject.activeSelf != show)
