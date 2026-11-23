@@ -37,4 +37,6 @@ THREEGIO12_DATA_ROOT=/tmp/3gio12-realistic-review /path/to/Unity \
   -logFile /tmp/3gio12-realistic-review.log
 ```
 
+`NightOneSmoke.Run` mở `NightOneRealistic` với `-batchmode -nographics` đã đạt `NIGHT_ONE_RUNTIME_VALIDATION_PASSED`, exit 0. Đây là kiểm tra API/logic Đêm 1. Lần chạy có giao diện trước đó không kết thúc sau hơn bốn phút và đã dừng; chưa có xác nhận hình ảnh/input hay chơi xuyên ba đêm.
+
 Các kết quả `NightTwoMorningRegression.Write/Read` cũ thuộc cảnh thô, không chứng minh bản chuyển này đạt. Cần chuyển lại các fixture sau khi có model. Tiếp theo phải kiểm E/raycast thực tế, đi xe hai chiều, save/continue qua tiến trình mới, cổng/cầu thang/phòng 7, ráp kệ từng tầng, thử đèn, nghỉ tới 21:00, HUD ở nhiều tỉ lệ màn hình; sau đó tích hợp #85/#90 và build `PlaytestBuild.NightOneReal` để chơi xuyên ba đêm.
