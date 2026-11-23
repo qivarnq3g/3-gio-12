@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using BaGio12.Gameplay;
 using BaGio12.Persistence;
 using BaGio12.Story;
 using BaGio12.Stealth;
@@ -24,7 +25,7 @@ public static class SaveProgressRegression
     public static void Read() { SessionState.SetBool("SaveProgressMenu", false); Run(true); }
     static void Run(bool read)
     {
-        string root = Environment.GetEnvironmentVariable("THREEGIO12_DATA_ROOT");
+        string root = System.Environment.GetEnvironmentVariable("THREEGIO12_DATA_ROOT");
         if (string.IsNullOrEmpty(root) || Path.GetFullPath(root).StartsWith(Application.persistentDataPath))
             throw new Exception("Set THREEGIO12_DATA_ROOT to an isolated test directory.");
         if (!read) StorageCases(root + "-storage");
@@ -104,8 +105,12 @@ public static class SaveProgressRegression
                     Check(story.State.clock == "21:35" && story.State.pendingMessages.Count > 0, "fixture not constructed");
                     next = EditorApplication.timeSinceStartup + 3; return;
                 }
+                var summary = persistence.SaveSummary;
+                Check(summary != null && summary.Contains("21:35") && summary.Contains("lưu ngày"), "continue entry has no save time: " + summary);
+                var menu = story.player.GetComponent<PauseMenu>();
+                Check(menu.HasSettingRow("Chất lượng đồ họa") && menu.HasSettingRow("Cảnh báo nội dung"), "session rows missing from settings");
                 Check(persistence.ContinueSaved(), "new process could not continue"); story.player.SetPaused(true);
-                Check(story.State.stage == NightStage.Room && story.State.clock == "21:35" && story.State.prologue_beaten == 2, "state/clock/injury lost");
+                Check(story.State.stage == NightStage.Room && story.State.clock == "21:35" && story.State.prologue_beaten == 2, "state/clock/injury lost: stage=" + story.State.stage + " clock=" + story.State.clock + " beaten=" + story.State.prologue_beaten);
                 Check(Vector3.Distance(story.player.transform.position, story.roomSpawn.position) < .02f && Mathf.Abs(Mathf.DeltaAngle(story.player.transform.eulerAngles.y, 73)) < .01f, "pose lost: actual=" + story.player.transform.position + " expected=" + story.roomSpawn.position + " yaw=" + story.player.transform.eulerAngles.y);
                 Check(story.player.IsCrouched && Mathf.Abs(story.player.ViewPitch - 23) < .01f && story.player.ActivePhone == 1, "view/crouch/phone lost");
                 Check(story.State.phone_powered_off && story.State.pendingMessages.Count > 0 && story.State.sent.Contains("camera:unknown"), "phone queues/choices lost");

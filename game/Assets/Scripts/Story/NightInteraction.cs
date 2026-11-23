@@ -9,9 +9,19 @@ namespace BaGio12.Story
         public string caption;
         NightOneDirector director;
         float heldTime, lastHeld;
+        public const float PlaceSeconds = 4;
         NightOneDirector Director => director != null ? director : director = FindFirstObjectByType<NightOneDirector>();
-        public override string Prompt => action == NightAction.PlacePhone && Director.State.stage == NightStage.Prologue
-            ? (Director.CanPlace ? "Giữ E 2 giây — Đặt máy (cần cúi)" : "Chưa thể đặt máy khi có người nghi/đuổi") : caption;
+        public override string Prompt
+        {
+            get
+            {
+                if (action == NightAction.ParkBike && Director.State.stage == NightStage.Parking) return Director.State.bikeParked ? "Xem lại số đồng hồ xe" : "Cúi xuống xem đồng hồ xe";
+                if (Director.State.stage != NightStage.Prologue) return caption;
+                if (action == NightAction.PlacePhone) return Director.State.phonePlaced ? "" : Director.CanPlace ? "Đặt máy (cúi, giữ 4 giây)" : "Chưa đặt máy được khi có người nghi hay đuổi";
+                if (action == NightAction.ReturnToStart && Director.State.phonePlaced) return caption;
+                return "";
+            }
+        }
         public override void HandleInput(FirstPersonPlayer player, bool pressed, bool held)
         {
             if (action != NightAction.PlacePhone || Director.State.stage != NightStage.Prologue) { base.HandleInput(player, pressed, held); return; }
@@ -22,9 +32,9 @@ namespace BaGio12.Story
             if (Director.ExposedWhilePlacing()) { heldTime = 0; return; }
             if (!Director.CanPlace) { heldTime = 0; return; }
             heldTime += Time.deltaTime;
-            Director.HoldProgress = heldTime / 2;
-            if (heldTime >= 2) { heldTime = 0; Director.PlacePhone(); }
+            Director.HoldProgress = heldTime / PlaceSeconds;
+            if (heldTime >= PlaceSeconds) { heldTime = 0; Director.PlacePhone(); }
         }
-        public override void Interact(FirstPersonPlayer player) { Director.Act(action); }
+        public override void Interact(FirstPersonPlayer player) { if (!string.IsNullOrEmpty(Prompt)) Director.Act(action); }
     }
 }
