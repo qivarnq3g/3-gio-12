@@ -10,9 +10,12 @@ namespace BaGio12.Stealth
     {
         public NightOneDirector director;
         public string displayName;
-        public bool child, flashlight, stationary, startsDormant, irregularLook, once, patrol;
+        public bool child, flashlight, stationary, startsDormant, irregularLook, once, patrol, staysAfterPrologue;
         public float interval = 20, watchDuration = 5, startDelay;
         public float range = 8, fieldOfView = 90;
+        public Vector3 patrolOffset = new Vector3(-1.3f, 0, 0);
+        public float chaseSpeed = 4.6f, searchSpeed = 2.4f;
+        public Vector3? guardPoint;
         public float Attention { get; private set; }
         public ObserverMode Mode { get; private set; }
         public bool ActiveThreat => Mode == ObserverMode.Suspicious || Mode == ObserverMode.Chasing || Mode == ObserverMode.Searching;
@@ -30,9 +33,10 @@ namespace BaGio12.Stealth
             || (ActiveThreat && once && director.PrologueDeparted && director.PrologueElapsed >= startDelay));
         void RefreshPresentation()
         {
-            bool present = IsPresent && Mode != ObserverMode.Inactive;
+            bool present = (IsPresent && Mode != ObserverMode.Inactive)
+                || (staysAfterPrologue && director != null && director.State.stage != NightStage.Prologue && director.State.stage != NightStage.Ended);
             foreach (var visual in visuals) visual.enabled = present;
-            if (torch != null) torch.enabled = present && Mode == ObserverMode.Chasing && director.State.stage == NightStage.Prologue && !director.State.phonePlaced;
+            if (torch != null) torch.enabled = present && (Mode == ObserverMode.Chasing || Mode == ObserverMode.Searching) && director.State.stage == NightStage.Prologue;
         }
         void Start()
         {
@@ -46,7 +50,9 @@ namespace BaGio12.Stealth
                 var lamp=new GameObject("Flashlight beam");lamp.transform.SetParent(transform,false);lamp.transform.localPosition=Vector3.up*1.4f;
                 torch=lamp.AddComponent<Light>();torch.type=LightType.Spot;torch.range=5;torch.spotAngle=24;torch.intensity=3;torch.enabled=false;
             }
-            if (agent != null) { agent.speed = 3.8f; agent.angularSpeed = 360; agent.stoppingDistance = .65f; }
+            if (agent != null) { agent.speed = searchSpeed; agent.angularSpeed = 360; agent.stoppingDistance = .65f; }
+            if (agent != null && agent.isActiveAndEnabled && !agent.isOnNavMesh) { agent.enabled = false; agent.enabled = true; }
+            if (agent != null && agent.isActiveAndEnabled && !agent.isOnNavMesh) Debug.LogWarning("Observer off NavMesh: " + name);
         }
         void Update()
         {
@@ -54,8 +60,11 @@ namespace BaGio12.Stealth
             float scheduleTime=once && director.State.prologue_beaten==0 ? director.PrologueElapsed : elapsed;
             bool scheduledVisible = IsPresent;
             RefreshPresentation();
-            if (director == null || director.player.IsPaused || director.State.stage != NightStage.Prologue || director.State.phonePlaced || Mode == ObserverMode.Inactive || director.Busy)
-            { Stop(); return; }
+            if (director == null || director.player.IsPaused || director.State.stage != NightStage.Prologue || Mode == ObserverMode.Inactive || director.Busy || !director.PrologueDeparted)
+            {
+                if (director != null && !director.player.IsPaused && director.State.stage == NightStage.Prologue && !director.PrologueDeparted && ActiveThreat) ReturnHome();
+                Stop(); return;
+            }
             if (!scheduledVisible)
             {
                 if (ActiveThreat) ReturnHome();
@@ -72,7 +81,7 @@ namespace BaGio12.Stealth
                 if(once && director.State.prologue_beaten==0)watching=director.PrologueDeparted && scheduleTime>=startDelay && scheduleTime<startDelay+watchDuration;
                 if(irregularLook && elapsed>=nextRandom) {watchUntil=elapsed+3;nextRandom=elapsed+UnityEngine.Random.Range(8f,15f);}
                 if(irregularLook)watching=elapsed<watchUntil;
-                if(patrol)Travel(home+new Vector3(watching?-1.3f:0,0,0));
+                if(patrol)Travel(home+(watching?patrolOffset:Vector3.zero));
                 if (patrol && agent != null && agent.velocity.sqrMagnitude > .01f)
                     transform.rotation = Quaternion.LookRotation(new Vector3(agent.velocity.x, 0, agent.velocity.z));
                 else transform.rotation = Quaternion.Slerp(transform.rotation, homeRotation * Quaternion.Euler(0,watching ? 0 : 180,0),Time.deltaTime*5);
@@ -88,8 +97,9 @@ namespace BaGio12.Stealth
             if (visible)
             {
                 lastSeen = director.player.transform.position;
-                float factor = (director.Dark || director.player.IsCrouched ? .5f : 1) * (director.player.IsRunning ? 2 : 1);
-                Attention = Mathf.Clamp01(Attention + Time.deltaTime*factor/1.5f);
+                float factor = director.Conspicuousness(this);
+                if (factor > 0) Attention = Mathf.Clamp01(Attention + Time.deltaTime*factor/1.5f);
+                else Attention = Mathf.Max(0, Attention-Time.deltaTime/3);
                 if (Attention >= 1 && (Mode == ObserverMode.Normal || (Mode == ObserverMode.Suspicious && !lastVisible))) Detect(false);
                 if (Mode == ObserverMode.Searching) Change(ObserverMode.Chasing);
             }
@@ -102,12 +112,14 @@ namespace BaGio12.Stealth
             }
             if (Mode == ObserverMode.Chasing)
             {
+                if (agent != null) agent.speed = chaseSpeed;
                 if (visible) Travel(lastSeen); else Change(ObserverMode.Searching);
                 if (Vector3.Distance(transform.position, director.player.transform.position) < 1.2f && HasUnobstructedPathToPlayer()) director.Caught();
             }
             if (Mode == ObserverMode.Searching)
             {
-                Travel(lastSeen);
+                if (agent != null) agent.speed = guardPoint.HasValue ? chaseSpeed : searchSpeed;
+                Travel(guardPoint ?? lastSeen);
                 if (modeTime > 20) ReturnHome();
                 if (agent != null && agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance < 1) transform.Rotate(0,30*Time.deltaTime,0);
             }
@@ -128,7 +140,7 @@ namespace BaGio12.Stealth
         }
         public bool CanSeePlayer()
         {
-            if (director == null || Mode == ObserverMode.Inactive || director.State.phonePlaced || director.State.stage != NightStage.Prologue) return false;
+            if (director == null || Mode == ObserverMode.Inactive || director.State.stage != NightStage.Prologue || !director.PrologueDeparted) return false;
             if (!IsPresent || (!once && elapsed < startDelay)) return false;
             var origin = transform.position + Vector3.up*1.5f;
             var destination = director.player.eyes.transform.position;
@@ -138,21 +150,28 @@ namespace BaGio12.Stealth
         }
         public void Detect(bool placement)
         {
-            if (director == null || Mode == ObserverMode.Inactive || director.State.stage != NightStage.Prologue || director.State.phonePlaced) return;
+            if (director == null || Mode == ObserverMode.Inactive || director.State.stage != NightStage.Prologue) return;
             if(stationary) {director.Shout(this);Attention=0;return;}
             if (child)
-            { director.Shout(this); Change(ObserverMode.Inactive); return; }
+            {
+                if (placement || director.InParking) director.Shout(this); else director.Suspect(this, true);
+                Change(ObserverMode.Inactive); return;
+            }
             lastSeen = director.player.transform.position;
-            Change(placement || director.InParking || Mode == ObserverMode.Suspicious ? ObserverMode.Chasing : ObserverMode.Suspicious);
+            bool chase = placement || director.InParking || Mode == ObserverMode.Suspicious;
+            if (!chase && Mode == ObserverMode.Normal) director.Suspect(this, false);
+            Change(chase ? ObserverMode.Chasing : ObserverMode.Suspicious);
         }
         void Change(ObserverMode mode)
         {
             if (Mode == mode) return;
             Mode = mode; modeTime = 0;
             if (mode == ObserverMode.Chasing) director.Shout(this);
+            if (mode != ObserverMode.Searching) guardPoint = null;
+            if (agent != null) agent.speed = mode == ObserverMode.Chasing ? chaseSpeed : searchSpeed;
         }
-        public bool CanHear => director != null && Mode == ObserverMode.Normal && director.State.stage == NightStage.Prologue
-            && !director.State.phonePlaced && IsOnSchedule(director.PrologueElapsed, director.PrologueDeparted, director.State.prologue_beaten);
+        public bool CanHear => director != null && Mode == ObserverMode.Normal && director.State.stage == NightStage.Prologue && director.PrologueDeparted
+            && IsOnSchedule(director.PrologueElapsed, director.PrologueDeparted, director.State.prologue_beaten);
         public void Hear(Vector3 point, bool shout)
         {
             if (!CanHear) return;
@@ -161,7 +180,7 @@ namespace BaGio12.Stealth
             else {focusUntil=Time.time+2;transform.rotation = Quaternion.LookRotation(new Vector3(point.x-transform.position.x,0,point.z-transform.position.z));}
         }
         public bool CanHearBreathing => director != null && Mode != ObserverMode.Inactive && director.State.stage == NightStage.Prologue
-            && !director.State.phonePlaced && IsPresent;
+            && IsPresent;
         public void HearBreathing(Vector3 point)
         {
             if (!CanHearBreathing) return;
@@ -170,11 +189,22 @@ namespace BaGio12.Stealth
             var direction = new Vector3(point.x - transform.position.x, 0, point.z - transform.position.z);
             if (direction.sqrMagnitude > .0001f) transform.rotation = Quaternion.LookRotation(direction);
         }
+        public void GuardExit(Vector3 point)
+        {
+            if (!flashlight || stationary || Mode == ObserverMode.Inactive || !IsPresent) return;
+            if (Mode == ObserverMode.Chasing && CanSeePlayer()) return;
+            Change(ObserverMode.Searching); guardPoint = point; lastSeen = point;
+        }
+        public void SearchFrom(Vector3 point)
+        {
+            if (Mode == ObserverMode.Inactive || stationary || child || !IsPresent) return;
+            Change(ObserverMode.Searching); lastSeen = point; modeTime = 6;
+        }
         public void Activate() {Mode=ObserverMode.Normal;elapsed=0;startDelay=0;}
         public void LoseTrail() { if (ActiveThreat) ReturnHome(); }
         void ReturnHome()
         {
-            Mode = ObserverMode.Normal; modeTime = 0; Attention = 0;
+            Mode = ObserverMode.Normal; modeTime = 0; Attention = 0; guardPoint = null;
             if (agent != null && agent.isOnNavMesh) { agent.Warp(home); agent.ResetPath(); }
             transform.rotation = homeRotation;
         }
@@ -187,15 +217,14 @@ namespace BaGio12.Stealth
             if (director != null && director.State.prologue_beaten > 0) { interval=11; watchDuration=6; startDelay=0; }
             if(startsDormant)Mode=ObserverMode.Inactive;
         }
-        void OnGUI()
+        public bool Shown
         {
-            if (Attention <= .01f || director == null || director.Busy || director.player.ActivePhone != 0) return;
-            var p=director.player.eyes.WorldToScreenPoint(transform.position+Vector3.up*2.2f);
-            if(p.z<=0)return;
-            var rect=new Rect(p.x-45,Screen.height-p.y,90,7);
-            GUI.color=Color.black; GUI.DrawTexture(rect,Texture2D.whiteTexture);
-            GUI.color=Mode == ObserverMode.Chasing ? Color.red : Color.yellow;
-            GUI.DrawTexture(new Rect(rect.x,rect.y,rect.width*Attention,rect.height),Texture2D.whiteTexture); GUI.color=Color.white;
+            get
+            {
+                if (visuals == null) return false;
+                foreach (var v in visuals) if (v != null && v.enabled) return true;
+                return false;
+            }
         }
     }
 }
