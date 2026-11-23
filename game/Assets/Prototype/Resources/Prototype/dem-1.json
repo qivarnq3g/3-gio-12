@@ -53,9 +53,17 @@
         },
         {
           "batch": "B",
+          "when": "replied",
           "from": "them",
           "time": "21:26",
           "line": "batchB"
+        },
+        {
+          "batch": "B",
+          "when": "silent",
+          "from": "them",
+          "time": "21:26",
+          "line": "batchBSilent"
         },
         {
           "batch": "B",

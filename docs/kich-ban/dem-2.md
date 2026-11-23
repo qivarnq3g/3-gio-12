@@ -66,7 +66,7 @@ Truy đuổi có bị tóm và chạy trốn của bản nộp (yêu cầu chứ
 1. Xuống nhà xe, bật máy xe: Sổ tay ghi số. Nếu đêm 1 đi ngủ, số đã tăng khoảng 11 km so với 21:00 hôm qua.
 2. Lái ra đường lớn, dừng đèn đỏ một lần (độc thoại một câu về chuyện phòng không có chỗ để đồ).
 3. Cửa hàng đồ gia dụng: cậu nhân viên đang xếp thùng nồi cơm. Chọn kệ nhựa bốn tầng loại ráp được và đèn kẹp bàn màu đen. Trả tiền mặt rút từ túi quần; Sinh viên nghĩ "Còn tiền trong túi quần. Hên." (Sinh viên tin ví rớt hôm té xe; sự thật tiền do Linh để sẵn.)
-4. Chở thùng kệ về, dựng xe cạnh chiếc Wave, tắt máy: Sổ tay ghi số.
+4. Chở thùng kệ về, dựng xe cạnh chiếc Cub, tắt máy: Sổ tay ghi số.
 
 ### 5.3. Màn 3.3: về phòng (09:20)
 
@@ -84,7 +84,7 @@ Truy đuổi có bị tóm và chạy trốn của bản nộp (yêu cầu chứ
    - Cài đặt > Bộ nhớ: "Máy tính · 3,9 GB", cài ngày 05/10. Mở ra là máy tính bình thường. Gõ thử mã rồi bấm "=": không có gì xảy ra, nhưng mỗi lần sai két âm thầm chụp mặt người thử bằng camera trước. Không âm thanh, không đèn. Ở góc nhìn thứ nhất người chơi không thấy ảnh này; ảnh hiện ở đêm 3.
    - Vlog Tết (1 phút 40 giây): bé Na áo dài đỏ đòi lì xì, Ngân giới thiệu "Na, đệ tử ruột", mật hiệu gõ cửa "một cái, rồi hai cái liền".
    - Đoạn chat Ngân và Linh: tin 28/9 "Tao đặt vé ngày 3/12 đấy. Ngày của tụi mình. Để tao nhớ là tao sẽ về." và "ừ."; ba tin Linh nhắn sau 16/11, đều "đã xem", không ai trả lời.
-4. Đi mua cơm: xuống nhà xe. Xe nằm sát vách, đầu quay ra, không phải chỗ cạnh chiếc Wave buổi sáng. Sinh viên nghĩ "Ủa. ... Chắc cô Liên dọn nhà xe." Bật máy: Sổ tay ghi số (nếu đêm 1 đi ngủ hay thức canh đều tăng khoảng 11 km so với 09:20). Lái ra quán cơm, mua cơm, về, tắt máy: Sổ tay ghi số.
+4. Đi mua cơm: xuống nhà xe. Xe nằm sát vách, đầu quay ra, không phải chỗ cạnh chiếc Cub buổi sáng. Sinh viên nghĩ "Ủa. ... Chắc cô Liên dọn nhà xe." Bật máy: Sổ tay ghi số (nếu đêm 1 đi ngủ hay thức canh đều tăng khoảng 11 km so với 09:20). Lái ra quán cơm, mua cơm, về, tắt máy: Sổ tay ghi số.
 5. Cổng lúc về: nếu `lien_saw_morning`, cô Liên nhắc một câu "Căn cước nghen con." Không ẩn nấp ở lượt này.
 6. Trà sữa (chỉ khi đêm 1 đi ngủ và người chơi đã cho số phòng): khoảng 21:10 cô Liên gọi vọng lên cầu thang "Phòng 7 ơi! Có ly trà sữa ai gửi nè". Nếu người chơi đang ở quán cơm, ly để trên bàn cô và cô nói lúc người chơi về tới cổng. Giấy dán trên ly đọc được khi cận: "Ít đường. Trân châu trắng. Cảm ơn cháu. Mẹ Ngân". Lựa chọn 3: uống hay để đó.
    - Sự thật: trà sữa không có thuốc. Linh đặt bằng ứng dụng giao đồ ăn, ghi chú "gửi chủ trọ, khỏi gọi".
