@@ -19,6 +19,7 @@ namespace BaGio12.Persistence
         public bool[] alertLights;
         public bool parkingAlert;
         public ObserverSaveData[] observers;
+        public static readonly string[] Scenes = { "NightOneGraybox", "NightOneRealistic" };
         static bool VectorValid(Vector3 v) => GamePreferences.Finite(v.x) && GamePreferences.Finite(v.y) && GamePreferences.Finite(v.z)
             && Mathf.Abs(v.x) < 1000 && v.y > -10 && v.y < 1000 && Mathf.Abs(v.z) < 1000;
         static bool StateValid(NightOneState s) => s != null && s.schemaVersion == 2 && Enum.IsDefined(typeof(NightStage), s.stage)
@@ -28,7 +29,7 @@ namespace BaGio12.Persistence
             && (!s.nightThreeStarted || (s.nightTwoStarted && NightThreeState.Valid(s.nightThree)));
         public static bool Valid(NightSaveData d)
         {
-            if (d.schemaVersion != 1 || d.scene != "NightOneGraybox" || !StateValid(d.state) || !StateValid(d.checkpointState)
+            if (d.schemaVersion != 1 || Array.IndexOf(Scenes, d.scene) < 0 || !StateValid(d.state) || !StateValid(d.checkpointState)
                 || string.IsNullOrEmpty(d.checkpointId) || !VectorValid(d.position) || !VectorValid(d.checkpointPosition)
                 || !GamePreferences.Finite(d.yaw) || !GamePreferences.Finite(d.pitch) || !GamePreferences.Finite(d.checkpointYaw)
                 || d.pitch < -80 || d.pitch > 80 || d.activePhone < 0 || d.activePhone > 2 || d.observers == null || d.alertLights == null) return false;

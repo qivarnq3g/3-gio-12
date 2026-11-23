@@ -76,7 +76,7 @@ public static class NightOneReviewRegression
                     story.Act(NightAction.ParkBike);story.Act(NightAction.Phone);player.SetPhone(0);story.Act(NightAction.Gate);story.EnterRoom();player.Teleport(story.roomSpawn.position,90);
                     story.Act(NightAction.MoveBag);movedBag=story.bag.transform.position;
                     player.SetPhone(1);story.Send("camera:unknown","Cháu không biết.");
-                    Check(story.State.timeJumped && story.State.clock=="21:26","phone jump failed");
+                    Check(story.State.timeJumped && story.State.clock=="21:26","phone jump failed: stage="+story.State.stage+" parked="+story.State.bikeParked+" arrived="+story.State.bikeArrived+" phone="+story.State.hasNganPhone+" lien="+story.State.helpedLien+" clock="+story.State.clock+" busy="+story.Busy+" inRoom="+story.InRoom+" sent="+string.Join(",",story.State.sent));
                     Check(Vector3.Distance(story.bag.transform.position,movedBag)<.001f && story.State.bagOpen && !story.State.bagMoved,"pre-moved bag teleported or pocket stayed shut");
                     player.SetPhone(0);player.Teleport(story.parkingSpawn.position);story.LeavePhone();
                     Check(story.State.clock=="21:40" && story.State.lienCalled && recalls==1,"first recall missing");
@@ -95,7 +95,7 @@ public static class NightOneReviewRegression
                     story.CloseModal();story.Act(NightAction.Phone);Check(story.AlarmAudible,"picked-up phone alarm did not become audible");story.TogglePower();break;
                 case 5:
                     Check(!story.AlarmAudible,"powered-off alarm still audible");story.StopAlarm();story.CloseModal();story.FinishNight();
-                    story.RestoreCheckpoint();story.State.prologue_beaten=2;story.Act(NightAction.Gate);Check(story.Subtitle.Contains("găng xám"),"Lien glove line missing");
+                    story.RestoreCheckpoint();story.State.prologue_beaten=2;story.State.helpedLien=false;story.Act(NightAction.Gate);Check(story.Conversation.Any(l=>l.Contains("găng xám")),"Lien glove line missing");
                     Check(story.greyGlove.activeSelf,"Lien glove prop missing");
                     var feedback=player.GetComponent<NightInjuryFeedback>();feedback.ProcessMotion(new Vector3(.1f,.1f,0),false);
                     Check(feedback.IsBreathing,"injury breathing missing on stairs after prologue");story.State.prologue_beaten=0;feedback.ProcessMotion(Vector3.zero,false);Check(!feedback.IsBreathing,"uninjured breathing continued");
@@ -103,7 +103,7 @@ public static class NightOneReviewRegression
                     packets.Add(new NightStartedTelemetry(false));
                     packets.Add(new CaughtTelemetry("n1.alley","n1.alley_start",Vector3.zero));
                     packets.Add(new ChoiceTelemetry("1a"));packets.Add(new ChoiceTelemetry("1b"));packets.Add(new ChoiceTelemetry("1c"));packets.Add(new EndingTelemetry("bystander"));
-                    File.WriteAllLines("/private/tmp/3gio12-review-events.jsonl",packets.Select(x=>x.ToJson()));
+                    File.WriteAllLines(System.IO.Path.Combine(System.IO.Path.GetTempPath(),"3gio12-review-events.jsonl"),packets.Select(x=>x.ToJson()));
                     story.RestoreCheckpoint();story.State.timeJumped=false;story.State.hasNganPhone=false;story.State.stage=NightStage.Room;
                     story.State.bagMoved=false;story.State.bagDisplaced=false;story.State.bagOpen=false;story.bag.transform.position=story.bagAtDoor.position;
                     player.Teleport(story.roomSpawn.position,90);story.JumpTime();

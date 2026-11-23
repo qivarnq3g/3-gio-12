@@ -16,10 +16,10 @@ namespace BaGio12.Story
         public NightStage stage;
         public string clock = "20:56", ending = "", number_choice = "ignored";
         public int prologue_beaten, phone_left_count, odo_2100 = 12400;
-        public bool phonePlaced, bikeParked, hasNganPhone, phoneEverPicked, phone_powered_off;
+        public bool phonePlaced, bikeParked, bikeArrived, hasNganPhone, phoneEverPicked, phone_powered_off;
         public bool saw_shop_camera, found_deposit_slip, asked_lien_keep, helpedLien;
         public bool linh_knows_shop_camera, asked_mom_why_here, timeJumped, numberArrived, night1_slept;
-        public bool bagMoved, bagInspected, bagDisplaced, boughtNoodles, alarm, batchD;
+        public bool bagMoved, bagInspected, bagDisplaced, boughtNoodles, alarm, batchD, number_chosen;
         public List<string> sent = new List<string>();
         public List<string> messages = new List<string>();
         public List<string> pendingMessages = new List<string>();
@@ -32,7 +32,7 @@ namespace BaGio12.Story
         public NightThreeState nightThree;
         public void Note(string text)
         {
-            if (!notebook.Exists(x => x.EndsWith(" — " + text))) notebook.Add(clock + " — " + text);
+            if (!notebook.Exists(x => x.EndsWith(" - " + text))) notebook.Add(clock + " - " + text);
         }
         public NightOneState Copy() => JsonUtility.FromJson<NightOneState>(JsonUtility.ToJson(this));
     }

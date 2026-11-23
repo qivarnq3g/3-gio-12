@@ -27,7 +27,7 @@ namespace BaGio12.Story
         public bool ApplySave(NightSaveData save)
         {
             // Validate the whole scene mapping before changing any runtime object.
-            if (!NightSaveData.Valid(save) || save.observers.Length != observers.Length || save.alertLights.Length != alertLights.Length
+            if (!NightSaveData.Valid(save) || save.scene != SceneManager.GetActiveScene().name || save.observers.Length != observers.Length || save.alertLights.Length != alertLights.Length
                 || !observers.Select(x => x.name).SequenceEqual(save.observers.Select(x => x.id))) return false;
             restoringSave = true;
             try

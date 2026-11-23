@@ -23,7 +23,7 @@ body:
     id: actual
     attributes:
       label: Kết quả thực tế
-      description: Kèm ảnh chụp hoặc video nếu có.
+      description: Kèm ảnh chụp hoặc video nếu có. Nếu đang chơi bản thử, nhấn F3 và ghi kèm tọa độ X, Y, Z cùng hướng nhìn khi có.
     validations:
       required: true
   - type: input

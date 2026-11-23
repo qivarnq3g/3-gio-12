@@ -1,7 +1,10 @@
 {
   "note": "NOI DUNG GIA cho ban choi thu, thay bang loi thoai that sau khi chot truyen ngay 20/10.",
+  "scenarioId": "chat-mau",
   "lockTime": "3:12",
   "lockDate": "Thứ năm, 26 tháng 11",
+  "chatDay": "Hôm nay - 3:12 AM",
+  "albumDay": "Hôm nay",
   "contacts": [
     {
       "id": "me",
@@ -13,11 +16,22 @@
         { "from": "them", "text": "Con ra xem giúp mẹ", "time": "03:12", "delay": 1.6 }
       ],
       "choices": [
-        { "text": "Con ra xem ngay", "replies": [ { "from": "them", "text": "Nhớ đừng mở cửa", "time": "03:13", "delay": 1.5 } ] },
-        { "text": "Mẹ ngủ đi, chắc gió thôi", "replies": [ { "from": "them", "text": "Gió không gõ một cái rồi hai cái", "time": "03:13", "delay": 1.8 } ] }
+        { "id": "c1", "text": "Con ra xem ngay", "replies": [ { "from": "them", "text": "Nhớ đừng mở cửa", "time": "03:13", "delay": 1.5 } ] },
+        { "id": "c2", "text": "Mẹ ngủ đi, chắc gió thôi", "replies": [ { "from": "them", "text": "Gió không gõ một cái rồi hai cái", "time": "03:13", "delay": 1.8 } ] }
       ]
     },
     { "id": "nhom", "name": "Nhà mình", "preview": "Ảnh", "messages": [ { "from": "them", "text": "(nội dung giả)", "time": "21:40", "delay": 0.3 } ], "choices": [] }
   ],
-  "photos": [ { "resource": "Scenes/phong-tro", "caption": "03:12" } ]
+  "photos": [ { "resource": "Scenes/phong-tro", "caption": "03:12", "time": "03:12" } ],
+  "voiceMemos": [
+    {
+      "id": "memo_mau_1",
+      "title": "Ghi âm mẫu 1",
+      "duration": "0:15",
+      "time": "03:10",
+      "date": "Hôm nay",
+      "transcript": "Tiếng gõ cửa lúc 3:12...",
+      "resource": ""
+    }
+  ]
 }
