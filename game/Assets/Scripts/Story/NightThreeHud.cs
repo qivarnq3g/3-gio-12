@@ -40,7 +40,7 @@ namespace BaGio12.Story
                 Background(new Rect(0,0,1280,720),Color.black);
                 GUI.Label(new Rect(160,220,1050,80),Third.stage==NightThreeStage.Scapegoat?"KẺ GÁNH TỘI":"HẾT ĐÊM 3",titleStyle);
                 GUI.Label(new Rect(160,320,1050,100),Third.stage==NightThreeStage.Scapegoat?"Cán bộ nhận máy, bảo bạn ngồi chờ ghi lời khai.":"Sáng 27/11. Bản thô ba đêm dừng tại đây.",textStyle);
-                if(GUI.Button(new Rect(160,470,420,55),"Chơi mới Đêm 1"))story.GetComponent<NightPersistence>().RequestNewGame();return;
+                if(GUI.Button(new Rect(160,470,420,55),"Chơi mới Đêm 1"))story.GetComponent<NightPersistence>().StartNewGame();return;
             }
             if(page!="")
             {
