@@ -906,7 +906,7 @@ public static class RealisticSceneBuilder
         foreach (var t in blockout.GetComponentsInChildren<Transform>().Where(t => t.name.Contains("MotionLight")).ToList())
         {
             var r = t.GetComponent<Renderer>();
-            if (r) Point(t.name + " light", r.bounds.center + Vector3.down * .1f, new Color(1f, .85f, .65f), 6, 3f, false);
+            if (r) CeilingLightLeak.AimDown(Point(t.name + " light", r.bounds.center + Vector3.down * .1f, new Color(1f, .85f, .65f), 6, CeilingLightLeak.CorridorIntensity, false));
         }
         AlleyLights(alley);
         Probe(new Vector3(0, 1.6f, -53), new Vector3(9.5f, 3.6f, 10.5f));
