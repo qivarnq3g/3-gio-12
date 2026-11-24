@@ -170,6 +170,122 @@ public static class NightOneRealisticSetup
         return bounds;
     }
 
+    const string PbrRoot = "Assets/Art/MaterialsPBR";
+    static readonly Dictionary<string, Dictionary<string, string>> PbrMap = new Dictionary<string, Dictionary<string, string>>
+    {
+        ["HomewareShop_ShelfKit_Box"] = new Dictionary<string, string> { ["M_Cardboard"] = "PH_cardboard_box_01" },
+        ["Night2_Shelf"] = new Dictionary<string, string> { ["M_PlasticBlue"] = "SF_rack_plastic", ["M_PlasticWhite"] = "M_SteelGalv" },
+        ["Night2_BreadCart"] = new Dictionary<string, string>
+        {
+            ["M_TinRoof"] = "M_TinRust", ["M_StainlessSteel"] = "SF_counter_alu",
+            ["M_FoodBrown"] = "SF_goods", ["M_FoodGreen"] = "SF_goods", ["M_FoodYellow"] = "SF_goods",
+        },
+        ["Night2_ClampLamp"] = new Dictionary<string, string> { ["M_StainlessSteel"] = "SF_rack_chrome", ["M_SteelDark"] = "M_SteelDark" },
+    };
+
+    // Swap imported FBX materials for the PBR set; cart glass keeps its transparent URP material.
+    static void ApplyPbrMaterials(GameObject go)
+    {
+        PbrMap.TryGetValue(go.name, out var map);
+        foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+        {
+            var mats = r.sharedMaterials;
+            for (int i = 0; i < mats.Length; i++)
+            {
+                if (mats[i] == null || mats[i].name == "M_Night2CartGlass") continue;
+                var target = map != null && map.TryGetValue(mats[i].name, out var t) ? t : mats[i].name;
+                var pbr = AssetDatabase.LoadAssetAtPath<Material>($"{PbrRoot}/{target}.mat");
+                if (pbr != null) mats[i] = pbr;
+            }
+            r.sharedMaterials = mats;
+        }
+    }
+
+    static void SetupNightTwoProps(Transform parent)
+    {
+        var n2Root = new GameObject("Night2 props").transform;
+        n2Root.SetParent(parent, false);
+
+        // 1. Night2_BreadCart: replace blockout BanhMi_Cart
+        var oldCart = Child("BanhMi_Cart");
+        if (oldCart != null)
+        {
+            foreach (var r in oldCart.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
+            foreach (var c in oldCart.GetComponentsInChildren<Collider>(true)) c.enabled = false;
+        }
+        var breadCartAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/Night2_BreadCart.fbx");
+        if (breadCartAsset != null)
+        {
+            var cart = Object.Instantiate(breadCartAsset, n2Root);
+            cart.name = "Night2_BreadCart";
+            cart.transform.position = new Vector3(-2.3f, 0.08f, 2.2f);
+            cart.transform.rotation = Quaternion.Euler(0, 90, 0);
+            ApplyPbrMaterials(cart);
+            foreach (var r in cart.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+        }
+
+        // 2. Night2_Shelf: replace blockout BH_F3_Room7_Rack
+        var oldRack = Child("BH_F3_Room7_Rack");
+        if (oldRack != null)
+        {
+            foreach (var r in oldRack.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
+            foreach (var c in oldRack.GetComponentsInChildren<Collider>(true)) c.enabled = false;
+        }
+        var shelfAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/Night2_Shelf.fbx");
+        if (shelfAsset != null)
+        {
+            var shelf = Object.Instantiate(shelfAsset, n2Root);
+            shelf.name = "Night2_Shelf";
+            shelf.transform.position = new Vector3(-2.05f, 10.28f, -44.15f);
+            shelf.transform.rotation = Quaternion.identity;
+            ApplyPbrMaterials(shelf);
+            foreach (var r in shelf.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+        }
+
+        // 3. Night2_ClampLamp
+        var lampAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/Night2_ClampLamp.fbx");
+        if (lampAsset != null)
+        {
+            var lamp = Object.Instantiate(lampAsset, n2Root);
+            lamp.name = "Night2_ClampLamp";
+            lamp.transform.position = new Vector3(-2.05f, 11.15f, -44.15f);
+            lamp.transform.rotation = Quaternion.identity;
+            ApplyPbrMaterials(lamp);
+            foreach (var r in lamp.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+
+            var bulb = lamp.transform.Find("Night2_ClampLamp_Bulb");
+            var lightObj = new GameObject("DeskLampLight");
+            lightObj.transform.SetParent(bulb != null ? bulb : lamp.transform, false);
+            lightObj.transform.localPosition = Vector3.zero;
+            var l = lightObj.AddComponent<Light>();
+            l.type = LightType.Point;
+            l.color = new Color(1f, 0.82f, 0.55f);
+            l.intensity = 2.5f;
+            l.range = 4.5f;
+            l.enabled = false;
+        }
+
+        // 4. HomewareShop_ShelfKit_Box
+        var oldBox = Child("HomewareShop_ShelfKit_Box");
+        if (oldBox != null)
+        {
+            foreach (var r in oldBox.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+            ApplyPbrMaterials(oldBox.gameObject);
+        }
+        else
+        {
+            var boxAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/HomewareShop_ShelfKit_Box.fbx");
+            if (boxAsset != null)
+            {
+                var box = Object.Instantiate(boxAsset, n2Root);
+                box.name = "HomewareShop_ShelfKit_Box";
+                box.transform.position = new Vector3(5.75f, 0.08f, -2.15f);
+                ApplyPbrMaterials(box);
+                foreach (var r in box.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+            }
+        }
+    }
+
     [MenuItem("3 Gio 12/Night 1/Create Realistic (overwrites scene)")]
     public static void Create()
     {
@@ -348,6 +464,7 @@ public static class NightOneRealisticSetup
             var t = Child(ghost); var c = t == null ? null : t.GetComponent<Collider>(); var r = t == null ? null : t.GetComponent<Renderer>();
             if (c != null && c.enabled && (r == null || !r.enabled)) { c.enabled = false; Debug.Log("NIGHT1_REAL_HIDDEN_BLOCKER_OFF " + ghost); }
         }
+        SetupNightTwoProps(gameplay);
         var sill = new GameObject("Night1 boarding gate sill").AddComponent<BoxCollider>();
         sill.transform.position = new Vector3(gate.center.x - .02f, -.05f, gate.center.z - 1.1f); sill.size = new Vector3(.5f, .1f, 2.2f);
         var nav = new GameObject("Night1 navigation").AddComponent<NavMeshSurface>();

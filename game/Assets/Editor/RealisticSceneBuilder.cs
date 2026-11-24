@@ -217,7 +217,7 @@ public static class RealisticSceneBuilder
         }
         mesh.uv = outUv; mesh.RecalculateTangents();
         Directory.CreateDirectory("Assets/Art/MeshesPBR");
-        var assetPath = $"Assets/Art/MeshesPBR/{f.gameObject.GetInstanceID()}_{Mathf.Abs(src.name.GetHashCode())}.asset";
+        var assetPath = $"Assets/Art/MeshesPBR/{f.gameObject.GetHashCode()}_{Mathf.Abs(src.name.GetHashCode())}.asset";
         AssetDatabase.DeleteAsset(assetPath);
         AssetDatabase.CreateAsset(mesh, assetPath);
         f.sharedMesh = mesh;
