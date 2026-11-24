@@ -362,11 +362,11 @@ public static class RealisticSceneBuilder
             b.GetComponent<MeshRenderer>().sharedMaterial = mat;
         }
         const float trim = .045f;
-        Box("Back", new Vector3(0, 0, thick * .25f), new Vector3(size.x, size.y, thick * .5f), steel);
+        Box("Back", new Vector3(0, 0, thick * .25f), new Vector3(size.x - trim, size.y - trim, thick * .5f), steel);
         Box("Trim top", new Vector3(0, size.y / 2 - trim / 2, 0), new Vector3(size.x, trim, thick), frame);
         Box("Trim bottom", new Vector3(0, -size.y / 2 + trim / 2, 0), new Vector3(size.x, trim, thick), frame);
-        Box("Trim left", new Vector3(-size.x / 2 + trim / 2, 0, 0), new Vector3(trim, size.y, thick), frame);
-        Box("Trim right", new Vector3(size.x / 2 - trim / 2, 0, 0), new Vector3(trim, size.y, thick), frame);
+        Box("Trim left", new Vector3(-size.x / 2 + trim / 2, 0, 0), new Vector3(trim, size.y - 2 * trim, thick), frame);
+        Box("Trim right", new Vector3(size.x / 2 - trim / 2, 0, 0), new Vector3(trim, size.y - 2 * trim, thick), frame);
         foreach (var u in new[] { -.38f, .38f }) foreach (var v in new[] { -.3f, .3f })
             Box("Bracket", new Vector3(u * size.x, v * size.y, thick / 2 + (standoff - thick) / 2), new Vector3(.04f, .04f, standoff - thick), steel);
         var face = GameObject.CreatePrimitive(PrimitiveType.Quad); Object.DestroyImmediate(face.GetComponent<Collider>());
@@ -906,7 +906,7 @@ public static class RealisticSceneBuilder
         foreach (var t in blockout.GetComponentsInChildren<Transform>().Where(t => t.name.Contains("MotionLight")).ToList())
         {
             var r = t.GetComponent<Renderer>();
-            if (r) Point(t.name + " light", r.bounds.center + Vector3.down * .1f, new Color(1f, .85f, .65f), 6, 3f, false);
+            if (r) CeilingLightLeak.AimDown(Point(t.name + " light", r.bounds.center + Vector3.down * .1f, new Color(1f, .85f, .65f), 6, CeilingLightLeak.CorridorIntensity, false));
         }
         AlleyLights(alley);
         Probe(new Vector3(0, 1.6f, -53), new Vector3(9.5f, 3.6f, 10.5f));
