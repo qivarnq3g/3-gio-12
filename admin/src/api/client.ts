@@ -11,6 +11,10 @@ export type NightStats = components["schemas"]["NightStats"];
 export type LocationCount = components["schemas"]["LocationCount"];
 export type EndingStats = components["schemas"]["EndingStats"];
 export type ChoiceStats = components["schemas"]["ChoiceStats"];
+export type PuzzleConfig = components["schemas"]["PuzzleConfig"];
+export type PuzzleSolution = components["schemas"]["PuzzleSolution"];
+export type PuzzleSubmissionPage = components["schemas"]["PuzzleSubmissionPage"];
+export type SubmissionResult = components["schemas"]["SubmissionResult"];
 
 export const api = createClient<paths>({
   baseUrl: window.location.origin,
