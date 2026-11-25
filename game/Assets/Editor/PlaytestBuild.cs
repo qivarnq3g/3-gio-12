@@ -34,6 +34,24 @@ public static class PlaytestBuild
         EditorApplication.Exit(windows ? 0 : 1);
     }
 
+    public static void NightOneRealMac()
+    {
+        var previous = UnityEditor.OSXStandalone.UserBuildSettings.architecture;
+        bool success = false;
+        try
+        {
+            if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Standalone, BuildTarget.StandaloneOSX))
+                throw new System.InvalidOperationException("Install Mac Build Support (Mono) for Unity 6000.3.26f1.");
+            if (PlayerSettings.GetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Standalone) != ScriptingImplementation.Mono2x)
+                throw new System.InvalidOperationException("The macOS playtest uses the project's Mono backend.");
+            UnityEditor.OSXStandalone.UserBuildSettings.architecture = UnityEditor.Build.OSArchitecture.x64ARM64;
+            success = PreviewPlayer("../BuildMac/3gio12.app", BuildTarget.StandaloneOSX, NightOneRealisticSetup.ScenePath);
+        }
+        catch (System.Exception error) { Debug.LogException(error); }
+        finally { UnityEditor.OSXStandalone.UserBuildSettings.architecture = previous; }
+        EditorApplication.Exit(success ? 0 : 1);
+    }
+
     public static void NightOnePerf()
     {
         bool windows = PreviewPlayer("../BuildPerf/3gio12.exe", BuildTarget.StandaloneWindows64, NightOneRealisticSetup.ScenePath, BuildOptions.Development);
