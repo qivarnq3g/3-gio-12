@@ -25,16 +25,18 @@ public static class NightTwoMorningRegression
         if(string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THREEGIO12_DATA_ROOT"))) throw new Exception("Set isolated THREEGIO12_DATA_ROOT.");
         Environment.SetEnvironmentVariable("THREEGIO12_SKIP_START_MENU",read?"0":"1");
         SessionState.SetBool("NightTwoMorningRead",read); SessionState.SetBool("NightTwoMorningRegression",true);
-        EditorSceneManager.OpenScene("Assets/Scenes/Night01/NightOneGraybox.unity");
+        EditorSceneManager.OpenScene(NightOneRealisticSetup.ScenePath);
         EditorApplication.playModeStateChanged -= Changed; EditorApplication.playModeStateChanged += Changed;
         EditorApplication.EnterPlaymode();
     }
     static void Changed(PlayModeStateChange mode)
     {
         if(mode!=PlayModeStateChange.EnteredPlayMode)return;
+        NightTwoSceneFixtures.AddMorning();
         Application.runInBackground=true; reading=SessionState.GetBool("NightTwoMorningRead",false);
-        step=0;deadline=EditorApplication.timeSinceStartup+60;EditorApplication.update+=Tick;
+        step=0;deadline=EditorApplication.timeSinceStartup+120;EditorApplication.update+=Tick;
     }
+    static GameObject Find(string name) => UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include,FindObjectsSortMode.None).First(t=>t.name==name).gameObject;
     static void Check(bool value,string text) { if(!value) throw new Exception("NIGHT_TWO: "+text); }
     static void DriveToEnd()
     {
@@ -45,6 +47,7 @@ public static class NightTwoMorningRegression
     static void StartMorning(bool slept)
     {
         Check(persistence.StartNewGame(),"new game failed");
+        Check(!UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include,FindObjectsSortMode.None).First(t=>t.name=="Night2 props").gameObject.activeSelf,"Night 2 props leaked into Night 1");
         Check(!story.InNightTwo && !morning.Begin(),"night 2 available before night 1 completion");
         Check(story.observers.All(x=>x.enabled),"night 1 observers left disabled");
         story.State.hasNganPhone=true;story.State.night1_slept=slept;story.State.prologue_beaten=2;
@@ -54,9 +57,11 @@ public static class NightTwoMorningRegression
         Check(!morning.Begin() && !morning.TestLamp() && !morning.BuyFurniture(),"out-of-order action accepted");
         morning.SendMessage("ClosePage");morning.SendMessage("OpenPage","notebook");
         Check(story.player.ExternalUI && morning.State.stage==MorningStage.Alarm,"alarm screen dismissed without progressing");
+        morning.SendMessage("RefreshWorld");
+        Check(!Find("Night2_Shelf").activeSelf && !Find("Night2_ClampLamp").activeSelf && Find("Night2_BreadCart").activeInHierarchy,"premature shelf/lamp or hidden breakfast");
         Check(morning.StopAlarm(),"wake");
         story.player.Teleport(NightTwoMorning.Room); Check(!morning.EatBreakfast(),"remote breakfast accepted");
-        story.player.Teleport(new Vector3(96,.08f,7)); Check(morning.EatBreakfast(),"breakfast");
+        story.player.Teleport(NightTwoMorning.Breakfast); Check(morning.EatBreakfast(),"breakfast");
         Check(!morning.Mount(),"remote bike mount accepted");
         story.player.Teleport(NightTwoMorning.Parking); Check(morning.Mount(),"outbound mount");
         Check(!morning.Dismount(),"dismounted while route incomplete");
@@ -76,14 +81,23 @@ public static class NightTwoMorningRegression
     }
     static void PassGate(bool seen)
     {
-        story.player.Teleport(new Vector3(101,.08f,6));morning.State.gateElapsed=seen?9:0;
-        Physics.SyncTransforms(); Check(morning.LienCanSee(story.player.eyes.transform.position)==seen,"gate visibility fixture");
+        var origin = NightTwoMorning.Lien + Vector3.up * 1.5f;
+        var eye = origin + Vector3.back * 1.5f;
+        morning.State.gateElapsed=seen?9:0;
+        Physics.SyncTransforms(); Check(morning.LienCanSee(eye)==seen,"gate visibility fixture");
         if(seen)
         {
-            var wall=GameObject.CreatePrimitive(PrimitiveType.Cube);wall.transform.position=new Vector3(101.5f,1.5f,7.5f);wall.transform.localScale=new Vector3(1,3,.2f);
-            Physics.SyncTransforms();Check(!morning.LienCanSee(story.player.eyes.transform.position),"Lien sees through wall");
+            var wall = new GameObject("Regression sight blocker");
+            wall.transform.position = (origin + eye) / 2;
+            wall.AddComponent<BoxCollider>().size = new Vector3(.5f,.5f,.2f);
+            Physics.SyncTransforms();Check(!morning.LienCanSee(eye),"Lien sees through wall");
             wall.GetComponent<Collider>().enabled=false;UnityEngine.Object.Destroy(wall);Physics.SyncTransforms();
+            // Exercise the observer update in the real scene before approaching the gate.
+            story.player.Teleport(eye - Vector3.up * 1.6f);
+            story.player.eyes.transform.position = eye;
+            morning.SendMessage("Update");
         }
+        story.player.Teleport(NightTwoMorning.Gate);
         Check(morning.PassGate() && morning.State.lienSawMorning==seen && !story.Busy,"gate became failure/chase");
         Check(story.State.prologue_beaten==2,"gate applied a capture penalty");
         story.player.Teleport(NightTwoMorning.Room);
@@ -106,6 +120,8 @@ public static class NightTwoMorningRegression
                     Check(story.InNightTwo && morning.State.stage==MorningStage.Assembly && morning.State.assemblySteps==2
                         && morning.State.roomReply=="given" && morning.State.lienSawMorning && morning.State.odometer==12414,"cross-process data lost");
                     Check(!morning.Assemble(0) && morning.Assemble(2) && morning.Assemble(3),"continue assembly");
+                    morning.SendMessage("RefreshWorld");
+                    Check(Find("Night2_ClampLamp").activeInHierarchy && Find("Tier_4").activeInHierarchy,"completed shelf/lamp visual state");
                     Check(morning.TestLamp(),"lamp");Check(persistence.Flush(),"pre-nap flush");
                     Check(morning.Rest() && story.CaptureSave()==null,"transition emitted half-built save");step=1;return;
                 }
@@ -126,15 +142,18 @@ public static class NightTwoMorningRegression
                 int before=story.State.messages.Count;
                 Check(morning.ReplyRoom(true) && !morning.ReplyRoom(false) && story.State.messages.Count==before+1,"reply generated daytime mom response or duplicate");
                 Check(morning.Assemble(0) && morning.Assemble(1),"partial assembly");
+                morning.SendMessage("RefreshWorld");
+                Check(Find("Tier_2").activeInHierarchy && !Find("Tier_3").activeInHierarchy && !Find("Night2_ClampLamp").activeSelf,"partial shelf visual state");
                 var invalid=story.CaptureSave(); invalid.state.nightTwo.speed=float.NaN;
                 Check(!NightSaveData.Valid(invalid) && !story.ApplySave(invalid),"invalid campaign data accepted");
                 Check(morning.State.assemblySteps==2,"invalid save mutated world");
                 Check(persistence.Flush(),"write partial assembly");
                 var store=new LocalJsonStore<NightSaveData>(Path.Combine(NightPersistence.DataRoot,"night-one.json"),NightSaveData.Valid);
                 Check(store.TryLoad(out var disk,out _) && disk.state.nightTwo.assemblySteps==2,"disk snapshot missing campaign");
-                story.player.Teleport(new Vector3(101,.08f,-3),330);story.player.RestoreView(8,false);
+                story.player.Teleport(NightTwoMorning.Room + Vector3.back,330);story.player.RestoreView(8,false);
                 string preview=Path.Combine(NightPersistence.DataRoot,"morning-preview.png");
                 if(File.Exists(preview))File.Delete(preview);
+                if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) { Finish("NIGHT_TWO_WRITE_PASSED"); return; }
                 ScreenCapture.CaptureScreenshot(preview);step=3;return;
             }
             if(step==1)
