@@ -56,3 +56,6 @@ __pycache__/
 
 # Tệp nguồn và chìa giải mã ARG dùng khi dựng cục bộ.
 /tools/out/
+
+# Universal macOS playtest and packaged archives
+/BuildMac/
