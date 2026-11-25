@@ -26,6 +26,7 @@ namespace BaGio12.Story
             if (story.InNightTwo || story.Busy || story.State.ending != "night1_completed") return false;
             if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "NightOneRealistic")
             { story.Say("Đêm 2 phải chạy trong cảnh NightOneRealistic."); return false; }
+            assetsCheckedAt = -100;
             if (!ValidateSceneAssets()) { story.Say(MissingSceneAssets, 10); return false; }
             story.State.nightTwo = NightTwoMorningState.FromNightOne(story.State);
             story.State.nightTwoStarted = true;
@@ -40,12 +41,15 @@ namespace BaGio12.Story
             Checkpoint(); RestoreControl(); return true;
         }
 
+        void Start() => SyncWorld();
+
         public void SyncWorld()
         {
             bool active = story.InNightTwo;
             if (active) EnsureWorld();
             if (active) RefreshWorld();
             if (world != null) world.SetActive(active);
+            if (!active) ResetScenePresentation();
             if (!active && wasActive) story.player.eyes.backgroundColor = originalSky;
             if (active || wasActive)
                 foreach (var observer in story.observers) observer.enabled = !active;
