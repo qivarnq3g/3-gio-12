@@ -5,8 +5,8 @@ import { AdminLayout } from "./layout/AdminLayout";
 import { AccountsPage } from "./pages/AccountsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
-import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { PuzzleDetailPage, PuzzlesPage } from "./pages/PuzzlesPage";
 
 export function App() {
   return (
@@ -16,8 +16,8 @@ export function App() {
         <Route element={<RequireAuth />}>
           <Route element={<AdminLayout />}>
             <Route index element={<DashboardPage />} />
-            <Route path="puzzles" element={<PlaceholderPage title="Câu đố" task="#29" />} />
-            <Route path="puzzles/:puzzleId" element={<PlaceholderPage title="Câu đố" task="#29" />} />
+            <Route path="puzzles" element={<PuzzlesPage />} />
+            <Route path="puzzles/:puzzleId" element={<PuzzleDetailPage />} />
             <Route path="accounts" element={<AccountsPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

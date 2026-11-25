@@ -48,6 +48,7 @@ namespace BaGio12.Prototype
         public string time;
         public float delay;     // seconds of "typing" before the message appears
         public string batch;    // batch it arrives with, e.g. "B"; empty = from the start
+        public string when;
         public string answers;  // choice id (or "call") this line answers: it only arrives if the player sent
                                 // that before the batch, and only in the first batch that answers it
     }

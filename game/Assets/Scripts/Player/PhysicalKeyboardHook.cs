@@ -46,6 +46,19 @@ namespace BaGio12.Gameplay
         static Key lastRecovered = Key.None;
         static bool numberMarks;
         static Keyboard device;
+#if UNITY_EDITOR || PLAYTEST_BUILD
+        static int readoutPresses;
+
+        public static bool ConsumeReadoutToggle()
+        {
+            lock (Gate)
+            {
+                bool toggle = (readoutPresses & 1) != 0;
+                readoutPresses = 0;
+                return toggle;
+            }
+        }
+#endif
 
         public static Keyboard Device => device;
         public static bool Hooked => hook != IntPtr.Zero;
@@ -141,13 +154,26 @@ namespace BaGio12.Gameplay
             }
             deleted.Length = 0; added.Length = 0;
             var key = info.scanCode >= 0x60 ? Key.None : (info.flags & FlagExtended) != 0 ? Extended[info.scanCode] : Plain[info.scanCode];
+#if UNITY_EDITOR || PLAYTEST_BUILD
+            // Some Windows input sources pass a virtual key without a scan code.
+            if (key == Key.None)
+                key = info.vkCode switch { 0x72 => Key.F3, 0x70 => Key.F1, 0xC0 => Key.Backquote, _ => key };
+#endif
             if (key == Key.None) return;
             int k = (int)key;
             if (down)
             {
                 if (!OwnsForeground()) return;
                 Type(key);
-                if (!Pressed[k]) { Pressed[k] = true; revision++; }
+                if (!Pressed[k])
+                {
+                    Pressed[k] = true;
+                    revision++;
+#if UNITY_EDITOR || PLAYTEST_BUILD
+                    // Keep a tap even if the key is released before the next input update.
+                    if (key is Key.F3 or Key.F1 or Key.Backquote) readoutPresses++;
+#endif
+                }
                 return;
             }
             if (!Pressed[k] && !Recovered[k])
@@ -194,6 +220,9 @@ namespace BaGio12.Gameplay
             lock (Gate)
             {
                 Array.Clear(Pressed, 0, Pressed.Length); Array.Clear(Recovered, 0, Recovered.Length);
+#if UNITY_EDITOR || PLAYTEST_BUILD
+                readoutPresses = 0;
+#endif
                 typed.Length = 0; deleted.Length = 0; added.Length = 0; lastRecovered = Key.None; revision++;
             }
         }

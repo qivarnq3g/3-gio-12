@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using BaGio12.Gameplay;
 using BaGio12.Stealth;
@@ -122,7 +123,7 @@ namespace BaGio12.Story
             isReplay=completedInSession;
             TelemetryProduced?.Invoke(new NightStartedTelemetry(isReplay));
             Checkpoints.Save("n1.alley_start", State, alleyStart.position, StartYaw);
-            Objective = "Bạn cần mang chiếc điện thoại đang cầm trên tay vào nhà xe ở cuối hẻm, rồi cúi xuống đặt nó trên nền xi măng, ngay dưới chân chiếc Wave màu đỏ.";
+            Objective = "Bạn cần mang chiếc điện thoại đang cầm trên tay vào nhà xe ở cuối hẻm, rồi cúi xuống đặt nó trên nền xi măng, ngay dưới chân chiếc Cub màu đỏ.";
             Say("Trong hẻm vẫn còn người ngồi trước cửa nhà, và bạn không được để bất kỳ ai nhìn thấy mình trên đường vào nhà xe.", 9);
             SyncWorld();
             gameObject.AddComponent<BaGio12.Persistence.NightPersistence>().story = this;
@@ -318,7 +319,7 @@ namespace BaGio12.Story
         {
             if (!CanPlace || !player.IsCrouched) return;
             State.phonePlaced = true; HoldProgress = 0;
-            Objective = "Chiếc điện thoại đã nằm dưới chân chiếc Wave, giờ bạn hãy quay ra đầu hẻm mà không để ai thấy.";
+            Objective = "Chiếc điện thoại đã nằm dưới chân chiếc Cub, giờ bạn hãy quay ra đầu hẻm mà không để ai thấy.";
             LockScreenUntil = Time.time + 2.6f;
             EmitInternal("phone_placed", "n1.parking");
         }
@@ -360,7 +361,7 @@ namespace BaGio12.Story
                 State.bikeArrived = false;
                 player.Teleport(alleyStart.position, StartYaw);
                 Checkpoints.Save("n1.arrival", State, alleyStart.position, StartYaw);
-                Objective = "Bạn hãy dắt chiếc xe máy vào nhà xe ở cuối hẻm và dựng nó vào chỗ trống cạnh chiếc Wave màu đỏ.";
+                Objective = "Bạn hãy dắt chiếc xe máy vào nhà xe ở cuối hẻm và dựng nó vào chỗ trống cạnh chiếc Cub màu đỏ.";
                 Say("Sinh viên (nghĩ): Dắt vô nhà xe rồi còn leo ba tầng nữa mới tới phòng. Mệt quá trời.", 6);
             }
             else
@@ -368,7 +369,7 @@ namespace BaGio12.Story
                 State.bikeArrived = true;
                 player.Teleport(parkingSpawn.position,parkingSpawn.eulerAngles.y);
                 Checkpoints.Save("n1.parking", State, parkingSpawn.position,parkingSpawn.eulerAngles.y);
-                Objective = "Bạn hãy dựng xe vào chỗ trống cạnh chiếc Wave màu đỏ, rồi cúi xuống xem đồng hồ xe.";
+                Objective = "Bạn hãy dựng xe vào chỗ trống cạnh chiếc Cub màu đỏ, rồi cúi xuống xem đồng hồ xe.";
             }
             SyncWorld();
             BlackTitle = ""; AudioListener.volume = master;
@@ -398,8 +399,8 @@ namespace BaGio12.Story
             Say(State.prologue_beaten > 0 ? "Sinh viên (nghĩ): Đói quá. Trầy hồi nào vậy ta." : "Sinh viên (nghĩ): Đói quá. Lát ra đầu hẻm mua gói mì.", 5);
             yield return new WaitForSeconds(5);
             if (State.hasNganPhone) yield break;
-            Say("Màn hình một chiếc điện thoại dưới chân chiếc Wave vừa sáng lên với dòng chữ: Pin yếu, còn 15%.", 7);
-            Objective = "Dưới chân chiếc Wave màu đỏ có một chiếc điện thoại vừa sáng màn hình, bạn hãy lại gần xem đó là máy của ai.";
+            Say("Màn hình một chiếc điện thoại dưới chân chiếc Cub vừa sáng lên với dòng chữ: Pin yếu, còn 15%.", 7);
+            Objective = "Dưới chân chiếc Cub màu đỏ có một chiếc điện thoại vừa sáng màn hình, bạn hãy lại gần xem đó là máy của ai.";
         }
         IEnumerator ArriveWithBike()
         {
@@ -407,7 +408,7 @@ namespace BaGio12.Story
             for (float t = 0; t < .35f; t += Time.deltaTime) { Fade = t / .35f; yield return null; }
             State.bikeArrived = true; SyncWorld();
             Checkpoints.Save("n1.parking", State, parkingSpawn.position, parkingSpawn.eulerAngles.y);
-            Objective = "Bạn hãy dựng xe vào chỗ trống cạnh chiếc Wave màu đỏ, rồi cúi xuống xem đồng hồ xe.";
+            Objective = "Bạn hãy dựng xe vào chỗ trống cạnh chiếc Cub màu đỏ, rồi cúi xuống xem đồng hồ xe.";
             for (float t = 0; t < .5f; t += Time.deltaTime) { Fade = 1 - t / .5f; yield return null; }
             Fade = 0; Busy = false; player.SetOverlay(false);
         }
@@ -462,7 +463,7 @@ namespace BaGio12.Story
             }
             else if (batch == "B")
             {
-                Deliver("Mẹ · 21:26: " + Dialogue.batchB);
+                Deliver("Mẹ · 21:26: " + BatchBOpening(Dialogue, State.sent));
                 if (State.sent.Any(x => x.StartsWith("camera:"))) Deliver("Mẹ · 21:26: " + (State.linh_knows_shop_camera ? Dialogue.cameraYes : Dialogue.cameraNo));
                 if (State.asked_mom_why_here) Deliver("Mẹ · 21:26: " + Dialogue.why);
                 if (State.sent.Contains("call")) Deliver("Mẹ · 21:26: " + Dialogue.callReply);
@@ -489,6 +490,7 @@ namespace BaGio12.Story
             if (changed) PhonePrototype.Instance?.SetClock(State.clock);
             return changed;
         }
+        public static string BatchBOpening(NightDialogue dialogue, ICollection<string> sent) => sent.Count > 0 ? dialogue.batchB : dialogue.batchBSilent;
         void HandlePhoneChoice(string contactId, string choiceId)
         {
             if (contactId == "me_ngan")
@@ -686,7 +688,7 @@ namespace BaGio12.Story
             foreach (var l in alertLights) l.enabled = false;
             leftStart = false; shoutCount = 0; hidingSeconds = 0; hideAnchor = player.transform.position; PrologueDeparted=false;PrologueElapsed=0;
             if(parkingAlertLight!=null)parkingAlertLight.enabled=false;
-            Objective = "Bạn cần mang chiếc điện thoại đang cầm trên tay vào nhà xe ở cuối hẻm, rồi cúi xuống đặt nó trên nền xi măng, ngay dưới chân chiếc Wave màu đỏ.";
+            Objective = "Bạn cần mang chiếc điện thoại đang cầm trên tay vào nhà xe ở cuối hẻm, rồi cúi xuống đặt nó trên nền xi măng, ngay dưới chân chiếc Cub màu đỏ.";
         }
         public void RestoreCheckpoint()
         {

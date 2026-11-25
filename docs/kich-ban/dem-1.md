@@ -29,7 +29,7 @@ Năm màn, chơi khoảng 30 đến 45 phút. Màn 3.3 là nhánh phụ, vào ha
 
 | Màn | Giờ trong game | Nơi | Mục tiêu người chơi | Cơ chế dạy | Điểm lưu |
 |---|---|---|---|---|---|
-| 3.1 Mở đầu "20:56" | 20:56 (đứng yên cho tới hết màn) | Hẻm 12, nhà xe | Đặt chiếc máy dưới chân chiếc Wave mà không để ai thấy | Đi, cúi, nấp, đọc tầm nhìn người khác, chạy trốn | Đầu hẻm (điểm lưu duy nhất của màn) |
+| 3.1 Mở đầu "20:56" | 20:56 (đứng yên cho tới hết màn) | Hẻm 12, nhà xe | Đặt chiếc máy dưới chân chiếc Cub mà không để ai thấy | Đi, cúi, nấp, đọc tầm nhìn người khác, chạy trốn | Đầu hẻm (điểm lưu duy nhất của màn) |
 | 3.2 Nhà xe | 21:00 | Nhà xe cuối hẻm | Dựng xe, nhặt máy, đọc tin | Tương tác, mở điện thoại, Sổ tay | Nhà xe |
 | 3.3 Hẻm 12 (tùy chọn) | 21:10 | Tiệm chú Hùng, đầu hẻm | Mua mì, thấy camera, thấy đường ra công an phường | Khám phá, hội thoại | Không (nối với 3.2) |
 | 3.4 Nhà trọ và phòng 7 | 21:20 đến khoảng 22:30 | Cổng nhà trọ, cầu thang, hành lang tầng 3, phòng 7 | Lên phòng, đọc tin, chọn cách xử lý dãy số lạ | Lựa chọn trong chat | Phòng 7 |
@@ -50,7 +50,7 @@ Bố cục hẻm 12 (hẻm khu Bàn Cờ, rộng khoảng 3,5 m, nhà ống hai 
 
 Màn 3.1 là đoạn ẩn nấp và chạy trốn duy nhất của bản nộp (yêu cầu chức năng 4); đêm 2 chỉ có ẩn nấp nhẹ, đêm 3 không có. Nhóm duyệt ngày 29/10. Không có chiến đấu, không có chết.
 
-Vì sao bị đuổi: lúc 20:56, sau cơn mưa, một người trùm áo mưa, đeo găng, đeo khẩu trang, cúi cạnh chiếc Wave của người khác trong nhà xe không người trông. Hàng xóm tưởng trộm xe, la lên, cả hẻm đổ ra. Bị tóm là bị đánh. Linh sợ bị giữ lại: bị giật khẩu trang, bị hỏi tên, và chiếc máy trong túi thành vật chứng nối Linh với Ngân.
+Vì sao bị đuổi: lúc 20:56, sau cơn mưa, một người trùm áo mưa, đeo găng, đeo khẩu trang, cúi cạnh chiếc Cub đỏ của người khác trong nhà xe không người trông. Hàng xóm tưởng trộm xe, la lên, cả hẻm đổ ra. Bị tóm là bị đánh. Linh sợ bị giữ lại: bị giật khẩu trang, bị hỏi tên, và chiếc máy trong túi thành vật chứng nối Linh với Ngân.
 
 Vì sao bị đánh lại đáng sợ: Linh và Sinh viên dùng chung một cơ thể. Vết thương Linh nhận lúc 20:56 thì Sinh viên mang từ 21:00, không biết từ đâu, như vết khâu ở cẳng tay cậu tin là do té xe.
 
@@ -73,7 +73,7 @@ Người đuổi luôn là người thật có lý do; không dùng quái vật 
 | Cô Liên | Ra cổng quét nước một lần | Xuất hiện khoảng 40 giây sau khi người chơi rời đầu hẻm, quét 15 giây, nhìn dọc hẻm |
 
 - Hai xe máy chạy ngang hẻm (người lái mặc đúng kiểu áo mưa của nhân vật): đèn pha làm sáng vùng nó quét qua. Người lái không tính là người quan sát.
-- Mục tiêu: tới nhà xe, cúi cạnh chiếc Wave, bấm giữ nút "Đặt" khoảng 2 giây. Hai bàn tay đeo găng đặt chiếc máy (ốp trong suốt, lót vải xanh) xuống nền xi măng, màn hình máy sáng lên.
+- Mục tiêu: tới nhà xe, cúi cạnh chiếc Cub, bấm giữ nút "Đặt" khoảng 2 giây. Hai bàn tay đeo găng đặt chiếc máy (ốp trong suốt, lót vải xanh) xuống nền xi măng, màn hình máy sáng lên.
 - Đi ngược ra đầu hẻm. Ngang tiệm chú Hùng, camera tự ngước lên chiếc camera an ninh có đèn đỏ khoảng 2 giây rồi tự hạ xuống (người chơi không điều khiển đoạn này). Cắt đen trước khi tới chỗ xe ở đầu hẻm. Hiện tên game. Chuyển sang màn 3.2.
 - Đoạn về không còn tính bị thấy: phụ nữ và hai đứa nhỏ đã vào nhà, cô Liên đã vào cổng, chú Hùng quay vào tivi. Như vậy người chơi không bị bắt làm lại sau khi đã xong việc.
 
@@ -131,7 +131,7 @@ Bảng tin nhắn ở cuối mục này là khung cho Thắng dựng giao diện
 1. Chữ "21:00". Hai tay không đeo găng nắm tay lái, đang dắt xe vào hẻm; mặt đất ướt. Người chơi điều khiển từ đây.
 2. Dắt xe vào chỗ để, tắt máy: camera cận đồng hồ xe vài giây. Sổ tay ghi "Đồng hồ xe: 12.4xx km, lúc 21:00" (số cụ thể chốt khi làm đêm 2). Biến `odo_2100`.
 3. Độc thoại một câu khi tháo nón: "Đói quá." Nếu `prologue_beaten` từ 1, lúc tháo nón góc nhìn thấy lòng bàn tay trầy, Sinh viên nghĩ "Trầy hồi nào vậy ta." Không câu thứ hai.
-4. Dưới chân chiếc Wave đậu cạnh, một màn hình đang sáng. Lại gần thì hiện nút "Nhặt". Máy Ngân không khóa, lô tin A của "Mẹ" nằm sẵn, tin đầu hiện "4 phút trước".
+4. Dưới chân chiếc Cub đậu cạnh, một màn hình đang sáng. Lại gần thì hiện nút "Nhặt". Máy Ngân không khóa, lô tin A của "Mẹ" nằm sẵn, tin đầu hiện "4 phút trước".
 5. Xe ở đêm 1 chỉ dựng, không chạy đi đâu. Cốp xe không tương tác được ở đêm 1.
 6. Trên cột nhà xe có tờ giấy "Ai để xe qua đêm tự khóa cổ, mất ráng chịu".
 
@@ -178,7 +178,7 @@ Bảng tin nhắn ở cuối mục này là khung cho Thắng dựng giao diện
 |---|---|---|---|---|
 | A (6 tin) | 20:56, nằm sẵn khi nhặt | Mẹ | Hỏi ai cầm máy; tự giới thiệu là mẹ Ngân, Ngân đi Đà Lạt giận mẹ, cô đang ở Bến Tre; nhờ giữ máy vài hôm và sạc máy; xin đừng đem lên công an vì con bé làm hồ sơ học bổng; hỏi "Chỗ cháu nhặt máy có camera không cháu?" | Luôn có |
 | Câu người chơi gửi | 21:00 đến 22:30 | Người chơi | Chọn từ danh sách câu có sẵn; đáp câu camera: "không có", "có, tiệm đầu hẻm" (chỉ mở khi `saw_shop_camera`), "cháu không biết" | Tin gửi đi chỉ hiện "Đã gửi" |
-| B | 21:26, nằm sẵn sau lần nhảy giờ | Mẹ | Cảm ơn; đáp câu camera; nếu người chơi hỏi vì sao máy ở nhà xe thì đáp con bé cố tình bỏ lại; dặn có một số lạ xưng là mẹ nhắn tới, đó là người yêu cũ giả làm cô, đừng trả lời | Câu đáp phụ thuộc câu người chơi đã gửi trước 21:26 |
+| B | 21:26, nằm sẵn sau lần nhảy giờ | Mẹ | Cảm ơn nếu người chơi đã nhắn hoặc gọi "Mẹ"; nếu chưa thì hỏi cháu còn giữ máy không và dặn nhắn cô một tiếng; đáp câu camera; nếu người chơi hỏi vì sao máy ở nhà xe thì đáp con bé cố tình bỏ lại; dặn có một số lạ xưng là mẹ nhắn tới, đó là người yêu cũ giả làm cô, đừng trả lời | Câu đáp phụ thuộc câu người chơi đã gửi trước 21:26 |
 | C | Từ khoảng 21:35, nhiều tin | Dãy số lạ | Không dấu, dồn dập, gọi "Bong oi con o dau" | Luôn có; tự thành "đã đọc" |
 | D | 03:40 | Mẹ | Đáp mọi câu người chơi hỏi sau 21:26 | Chỉ khi đi ngủ |
 
@@ -233,7 +233,7 @@ Phong cách: hình cách điệu, màu phẳng, đường nét rõ, giống các
 | A | Điện thoại Ngân | Ốp trong suốt, lót miếng vải xanh nhạt thêu con cá bống chỉ cam, nhìn rõ con cá từ mặt lưng |
 | A | Điện thoại Sinh viên | Máy rẻ, vỏ nhựa |
 | A | Xe máy của Sinh viên | Xe số phổ thông, không logo hãng thật; đồng hồ cơ đọc được số km khi cận |
-| A | Chiếc Wave đậu cạnh, vài xe máy khác | Dùng lại một model đổi màu |
+| A | Chiếc Cub đỏ đậu cạnh, vài xe máy khác | Dùng lại một model đổi màu |
 | A | Ba lô đen, áo mưa cánh dơi xanh dương gấp, đôi găng xám | Ba lô có ngăn chính mở được |
 | B | Cô Liên | Ngoài 50, mặc đồ bộ |
 | B | Chú Hùng | Ngoài 60, áo ba lỗ; cầm điện thoại |

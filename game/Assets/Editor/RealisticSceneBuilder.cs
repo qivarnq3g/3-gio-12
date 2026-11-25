@@ -332,6 +332,81 @@ public static class RealisticSceneBuilder
         if (depths.Count == 0 || strict && depths.Max() - depths.Min() > .015f) return null;
         depths.Sort(); return depths[depths.Count / 2] - .5f;
     }
+    public static bool PlateSpot(Vector3 at, Vector3 into, out Vector3 center, out Vector2 size)
+    {
+        var along = Vector3.Cross(Vector3.up, into).normalized;
+        const float reach = .3f, step = .005f, margin = .015f;
+        var depth = new List<float?>();
+        for (float t = -reach; t <= reach + 1e-4f; t += step)
+        {
+            float? d = null;
+            foreach (var y in new[] { -.06f, 0f, .06f })
+            {
+                var o = at + along * t + Vector3.up * y - into * .1f;
+                var hit = Physics.RaycastAll(o, into, 1f).Where(h => h.collider.GetComponent<Renderer>() != null).OrderBy(h => h.distance).FirstOrDefault();
+                if (hit.collider == null || !Skin(HitMaterial(hit))) { d = null; break; }
+                d = d == null ? hit.distance : Mathf.Max(d.Value, hit.distance);
+            }
+            depth.Add(d);
+        }
+        int best0 = -1, best1 = -1, mid = depth.Count / 2; float bestDepth = float.MaxValue;
+        for (int i = 0; i < depth.Count; i++)
+        {
+            if (depth[i] == null) continue;
+            int j = i;
+            while (j + 1 < depth.Count && depth[j + 1] != null && Mathf.Abs(depth[j + 1].Value - depth[i].Value) < .003f) j++;
+            float width = (j - i) * step;
+            bool holdsMid = i <= mid && mid <= j;
+            if (width >= .12f && (holdsMid || best0 < 0 || !(best0 <= mid && mid <= best1) && depth[i].Value < bestDepth - .01f)) { best0 = i; best1 = j; bestDepth = depth[i].Value; }
+            i = j;
+        }
+        center = at; size = new Vector2(.30f, .20f);
+        if (best0 < 0) return false;
+        float w = Mathf.Min(.30f, (best1 - best0) * step - 2 * margin);
+        size = new Vector2(w, w * 2 / 3);
+        center = at + along * (-reach + (best0 + best1) * step / 2) + into * .4f;
+        return true;
+    }
+    public static void HousePlateRegression()
+    {
+        EditorSceneManager.OpenScene("Assets/Scenes/Night01/NightOneRealistic.unity");
+        Physics.SyncTransforms();
+        var plates = Object.FindObjectsByType<DecalProjector>(FindObjectsSortMode.None).Where(d => d.name.StartsWith("Decal D_Plate")).ToList();
+        var bad = plates.Where(d => DecalPlane(d.transform.position + d.transform.forward * .4f, d.transform.rotation, new Vector2(d.size.x, d.size.y), true) == null).Select(d => $"{d.name}@{d.transform.position:F2}").ToList();
+        foreach (var b in bad) Debug.LogError("plate not on one flat face: " + b);
+        bool ok = plates.Count >= 20 && bad.Count == 0;
+        Debug.Log($"[HousePlates] {(ok ? "PASS" : "FAIL")} plates={plates.Count} bad={bad.Count}");
+        EditorApplication.Exit(ok ? 0 : 1);
+    }
+    public static void PatchHousePlates()
+    {
+        foreach (var path in new[] { ScenePath, "Assets/Scenes/Night01/NightOneRealistic.unity" })
+        {
+            var scene = EditorSceneManager.OpenScene(path);
+            Physics.SyncTransforms();
+            int fitted = 0; var failed = new List<string>(); var log = new List<string>();
+            foreach (var d in Object.FindObjectsByType<DecalProjector>(FindObjectsSortMode.None).Where(d => d.name.StartsWith("Decal D_Plate")))
+            {
+                var into = d.transform.forward; var p = d.transform.position;
+                var houses = into.x > 0 ? LeftHouses : RightHouses;
+                float z = -houses.Select(h => h.y0 + .11f).OrderBy(y => Mathf.Abs(y + p.z)).First();
+                var at = new Vector3(Mathf.Sign(into.x) * AlleyWidth.Half, 2.35f, z);
+                if (!PlateSpot(at, into, out var c, out var size)) { failed.Add($"{d.name}@{p:F2}"); continue; }
+                var plane = DecalPlane(c, d.transform.rotation, size, true);
+                if (plane == null) { failed.Add($"{d.name}@{p:F2} strict"); continue; }
+                d.transform.position = c + into * plane.Value;
+                d.size = new Vector3(size.x, size.y, DecalDepth);
+                EditorUtility.SetDirty(d); EditorUtility.SetDirty(d.transform);
+                log.Add($"{d.name} {p:F3}->{d.transform.position:F3} size={size.x:F3}x{size.y:F3}");
+                fitted++;
+            }
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log($"HOUSE_PLATES {path} fitted={fitted} failed={failed.Count} {string.Join(", ", failed)}\n{string.Join("\n", log)}");
+            if (failed.Count > 0) { EditorApplication.Exit(1); return; }
+        }
+        EditorApplication.Exit(0);
+    }
     static bool Decal(Transform parent, string tex, Vector3 at, Vector3 forward, Vector2 size, string normal = null, float up = 0, bool strict = false)
     {
         var rotation = Quaternion.LookRotation(forward, Mathf.Abs(forward.y) > .9f ? Vector3.forward : Vector3.up) * Quaternion.Euler(0, 0, up);
@@ -362,11 +437,11 @@ public static class RealisticSceneBuilder
             b.GetComponent<MeshRenderer>().sharedMaterial = mat;
         }
         const float trim = .045f;
-        Box("Back", new Vector3(0, 0, thick * .25f), new Vector3(size.x, size.y, thick * .5f), steel);
+        Box("Back", new Vector3(0, 0, thick * .25f), new Vector3(size.x - trim, size.y - trim, thick * .5f), steel);
         Box("Trim top", new Vector3(0, size.y / 2 - trim / 2, 0), new Vector3(size.x, trim, thick), frame);
         Box("Trim bottom", new Vector3(0, -size.y / 2 + trim / 2, 0), new Vector3(size.x, trim, thick), frame);
-        Box("Trim left", new Vector3(-size.x / 2 + trim / 2, 0, 0), new Vector3(trim, size.y, thick), frame);
-        Box("Trim right", new Vector3(size.x / 2 - trim / 2, 0, 0), new Vector3(trim, size.y, thick), frame);
+        Box("Trim left", new Vector3(-size.x / 2 + trim / 2, 0, 0), new Vector3(trim, size.y - 2 * trim, thick), frame);
+        Box("Trim right", new Vector3(size.x / 2 - trim / 2, 0, 0), new Vector3(trim, size.y - 2 * trim, thick), frame);
         foreach (var u in new[] { -.38f, .38f }) foreach (var v in new[] { -.3f, .3f })
             Box("Bracket", new Vector3(u * size.x, v * size.y, thick / 2 + (standoff - thick) / 2), new Vector3(.04f, .04f, standoff - thick), steel);
         var face = GameObject.CreatePrimitive(PrimitiveType.Quad); Object.DestroyImmediate(face.GetComponent<Collider>());
@@ -495,7 +570,7 @@ public static class RealisticSceneBuilder
             for (int k = 0; k < houses.Length; k++)
             {
                 var (y0, y1) = houses[k];
-                Decal(root, "D_Plate" + ((k * 2 + (side > 0 ? 1 : 0)) % 13), new Vector3(x, 2.35f, -(y0 + .11f)), into, new Vector2(.30f, .20f));
+                if (PlateSpot(new Vector3(x, 2.35f, -(y0 + .11f)), into, out var plateAt, out var plateSize)) Decal(root, "D_Plate" + ((k * 2 + (side > 0 ? 1 : 0)) % 13), plateAt, into, plateSize, null, 0, true);
                 if (rng.NextDouble() < .35) Stick("D_AdFlyer", () => new Vector3(x, R(1.3f, 1.8f), -R(y0 + .3f, y1 - .3f)), new Vector2(.42f, .24f), R(-2, 2));
                 if (rng.NextDouble() < .7) { var (tex, size) = stencils[rng.Next(3)]; Stick(tex, () => new Vector3(x, R(.55f, 2.3f), -R(y0 + .1f + size.x / 2, y1 - .1f - size.x / 2)), size, R(-1.5f, 1.5f)); }
             }
@@ -906,7 +981,7 @@ public static class RealisticSceneBuilder
         foreach (var t in blockout.GetComponentsInChildren<Transform>().Where(t => t.name.Contains("MotionLight")).ToList())
         {
             var r = t.GetComponent<Renderer>();
-            if (r) Point(t.name + " light", r.bounds.center + Vector3.down * .1f, new Color(1f, .85f, .65f), 6, 3f, false);
+            if (r) CeilingLightLeak.AimDown(Point(t.name + " light", r.bounds.center + Vector3.down * .1f, new Color(1f, .85f, .65f), 6, CeilingLightLeak.CorridorIntensity, false));
         }
         AlleyLights(alley);
         Probe(new Vector3(0, 1.6f, -53), new Vector3(9.5f, 3.6f, 10.5f));
