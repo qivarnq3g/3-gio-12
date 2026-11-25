@@ -33,11 +33,30 @@ python tools/build_arg_site_assets.py
 
 Ba mục trong ZIP phải có phương thức AES-256. Script in SHA-256 của ảnh dép từ byte nguồn cố định. Giữ nguyên tệp nguồn khi dựng lại để kết quả đối chiếu trên máy chủ ổn định.
 
+## Tệp ghi âm trong két
+
+`game/Assets/StreamingAssets/Vault/test_mic_12-11.wav` là tệp ghi âm ở phần trong của két (bước 1). Nghe như một lần thử micro điện thoại: tiếng xì phòng, tiếng điện 50 Hz và vài tiếng gõ vào micro. Từ giây 4 tới giây 10, chữ `/drop` nằm trong dải 7 đến 14 kHz, chỉ thấy khi mở phổ âm (Audacity: menu của track > Spectrogram). Phổ âm chỉ ghi đường dẫn, không ghi tên miền, nên đổi chỗ triển khai website không phải dựng lại tệp này.
+
+Tệp để trong `StreamingAssets` để Unity giữ nguyên từng byte; nếu đặt ở chỗ khác, Unity nén âm thanh và có thể làm mất chữ ở tần số cao. Phần két trong game cần cho người chơi lưu tệp này ra máy để mở bằng phần mềm xem phổ âm.
+
+```bash
+python -m pip install numpy==2.3.5 pillow==12.0.0
+python tools/build_test_mic_wav.py --spectrogram tools/out/test_mic_spectrogram.png
+```
+
+Script cho cùng một tệp ở mọi lần dựng: SHA-256 `9472bcf4eead3945768d599470093d538b0b946e0647dc82fa06a97ae8bbdc55`.
+
+`khoa.txt` không nằm trong repo. Chìa đang dùng là chìa đã dựng ảnh trên `/drop` ở commit `6404b76`; lấy từ người giữ bản nội dung két, không lấy theo các bản `khoa.txt` cũ còn trên máy cá nhân.
+
 ## Cấu hình máy chủ
 
 Mã băm SHA-256 hiện tại của `red-thread-sandal.jpg` là `8753395d6eba4a2133ef231c152e99a77e93965eea896ddb4ab95da6aa03684b`.
 
-Sau khi triển khai API câu đố và tạo mục `red-thread-sandal`, cấu hình lời giải trong cơ sở dữ liệu của môi trường tương ứng.
+Đã kiểm ngày 24/11/2026: giải nén ảnh trên `/drop` ở `main` bằng chìa đang dùng ra đúng mã băm này; sau khi thêm mã và bật câu đố, `POST /api/v1/puzzles/red-thread-sandal/submissions` chấp nhận ảnh dép (`unlockId: ending_red_thread_sandal`) và từ chối hai tệp còn lại trong gói.
+
+Cấu hình trên trang quản trị (#29): mở **Câu đố > Đôi dép chỉ đỏ**, ở mục **Bằng chứng hợp lệ** chọn tệp `red-thread-sandal.jpg` (trang tự tính SHA-256) hoặc dán mã băm trên, ghi chú, bấm **Thêm mã băm**, rồi bấm **Bật câu đố**. Câu đố chỉ bật được khi đã có ít nhất một mã băm.
+
+Nếu môi trường chưa có trang quản trị, cấu hình thẳng trong cơ sở dữ liệu.
 
 ```sql
 INSERT INTO puzzle_solutions (puzzle_id, sha256, note, created_at)
