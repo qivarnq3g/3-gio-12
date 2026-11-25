@@ -30,3 +30,15 @@ Giải nén zip vào thư mục khác bằng `ditto -x -k`, kiểm executable v�
 Bản chưa notarize có thể bị macOS chặn lần mở đầu. Hướng dẫn người chơi vào System Settings → Privacy & Security → Open Anyway sau khi mở app từ release tin cậy.
 
 Chỉ đính zip lên release sau khi mã được gộp và release dựng từ cùng commit; cập nhật hướng dẫn macOS và báo đường dẫn release/ảnh/máy kiểm trong #127. Không đánh dấu #127 xong khi mới build hoặc kiểm hai kiến trúc.
+
+## Kết quả dựng thử 26/11/2026
+
+- Nguồn: `ca2d934`, dựa trên `main` `c549f79`; Unity 6000.3.26f1. Hai lần dựng thành công; lần cuối trả `PLAYTEST_PREVIEW_RESULT StandaloneOSX Succeeded 0` và exit 0.
+- Máy kiểm: Apple M2, RAM 8 GB, macOS 15.7.4. App dùng Metal. Đây chưa phải kiểm trên Intel.
+- Zip `3gio12-macos-dem-1-2026-11-26.zip`: 350670498 byte; SHA-256 `7633c68120a82a7a74db6dff8540e6850f89f3caa5811a8214d554b8d6bd5f80`.
+- Giải nén bằng ditto sang thư mục riêng: executable `Contents/MacOS/game` giữ quyền chạy và có `x86_64 arm64`.
+- Đã mở app giải nén qua LaunchServices, thấy “Chơi mới Đêm 1”, vào hẻm tả thực, HUD tiếng Việt và tạo `night-one.json` trong thư mục dữ liệu kiểm thử riêng. Không sửa bản lưu cá nhân.
+- Lần mở trước có menu “Tiếp tục” khi chưa chọn chơi mới; lần mở lại hiển thị đúng. Chưa kết luận nguyên nhân; cần kiểm lại khởi động/focus trước phát hành. Log có cảnh báo NavMesh và PanelSettings, không có managed exception trong lần kiểm này.
+- **Chưa đạt đầy đủ tiêu chí #127:** chưa chơi hết đoạn đầu, chưa xác nhận chất lượng Thấp bằng giao diện, chưa đo FPS, chưa thử Intel và chưa upload release. Cấu hình kiểm thử đã nạp quality 0 nhưng không thay cho kiểm giao diện/chơi thực tế.
+
+Giữ PR nháp. Bản zip này chỉ dùng nội bộ để kiểm, không phải release đã được duyệt.
