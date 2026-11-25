@@ -41,3 +41,17 @@ THREEGIO12_DATA_ROOT=/tmp/3gio12-night3-review /path/to/Unity \
 ```
 
 Không dùng `-nographics` cho Write vì phải render PNG thật; không thêm `-quit`. Batchmode không chờ `ScreenCapture` của Game View, nhưng vẫn kiểm PNG từ camera: kích thước, ảnh không đồng màu, ảnh đổi theo góc ngắm, nhận sai/đúng vật, sai máy và file tồn tại. Read kiểm trạng thái/đường dẫn ảnh qua lần mở Unity mới, nhánh pin/mã/két/R2/R3/ngủ/thức/nộp máy và chơi mới. Marker thành công: `NIGHT_THREE_WRITE_PASSED`, `NIGHT_THREE_READ_PASSED`.
+
+## Kết quả 25/11
+
+Unity 6000.3.26f1 trên Apple M2/macOS 15.7.4, dữ liệu thử cách ly:
+
+| Bài kiểm | Kết quả |
+|---|---|
+| Morning Write / Read, cảnh tả thực, hai tiến trình | `NIGHT_TWO_WRITE_PASSED`, `NIGHT_TWO_READ_PASSED` |
+| Evening Run, cảnh tả thực | `NIGHT_TWO_EVENING_PASSED` |
+| Three Write có đồ họa / Read không đồ họa, hai tiến trình | `NIGHT_THREE_WRITE_PASSED`, `NIGHT_THREE_READ_PASSED` |
+| SaveProgress Write / Read, cảnh tả thực | `SAVE_WRITE_PROCESS_PASSED`, `SAVE_READ_PROCESS_PASSED` |
+| NightOneSmoke với `THREEGIO12_NIGHT_SCENE` trỏ cảnh tả thực | `NIGHT_ONE_RUNTIME_VALIDATION_PASSED` |
+
+Các tiến trình trên kết thúc mã 0. SaveProgress fixture đã cập nhật điều kiện xe tới nhà xe/giúp cô Liên của Đêm 1; bộ này không thay việc kiểm prologue. Lượt Menu không đồ họa không được tính là kiểm ảnh giao diện. Log còn lỗi SearchDatabase/indexing có sẵn ở nhiều bài; không dùng các kết quả trên để xác nhận asset đã được duyệt hoặc chơi xuyên ba đêm trên bản phát hành.
