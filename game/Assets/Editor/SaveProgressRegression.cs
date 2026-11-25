@@ -92,6 +92,8 @@ public static class SaveProgressRegression
                 if (!reading)
                 {
                     Check(persistence.StartNewGame(), "new game failed");
+                    // Seed completed arrival/help prerequisites; this suite tests persistence, not the prologue.
+                    story.State.bikeArrived = true; story.State.helpedLien = true;
                     story.State.stage = NightStage.Parking; story.State.phonePlaced = true; story.Clock.Set("21:00");
                     story.Act(NightAction.ParkBike); story.Act(NightAction.Phone); story.Act(NightAction.Gate); story.EnterRoom();
                     story.player.Teleport(story.roomSpawn.position, 73); story.player.SetPhone(1); story.Send("camera:unknown", "Cháu không biết.");
