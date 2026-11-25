@@ -20,7 +20,7 @@ namespace BaGio12.Story
                     case NightThreeStage.GasStation:return "Nhờ nhân viên đổ xăng, nắp phía trước.";
                     case NightThreeStage.GasReturn:return "Bật máy, về nhà trọ.";
                     case NightThreeStage.MorningRoom:return "Đặt báo thức 13:00 trên máy mình (2), rồi nằm nghỉ.";
-                    case NightThreeStage.Evening:return "Máy Ngân (1): tin thoại, lịch sử chat và trang cá nhân. Máy mình (2): camera, thư viện và liên lạc.";
+                    case NightThreeStage.Evening:return Third.policeIntent && MissingThreeAssets!="" ? MissingThreeAssets : "Máy Ngân (1): tin thoại, lịch sử chat và trang cá nhân. Máy mình (2): camera, thư viện và liên lạc.";
                     case NightThreeStage.LateNight:return "23:30 — Tới nệm, chọn đi ngủ hay thức canh.";
                     case NightThreeStage.DawnWaiting:return "23:47 — Xem tin thoại nếu có, rồi trở lại nệm chờ sáng.";
                     default:return "Hết Đêm 3.";
