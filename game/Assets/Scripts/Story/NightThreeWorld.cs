@@ -70,9 +70,17 @@ namespace BaGio12.Story
                         {
                             var patch=surface.AddComponent<NightThreeCaseBack>();
                             patch.firstTriangle=0;patch.triangleCount=mesh.triangles.Length/3;patch.mesh=mesh;patch.submesh=0;
-                            phone.transform.rotation=Quaternion.FromToRotation(patch.SurfaceNormal,Vector3.up)*phone.transform.rotation;
                         }
                     }
+                }
+                var fabric=phone.GetComponentInChildren<NightThreeCaseBack>();
+                var screen=phone.GetComponentsInChildren<MeshCollider>().FirstOrDefault(c=>c.name.Contains("NganPhoneScreen"));
+                if(fabric!=null && screen!=null)
+                {
+                    var indices=screen.sharedMesh.triangles;var vertices=screen.sharedMesh.vertices;Vector3 centre=Vector3.zero;
+                    foreach(int index in indices)centre+=vertices[index];
+                    var back=fabric.SurfaceCentre-screen.transform.TransformPoint(centre/indices.Length);
+                    phone.transform.rotation=Quaternion.FromToRotation(back.normalized,Vector3.up)*phone.transform.rotation;
                 }
                 phone.SetActive(true);
                 var phoneBounds=ModelBounds(phone.transform);
@@ -151,8 +159,16 @@ namespace BaGio12.Story
         {
             if(!ThreeReady || story.player.ActivePhone!=2 || Third.riding || Third.photos.Count>=32)return false;
             EnsureThreeCamera();var camera=story.player.eyes;
-            bool evidence=Physics.Raycast(camera.transform.position,camera.transform.forward,out var hit,3,PlayerGeometry.WorldMask,QueryTriggerInteraction.Ignore)
-                && hit.collider.GetComponent<NightThreeCaseBack>() is NightThreeCaseBack patch && patch.IsEvidence(hit);
+            bool evidence=false;
+            foreach(var hit in Physics.RaycastAll(camera.transform.position,camera.transform.forward,3,PlayerGeometry.WorldMask,QueryTriggerInteraction.Ignore).OrderBy(h=>h.distance))
+            {
+                // Invisible interaction volumes are UI targets, not objects in a photograph.
+                var interaction=hit.collider.GetComponent<WorldInteractable>();
+                var renderer=hit.collider.GetComponent<Renderer>();
+                if(interaction!=null && (renderer==null || !renderer.enabled))continue;
+                evidence=hit.collider.GetComponent<NightThreeCaseBack>() is NightThreeCaseBack patch && patch.IsEvidence(hit);
+                break;
+            }
             var active=RenderTexture.active;Texture2D image=null;
             try
             {
