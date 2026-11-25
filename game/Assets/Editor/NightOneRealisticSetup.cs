@@ -274,8 +274,8 @@ public static class NightOneRealisticSetup
         if (waveRenderers.Length == 0) missing.Add("Garage Cub (Wave)");
         else { waveBounds = waveRenderers[0].bounds; foreach (var r in waveRenderers) waveBounds.Encapsulate(r.bounds); }
         var beside = new Vector3(Mathf.Max(waveBounds.max.x + .12f, slot.x), 0, waveBounds.center.z);
-        var zone = waveBounds; zone.Encapsulate(beside + new Vector3(.15f, 0, .15f));
-        Interact("Place phone beside bike", zone, .08f, NightAction.PlacePhone, "Đặt / lấy chiếc máy");
+        Interact("Place phone beside bike", waveBounds, .08f, NightAction.PlacePhone, "Đặt / lấy chiếc máy");
+        Interact("Place phone slot", At(beside + Vector3.up * .015f, new Vector3(.5f, .03f, .6f)), 0, NightAction.PlacePhone, "Đặt / lấy chiếc máy");
         if (waveBike != null) foreach (var c in waveBike.GetComponents<Collider>()) c.enabled = false;
         story.nganPhone = Interact("Ngan phone", At(beside + Vector3.up * .007f, new Vector3(.08f, .012f, .16f)), 0, NightAction.Phone, "Nhặt chiếc máy", dark);
         story.nganPhone.transform.rotation = Quaternion.Euler(0, 28, 0);
@@ -326,6 +326,7 @@ public static class NightOneRealisticSetup
         var leaf = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None).FirstOrDefault(t => t.name == "env_room7_door");
         if (leaf == null) missing.Add("env_room7_door");
         else { door.leaf = leaf; door.hinge = new Vector3(top.max.x, room.min.y, -41.65f); }
+        if (leaf != null && leaf.parent != null) leaf.parent.gameObject.AddComponent<BaGio12.Environment.ProbeLitOverride>();
         var roomPoint = Point("CHECKPOINT_N1_Room7", new Vector3(-3.5f, 10.2f, -44));
         story.roomSpawn = Marker("Checkpoint room7", new Vector3(roomPoint.x, room.min.y + .08f, roomPoint.z), 0);
         var doorBag = Point("PLACE_N1_BackpackDoor", new Vector3(-2.5f, 10.2f, -42));

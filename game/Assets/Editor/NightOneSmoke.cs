@@ -51,7 +51,7 @@ public static class NightOneSmoke
                 case 0:
                     story.player.ResumeControl();
                     foreach(var o in story.observers)o.enabled=false;
-                    Require(s.clock=="20:56","wrong initial clock");
+                    Require(s.clock=="20:56","wrong initial clock");var probeLit=UnityEngine.Object.FindFirstObjectByType<BaGio12.Environment.ProbeLitOverride>();Require(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name!="NightOneRealistic"||(probeLit!=null&&probeLit.GetComponentsInChildren<Renderer>().All(r=>r.lightmapIndex<0||r.lightmapIndex>=0xFFFE)),"room 7 still lightmapped");
                     Require(!story.player.showTestHud,"test HUD leaked");
                     story.player.SetPhone(1);Require(story.player.ActivePhone==0,"phone allowed during prologue");
                     var path=new NavMeshPath();

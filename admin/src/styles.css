@@ -135,7 +135,9 @@ button.sm {
   border-radius: 6px;
 }
 
-input {
+input,
+select {
+  display: block;
   font: inherit;
   width: 100%;
   margin-top: 0.3rem;
@@ -147,7 +149,8 @@ input {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-input:focus {
+input:focus,
+select:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(155, 28, 28, 0.18);

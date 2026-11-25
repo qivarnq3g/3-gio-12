@@ -11,6 +11,9 @@ namespace BaGio12.Story
         Transform rack, clampLamp, breadCart, riceShop, milkTea, eveningBikeSpot;
         Vector3 bikeHome; Quaternion bikeHomeRotation; bool bikeHomeKnown;
         Light deskLamp;
+        Transform propsRoot;
+        Renderer bulb;
+        MaterialPropertyBlock bulbProperties;
         public string MissingSceneAssets { get; private set; } = "";
 
         static Transform SceneObject(string name) => Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None)
@@ -21,7 +24,7 @@ namespace BaGio12.Story
             foreach (var name in names)
             {
                 var target = SceneObject(name);
-                if (target != null && target.GetComponentsInChildren<Renderer>(true).Any(r => r.enabled && r.gameObject.activeInHierarchy)) return target;
+                if (target != null && target.GetComponentsInChildren<Renderer>(true).Any(r => r.enabled)) return target;
             }
             return null;
         }
@@ -30,6 +33,7 @@ namespace BaGio12.Story
         {
             if (Time.unscaledTime - assetsCheckedAt < 1) return MissingSceneAssets == "";
             assetsCheckedAt = Time.unscaledTime;
+            propsRoot = SceneObject("Night2 props");
             breadCart = VisibleModel("Night2_BreadCart", "BanhMi_Cart");
             rack = VisibleModel("Night2_Shelf", "BH_F3_Room7_Rack");
             clampLamp = VisibleModel("Night2_ClampLamp");
@@ -91,7 +95,11 @@ namespace BaGio12.Story
             Bind("Nằm nghỉ", story.bed, "bed");
             Bind("Ráp kệ", rack, "shelf", -1);
             Bind("Đèn kẹp bàn", clampLamp, "lamp");
-            if (clampLamp != null) deskLamp = clampLamp.GetComponentInChildren<Light>(true);
+            if (clampLamp != null)
+            {
+                deskLamp = clampLamp.GetComponentInChildren<Light>(true);
+                bulb = clampLamp.GetComponentsInChildren<Renderer>(true).FirstOrDefault(r => r.name == "Night2_ClampLamp_Bulb");
+            }
             ValidateEveningAssets();
             Bind("Mua cơm", riceShop, "rice");
             Bind("Cô Liên", SceneObject("PersonLien"), "lien");
@@ -99,11 +107,38 @@ namespace BaGio12.Story
             if (story.ownBike != null) { bikeHome = story.ownBike.transform.position; bikeHomeRotation = story.ownBike.transform.rotation; bikeHomeKnown = true; }
             RefreshWorld();
         }
+        // The setup root starts inactive: discover assets without making them visible in Night 1.
+        void ResetScenePresentation()
+        {
+            if (propsRoot == null) propsRoot = SceneObject("Night2 props");
+            if (propsRoot != null) propsRoot.gameObject.SetActive(false);
+            else
+                foreach (string name in new[] { "Night2_BreadCart", "Night2_Shelf", "Night2_ClampLamp" })
+                { var target = SceneObject(name); if (target != null) target.gameObject.SetActive(false); }
+            if (deskLamp != null) deskLamp.enabled = false;
+        }
         void RefreshWorld()
         {
             if (world == null || State == null) return;
+            if (propsRoot != null) propsRoot.gameObject.SetActive(true);
+            if (breadCart != null) breadCart.gameObject.SetActive(true);
+            if (rack != null)
+            {
+                rack.gameObject.SetActive(State.assemblySteps > 0);
+                for (int i = 1; i <= 4; i++)
+                { var tier = rack.Find("Tier_" + i); if (tier != null) tier.gameObject.SetActive(i <= State.assemblySteps); }
+            }
+            if (clampLamp != null) clampLamp.gameObject.SetActive(State.assemblySteps == 4);
+            bool lit = State.lampTested && State.stage < MorningStage.Evening;
+            if (deskLamp != null) deskLamp.enabled = lit;
+            if (bulb != null)
+            {
+                if (bulbProperties == null) bulbProperties = new MaterialPropertyBlock();
+                bulb.GetPropertyBlock(bulbProperties);
+                bulbProperties.SetColor("_EmissionColor", lit ? new Color(1f,.82f,.55f) * 2.5f : Color.black);
+                bulb.SetPropertyBlock(bulbProperties);
+            }
             bool evening = State.stage >= MorningStage.Evening;
-            if (deskLamp != null) deskLamp.enabled = State.lampTested && !evening;
             if (milkTea != null) milkTea.gameObject.SetActive(evening && State.teaArrived && !State.teaTaken && !State.teaCallPending);
             if (bikeHomeKnown && story.ownBike != null && !State.riding)
             {
