@@ -1,6 +1,6 @@
 # Đêm 2: buổi tối và khuya (#22, đang làm)
 
-Nối tiếp lát cắt buổi sáng (`night-two-morning.md`) từ lúc tỉnh dậy 21:00 ngày 25/11 tới chữ "Hết đêm 2". Đối chiếu `docs/kich-ban/dem-2.md` mục 2, 5.4, 5.5, 6, 7, 8. Vẫn là khối thô dựng lúc chạy trong `NightOneGraybox`, dùng chung `NightTwoMorningState`, chưa ghép bối cảnh thật, giao diện điện thoại #17 hay âm thanh.
+Nối tiếp lát cắt buổi sáng (`night-two-morning.md`) từ lúc tỉnh dậy 21:00 ngày 25/11 tới chữ "Hết đêm 2". Đối chiếu `docs/kich-ban/dem-2.md` mục 2, 5.4, 5.5, 6, 7, 8. Chạy trong cảnh tả thực `NightOneRealistic`, dùng chung `NightTwoMorningState` và vùng tương tác vô hình gắn lên model có sẵn như buổi sáng; giao diện vẽ bằng `HudKit`. Chưa có giao diện điện thoại #17 và âm thanh.
 
 ## Chơi thử
 
@@ -21,13 +21,25 @@ Nối tiếp lát cắt buổi sáng (`night-two-morning.md`) từ lúc tỉnh d
 
 Trong `NightTwoMorningState`: `odoLog`, `roomReply`, `momSuspicion`, `teaArrived`, `teaTaken`, `drankMilkTea`, `vaultWrongAttempts`, `sawStorage`, `sawPhotos`, `sawVlog`, `sawLinhChat`, `setNganPasscode`, `lienSawMorning`, `night2Slept`, `vigilDozed`, `strangerDelivered`, `eveningSent` (các câu Q4 tới Q7 và câu số phòng, để lô 03:40 của Đêm 3 trả lời).
 
+## Model và điểm đánh dấu cần có trong cảnh
+
+Buổi tối tìm các đối tượng sau theo tên. Thiếu thứ nào thì `MissingEveningAssets` báo trên mục tiêu, và bước liên quan không làm được; không có khối thay thế hiện cho người chơi.
+
+| Tên trong cảnh | Là gì | Dùng ở |
+|---|---|---|
+| `Night2_RiceShop` | Quán cơm bình dân trên đường lớn, cùng đoạn với cửa hàng đồ gia dụng | Bước mua cơm |
+| `PARK_N2_RiceShop` | Điểm dừng xe trước quán cơm (thiếu thì dùng điểm của cửa hàng đồ gia dụng) | Điểm cuối tuyến xe buổi tối |
+| `Night2_MilkTea` | Ly trà sữa có giấy dán đọc được, đặt trên bàn cô Liên | Bước nhận trà sữa |
+| `PARK_N2_EveningBike` | Chỗ xe đậu sát vách, đầu quay ra, khác chỗ buổi sáng | Xe đổi chỗ lúc 21:00 |
+| `PersonLien` | Cô Liên (đã có trong cảnh) | Hỏi cô Liên, vị trí bàn trà sữa |
+
 ## Kiểm tra tự động
 
 ```sh
 THREEGIO12_DATA_ROOT=<thư mục thử> Unity -batchmode -projectPath <repo>/game -executeMethod NightTwoEveningRegression.Run -logFile <log>
 ```
 
-Thành công có dòng `NIGHT_TWO_EVENING_PASSED`. Bài chạy ba nhánh: Đêm 1 đi ngủ và cho số phòng (trà sữa, câu hỏi, két, đặt mã, lưu và nạp, đi ngủ); thức canh hai đêm (trả lời số phòng buổi tối, ngủ gật); Đêm 1 đi ngủ, từ chối số phòng, đã chặn số lạ (mức Nghi, báo thức 03:12, nạp lại giữa lúc báo thức reo).
+Bài mở cảnh `NightOneRealistic`; thiếu `THREEGIO12_DATA_ROOT` thì tự tạo thư mục thử trong `Library`. Khi cảnh chưa có các model ở bảng trên và ba model buổi sáng, bài tự đặt vật giữ chỗ chỉ tồn tại trong lúc kiểm để chạy được logic. Thành công có dòng `NIGHT_TWO_EVENING_PASSED`. Bài chạy ba nhánh: Đêm 1 đi ngủ và cho số phòng (trà sữa, câu hỏi, két, đặt mã, lưu và nạp, đi ngủ); thức canh hai đêm (trả lời số phòng buổi tối, ngủ gật); Đêm 1 đi ngủ, từ chối số phòng, đã chặn số lạ (mức Nghi, báo thức 03:12, nạp lại giữa lúc báo thức reo).
 
 ## Chưa có
 

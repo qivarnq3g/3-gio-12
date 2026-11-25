@@ -1,51 +1,42 @@
-# Đêm 2: lát cắt buổi sáng (#22, đang làm)
+# Đêm 2: buổi sáng trong cảnh tả thực (#22, đang chuyển)
 
-## Phạm vi của nhánh
+Nhánh đã cập nhật `main` tới `482d1db` và giữ `NightOneHud`/HudKit của #99. Điểm vào duy nhất là `Assets/Scenes/Night01/NightOneRealistic.unity`, Unity `6000.3.26f1`. Không dùng `NightOneGraybox`, không dựng lại thế giới riêng ở x=100 và không chỉnh scene bằng tay. Các tương tác bổ sung khi chạy nên không bị mất khi `NightOneRealisticSetup` dựng lại cảnh.
 
-Phần buổi sáng nối từ kết thúc `night1_completed` trong `NightOneGraybox` tới lúc tỉnh dậy 21:00 ngày 25/11. Đối chiếu `docs/kich-ban/dem-2.md` mục 3.1–3.3, 4, 5.1–5.3, 6–9. Phần tiếp theo xem [buổi tối Đêm 2](night-two-evening.md) và [Đêm 3](night-three.md). Chưa đóng #22: còn ghép UI/asset cuối và chơi thử ba đêm liền mạch.
+## Trạng thái thực tế ngày 23/11
 
-Giữ riêng khối thô ở x = 80–120, dựng khi chạy, không sửa scene đã lưu và không chép cảnh từ PR #80. Quang sẽ ghép các điểm tương tác vào bối cảnh sau. Người chơi dùng điều khiển và raycast E thật của `FirstPersonPlayer`. Điện thoại buổi sáng là HUD tạm, chưa phải tích hợp giao diện #17. Không có model/âm thanh/ảnh hay lời thoại cuối cùng mới.
+**Chưa chơi xuyên Đêm 1 → Đêm 2 → Đêm 3 được. Không đánh dấu #22 hoàn thành.**
 
-![Khối thô buổi sáng Đêm 2, đang ráp hai tầng kệ](screenshots/night-two-morning.png)
+Kiểm kê scene bằng Unity xác nhận các marker vị trí đã có, nhưng ba model cho chuỗi buổi sáng còn thiếu đối tượng hiển thị để gắn gameplay:
 
-## Chơi thử
+| Hạng mục | Vị trí trong scene | Kết quả kiểm tra |
+|---|---|---|
+| Xe bánh mì | `BanhMi_Cart`, tâm (-2.3, 0.55, 2.2) | Renderer thô đã tắt; marker người bán `NPC_N2_BanhMiSeller` vẫn có |
+| Kệ phòng 7 | `BH_F3_Room7_Rack`, tâm (-2.05, 11.05, -44.15) | Renderer thô đã tắt; không bật lại để giả model tả thực |
+| Đèn kẹp bàn | Phòng 7 | Chưa có đối tượng tương tác độc lập; cần nhóm chốt vị trí và model |
 
-1. Mở `Assets/Scenes/Night01/NightOneGraybox.unity` bằng Unity `6000.3.26f1`, Play, chơi Đêm 1. Sau “HẾT ĐÊM 1”, chọn “Sáng 25/11 — Bắt đầu Đêm 2”. Kết thúc “Người qua đường” không có nút này.
-2. Tắt báo thức. Máy 1 cho xem trạng thái báo thức và trả lời số phòng nếu Đêm 1 đã đi ngủ. Máy 2 có bảng bước chân giữ chỗ, khác nhau theo lựa chọn ngủ/thức. Dữ liệu hiện thô, chưa có biểu đồ chạm từng quãng của #17. Câu trả lời của người chơi chỉ có “Đã gửi”; không nhận phản hồi “Mẹ” trong lúc đang thức.
-3. Tới khối “Bánh mì”, E. Tới khối “Xe máy”, E để bật máy. W tăng tốc; S hoặc Space phanh. Tuyến thẳng giữ người chơi trên đường, tự chặn ở đèn đỏ ba giây, không có va chạm/đua/lái tự do. Đường thô dài 80 m đại diện cho 1,5 km mỗi lượt.
-4. Đến cuối tuyến, E tắt máy/xuống xe. Tới khối cửa hàng, E mua kệ và đèn. E lần nữa để chở đồ về. Tới điểm dừng, E tắt máy/xuống xe.
-5. Đi tới khối “Lối vào phòng”, E lách qua cô Liên. Cô cúi tám giây, nhìn cổng ba giây, nón nhìn 90 độ/8 m có raycast chặn tường. Bị thấy chỉ cằn nhằn và lưu `lienSawMorning`, vẫn vào phòng, không bắt/đuổi/thua. Flag này để phần buổi tối dùng tiếp.
-6. Trong phòng, E bốn lần ở khối “Ráp kệ”. Prompt báo tầng kế tiếp, khối kệ xuất hiện từng tầng. E ở đèn kẹp để bật thử, rồi tới nệm E nằm nghỉ. Nếu tiếp tục đi lại, chớp mắt và tự nằm xuống sau 60 giây chơi (thời gian bản thô, cần chơi thử để chỉnh nhịp).
-7. Màn hình đen hai giây, tỉnh dậy 21:00. Lô trưa và tối xuất hiện theo thời điểm gửi, không phải tin gửi trong lúc người chơi thức. Đây là điểm dừng của lát cắt, chưa phải “Hết Đêm 2”.
+Runtime nhận model tả thực qua tên `Night2_BreadCart`, `Night2_Shelf`, `Night2_ClampLamp`; có thể cập nhật ánh xạ trong `NightTwoMorningWorld` khi nhóm thống nhất tên khác. `ValidateSceneAssets()` chỉ chấp nhận model có renderer đang hiển thị. Không coi marker rỗng hay renderer đã tắt là asset hoàn chỉnh.
 
-Mỗi lần bật/tắt máy ghi `odoLog` và Sổ tay. Mốc 08:10 là 12.411 nếu Đêm 1 đi ngủ, 12.400 nếu thức canh; khi về 09:20 là 12.414/12.403. Sau giấc nghỉ tăng thêm 11 km, không tự ghi hay giải thích số đó cho người chơi; lần bật máy buổi tối sẽ được triển khai sau.
+Khi thiếu asset, nút bắt đầu Đêm 2 ở cuối Đêm 1 bị khóa và ghi rõ danh sách đang chờ. Gọi `Begin()` trực tiếp cũng từ chối trước khi sửa state, checkpoint hoặc sinh world. Các save thử nghiệm cảnh thô không được chuyển thành tọa độ tả thực tự động; hãy chơi mới trong cảnh chính.
 
-## Lưu, nạp và tương thích
+## Phần đã chuyển trong mã
 
-`NightOneState.nightTwoStarted` phân biệt Đêm 1 với buổi sáng Đêm 2; `nightTwo` chứa stage, bốn bước ráp kệ, nhánh số phòng, mức nghi, đồng hồ xe và lịch nhìn. Cờ riêng là cần thiết vì `JsonUtility` có thể biến object inline null thành object rỗng khi sao chép. Save cũ thiếu cờ này vẫn là Đêm 1; không suy đoán đêm từ việc object có tồn tại hay không.
+- HUD buổi sáng gọi HudKit cho font BeVietnamPro, nhãn, nút, cuộn, prompt và phụ đề; không dùng font LegacyRuntime/GUI.skin riêng. Điện thoại Ngân của Đêm 1 không mở chồng lên giao diện buổi sáng.
+- Room, garage, cửa hàng và người bán lấy vị trí từ marker của cảnh chính. Tuyến đi mua đồ bám hẻm → đường lớn → cửa hàng, giữ thước đo tiến trình trong DTO để không thay cách tính km.
+- World buổi sáng chỉ thêm volume tương tác không hiển thị lên model/marker hiện có. Không tạo nền, tường, đường, NPC hay đồ vật bằng primitive.
+- Lựa chọn ngủ/thức, số phòng, odometer và các bước ráp kệ vẫn trong DTO của #22. Bản chuyển này chưa xác nhận được chuỗi gameplay đó trong cảnh tả thực do thiếu các model trên.
 
-Tiếp tục dùng slot `night-one.json`, envelope version 1, checksum/backup/menu của #21. Lưu giữa lúc đi xe giữ vị trí dọc tuyến, tốc độ, thời gian dừng đèn đỏ và khóa đi bộ; lúc khôi phục không cộng lại số km. Không lưu nửa coroutine màn hình đen; thoát giữa lúc nghỉ quay lại snapshot ổn định trước đó. Chơi mới trở lại Đêm 1 và bật lại observer của Đêm 1.
+## Kiểm tra
 
-## Kiểm tra tự động
+`FollowupSceneRegression.Inventory` mở cảnh thật và ghi `FOLLOWUP_MODEL`, `FOLLOWUP_RENDERER`, `FOLLOWUP_MISSING` để đối chiếu model/marker.
 
-Chạy trong Editor có giao diện, hai tiến trình riêng, cùng thư mục dữ liệu thử. Không dùng dữ liệu chơi thật, không thêm `-quit`:
+`FollowupSceneRegression.Run` chạy Play Mode thật: không cho bắt đầu Đêm 2 trước kết thúc Đêm 1; kiểm tra readiness theo asset hiện có; nếu thiếu model thì state không đổi, không bật cờ Đêm 2 và không tạo world dở dang. Kết quả ngày 23/11: `FOLLOWUP_SCENE_GUARD_PASSED`, đồng thời ghi `FOLLOWUP_ASSET_BLOCKER` cho ba model trên. Đây là kiểm tra điều kiện chuyển cảnh, **không phải** kết quả chơi xuyên ba đêm.
 
 ```sh
-THREEGIO12_DATA_ROOT=/tmp/3gio12-night2-review /path/to/Unity \
-  -projectPath /path/to/repo/game -executeMethod NightTwoMorningRegression.Write \
-  -logFile /tmp/night2-write.log
-
-THREEGIO12_DATA_ROOT=/tmp/3gio12-night2-review /path/to/Unity \
-  -projectPath /path/to/repo/game -executeMethod NightTwoMorningRegression.Read \
-  -logFile /tmp/night2-read.log
+THREEGIO12_DATA_ROOT=/tmp/3gio12-realistic-review /path/to/Unity \
+  -projectPath /path/to/repo/game -executeMethod FollowupSceneRegression.Run \
+  -logFile /tmp/3gio12-realistic-review.log
 ```
 
-Thành công có `NIGHT_TWO_WRITE_PASSED` và `NIGHT_TWO_READ_PASSED`, exit 0. Bài Write đi cả hai nhánh Đêm 1, kiểm thao tác sai thứ tự/ngoài tầm, phanh/đèn đỏ, save giữa tuyến, ghi số km, cổng thấy/không thấy/có tường, bốn tầng kệ, từ chối save NaN, rồi ghi khi ráp được hai tầng. Bài Read dùng menu khởi động thật để nạp slot ấy trong tiến trình mới, ráp tiếp, thử đèn, nghỉ tới 21:00, nạp lại và chơi mới Đêm 1. Ảnh kiểm tra HUD ghi vào `morning-preview.png` trong thư mục thử.
+`NightOneSmoke.Run` mở `NightOneRealistic` với `-batchmode -nographics` đã đạt `NIGHT_ONE_RUNTIME_VALIDATION_PASSED`, exit 0. Đây là kiểm tra API/logic Đêm 1. Lần chạy có giao diện trước đó không kết thúc sau hơn bốn phút và đã dừng; chưa có xác nhận hình ảnh/input hay chơi xuyên ba đêm.
 
-Các bài hồi quy Đêm 1 và save #21 vẫn phải đạt. Chưa thay bài chơi thử bằng tay hoặc kiểm Windows/Linux. Trước khi duyệt phần này cần chơi tuyến bằng W/S/Space/E và kiểm menu Esc, bố cục HUD, nhịp buồn ngủ.
-
-## Phần còn lại của #22
-
-- Luồng buổi tối Đêm 2 và Đêm 3 đã có bản thô trong các tài liệu nối tiếp ở trên; cần kiểm lại trên cảnh và điện thoại cuối.
-- Ghép điện thoại #17, bối cảnh/model của nhóm; thay bảng chữ và thoại giữ chỗ bằng nội dung được duyệt.
-- Kiểm chơi liền mạch cả ba đêm và lưu/nạp các nhánh mới trước khi đóng issue.
+Các kết quả `NightTwoMorningRegression.Write/Read` cũ thuộc cảnh thô, không chứng minh bản chuyển này đạt. Cần chuyển lại các fixture sau khi có model. Tiếp theo phải kiểm E/raycast thực tế, đi xe hai chiều, save/continue qua tiến trình mới, cổng/cầu thang/phòng 7, ráp kệ từng tầng, thử đèn, nghỉ tới 21:00, HUD ở nhiều tỉ lệ màn hình; sau đó tích hợp #85/#90 và build `PlaytestBuild.NightOneReal` để chơi xuyên ba đêm.

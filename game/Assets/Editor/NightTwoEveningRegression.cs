@@ -22,10 +22,11 @@ public static class NightTwoEveningRegression
 
     public static void Run()
     {
-        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THREEGIO12_DATA_ROOT"))) throw new Exception("Set isolated THREEGIO12_DATA_ROOT.");
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THREEGIO12_DATA_ROOT")))
+            Environment.SetEnvironmentVariable("THREEGIO12_DATA_ROOT", Path.GetFullPath(Path.Combine("Library", Flag, Guid.NewGuid().ToString("N"))));
         Environment.SetEnvironmentVariable("THREEGIO12_SKIP_START_MENU", "1");
         SessionState.SetBool(Flag, true);
-        EditorSceneManager.OpenScene("Assets/Scenes/Night01/NightOneGraybox.unity");
+        EditorSceneManager.OpenScene(NightOneRealisticSetup.ScenePath);
         EditorApplication.playModeStateChanged -= Changed; EditorApplication.playModeStateChanged += Changed;
         EditorApplication.EnterPlaymode();
     }
@@ -34,7 +35,29 @@ public static class NightTwoEveningRegression
     {
         if (mode != PlayModeStateChange.EnteredPlayMode) return;
         Application.runInBackground = true;
+        AddFixtures();
         step = 0; deadline = EditorApplication.timeSinceStartup + 90; EditorApplication.update += Tick;
+    }
+
+    // Stand-ins only for scene models that are not merged yet, so the evening logic can be exercised.
+    static void AddFixtures()
+    {
+        var all = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        bool Visible(string name) => all.Any(t => t.name == name && t.GetComponentsInChildren<Renderer>(true).Any(r => r.enabled && r.gameObject.activeInHierarchy));
+        void Fixture(string name, Vector3 at)
+        {
+            if (Visible(name)) return;
+            var o = GameObject.CreatePrimitive(PrimitiveType.Cube); o.name = name;
+            o.transform.position = at; o.transform.localScale = Vector3.one * .3f;
+            UnityEngine.Object.Destroy(o.GetComponent<Collider>());
+        }
+        Fixture("Night2_BreadCart", NightTwoMorning.Breakfast);
+        Fixture("Night2_Shelf", NightTwoMorning.Room);
+        Fixture("Night2_ClampLamp", NightTwoMorning.Room + Vector3.up);
+        Fixture("Night2_RiceShop", NightTwoMorning.RiceShop);
+        Fixture("Night2_MilkTea", NightTwoMorning.LienDesk);
+        if (!all.Any(t => t.name == "PARK_N2_EveningBike"))
+        { var spot = new GameObject("PARK_N2_EveningBike"); spot.transform.position = NightTwoMorning.Parking + Vector3.right * 2; }
     }
 
     static void Check(bool value, string text) { if (!value) throw new Exception("NIGHT_TWO_EVENING: " + text); }
@@ -53,11 +76,11 @@ public static class NightTwoEveningRegression
         story.State.hasNganPhone = true; story.State.night1_slept = slept; story.State.number_choice = numberChoice;
         story.FinishNight(); Check(night.Begin(), "night 1 handoff");
         Check(night.StopAlarm(), "alarm");
-        story.player.Teleport(new Vector3(96, .08f, 7)); Check(night.EatBreakfast(), "breakfast");
+        story.player.Teleport(NightTwoMorning.Breakfast); Check(night.EatBreakfast(), "breakfast");
         if (reply != null) Check(night.ReplyRoom(reply == "given"), "morning room reply");
         story.player.Teleport(NightTwoMorning.Parking); Check(night.Mount(), "morning mount");
         Drive(); Check(night.BuyFurniture(), "purchase"); Check(night.Mount(), "morning return"); Drive();
-        story.player.Teleport(new Vector3(100, .08f, 7)); night.State.gateElapsed = 0; Check(night.PassGate(), "gate");
+        story.player.Teleport(NightTwoMorning.Gate); night.State.gateElapsed = 0; Check(night.PassGate(), "gate");
         story.player.Teleport(NightTwoMorning.Room);
         for (int i = 0; i < 4; i++) Check(night.Assemble(i), "shelf");
         Check(night.TestLamp(), "lamp"); Check(night.Rest(), "rest");
@@ -72,7 +95,7 @@ public static class NightTwoEveningRegression
         Check(!night.Mount(), "left without rice");
         story.player.Teleport(NightTwoMorning.Room); Check(!night.BuyRice(), "remote rice");
         story.player.Teleport(NightTwoMorning.RiceShop); Check(night.BuyRice() && !night.BuyRice(), "buy rice once");
-        story.player.Teleport(NightTwoMorning.Store); Check(night.Mount(), "rice return mount");
+        story.player.Teleport(NightTwoMorning.RiceShop); Check(night.Mount(), "rice return mount");
         Drive(); Check(night.State.stage == MorningStage.Home, "home arrival");
     }
 

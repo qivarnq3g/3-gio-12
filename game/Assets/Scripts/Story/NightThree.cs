@@ -73,7 +73,7 @@ namespace BaGio12.Story
             if(!ThreeReady || Third.riding || page!="" || story.player.ActivePhone!=0)return false;
             bool returning=Third.stage==NightThreeStage.GasReturn;
             if(Third.stage!=NightThreeStage.ToGas && !returning)return false;
-            if(!Nearby(returning?Store:Parking,5))return false;
+            if(!Nearby(returning?ThreeGas:Parking,5))return false;
             Third.returning=returning;Third.riding=true;Third.routeMetres=Third.speed=0;
             story.Clock.Set(returning?"07:10":"07:00",2);LogThreeEngine(true);
             story.Say(returning?"Đã đổ xăng. Về nhà trọ.":"Đèn báo xăng nháy đỏ.");
@@ -89,7 +89,13 @@ namespace BaGio12.Story
         }
         void ThreeRidePose()
         {
-            story.player.Teleport(new Vector3(112,.35f,Third.returning?92-Third.routeMetres:12+Third.routeMetres),Third.returning?180:0);
+            float progress=Mathf.Clamp01(Third.routeMetres/FixedRouteRide.Length);
+            if(Third.returning)progress=1-progress;
+            Vector3 corner=new Vector3(0,.08f,8);float alley=Vector3.Distance(Parking,corner),road=Vector3.Distance(corner,ThreeGas);
+            float travelled=progress*(alley+road);
+            Vector3 position=travelled<alley?Vector3.Lerp(Parking,corner,travelled/alley):Vector3.Lerp(corner,ThreeGas,(travelled-alley)/road);
+            Vector3 forward=travelled<alley?corner-Parking:ThreeGas-corner;
+            story.player.Teleport(position,Quaternion.LookRotation(Third.returning?-forward:forward).eulerAngles.y);
             story.player.RestoreView(0,false);
         }
         public bool ThreeDismount()
@@ -98,7 +104,7 @@ namespace BaGio12.Story
             Third.riding=false;Third.odometer+=.5f;
             Third.stage=Third.returning?NightThreeStage.MorningRoom:NightThreeStage.GasStation;
             story.Clock.Set(Third.returning?"07:20":"07:10",2);LogThreeEngine(false);
-            story.player.SetOverlay(false);story.player.Teleport((Third.returning?Parking:Store)+Vector3.left*1.2f,90);Checkpoint();return true;
+            story.player.SetOverlay(false);story.player.Teleport((Third.returning?Parking:ThreeGas)+Vector3.left*1.2f,90);Checkpoint();return true;
         }
         void LogThreeEngine(bool on)
         {
@@ -107,7 +113,7 @@ namespace BaGio12.Story
         }
         public bool RefuelThree()
         {
-            if(!ThreeReady || Third.stage!=NightThreeStage.GasStation || !Nearby(Store,4))return false;
+            if(!ThreeReady || Third.stage!=NightThreeStage.GasStation || !Nearby(ThreeGas,4))return false;
             Third.refuelled=true;Third.stage=NightThreeStage.GasReturn;
             story.Say("Nhân viên: Mở yên giúp anh.\nBạn: Dạ, nắp xăng ở đằng trước.",6);Checkpoint();return true;
         }
@@ -174,7 +180,7 @@ namespace BaGio12.Story
         {
             story.Say("Vậy ai nhắn cho mình ba ngày nay?",6);
             story.player.Teleport(Room);yield return MoveThree(Room+Vector3.forward*2.2f,1);
-            threeDoor.transform.localRotation=Quaternion.identity;yield return new WaitForSeconds(.4f);
+            if(threeDoor!=null)threeDoor.SetFollowupLocked(true);yield return new WaitForSeconds(.4f);
             yield return MoveThree(Room,1);Third.openedHoaProfile=Third.doorLocked=true;EndThreeTransition();
         }
         IEnumerator MoveThree(Vector3 destination,float seconds)
@@ -241,6 +247,7 @@ namespace BaGio12.Story
         public bool ThreeHandInPhone()
         {
             if(!ThreeReady || !Third.policeIntent || !Nearby(ThreePolice,3))return false;
+            if(VisibleModel("Night3_PoliceDesk","env_police_station")==null){story.Say(MissingThreeAssets);return false;}
             Third.stage=NightThreeStage.Scapegoat;Third.ending="scapegoat";story.State.ending="scapegoat";
             story.player.SetPhone(0);story.player.SetOverlay(true);Checkpoint();return true;
         }

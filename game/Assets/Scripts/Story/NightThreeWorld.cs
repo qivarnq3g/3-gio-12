@@ -9,36 +9,76 @@ namespace BaGio12.Story
 {
     public sealed partial class NightTwoMorning
     {
-        public static readonly Vector3 ThreePolice=new Vector3(86,.08f,20), ThreeBag=new Vector3(99,.08f,-3);
-        public static readonly Vector3 CaseBackPosition=new Vector3(101.5f,1.35f,2.5f);
-        GameObject threeWorld,threeDoor;
+        public static Vector3 ThreePolice => ScenePoint("ENTRANCE_Police", Vector3.zero);
+        public static Vector3 ThreeBag => ScenePoint("Bag beside door", Room);
+        public static Vector3 ThreeGas => ScenePoint("PARK_N3_GasPump", Vector3.zero);
+        public static Vector3 CaseBackPosition => Object.FindObjectsByType<NightThreeCaseBack>(FindObjectsInactive.Include,FindObjectsSortMode.None).FirstOrDefault()?.SurfaceCentre ?? Room;
+        GameObject threeWorld;
+        NightRoomDoor threeDoor;
         RenderTexture threeCamera;
         Camera threePhotoCamera;
         Texture2D threePhotoPreview;
         string selectedPhoto="";
+        public string MissingThreeAssets { get; private set; } = "";
+        void BindThree(Transform target, string action)
+        {
+            if (target == null) return;
+            var node = new GameObject("Night3 interaction " + action);
+            node.transform.SetParent(threeWorld.transform);
+            var bounds = ModelBounds(target); node.transform.position = bounds.center;
+            node.AddComponent<BoxCollider>().size = Vector3.Max(bounds.size + Vector3.one*.1f, Vector3.one*.2f);
+            var interaction = node.AddComponent<MorningInteraction>(); interaction.owner=this; interaction.action=action;
+        }
         void EnsureThreeWorld()
         {
             if(threeWorld!=null)return;
-            threeWorld=new GameObject("Night 3 temporary props");threeWorld.transform.SetParent(world.transform);
-            var mat=Material(new Color(.8f,.45f,.15f));
-            var phone=Box("Mặt lưng máy Ngân — cá bống chỉ cam",CaseBackPosition,new Vector3(.28f,.5f,.04f),mat);
-            phone.transform.SetParent(threeWorld.transform);phone.AddComponent<NightThreeCaseBack>();
-            threeDoor=Box("Cửa phòng 7",Room+new Vector3(0,1.1f,3),new Vector3(2.2f,2.2f,.1f),mat);
-            threeDoor.transform.SetParent(threeWorld.transform);
-            foreach(var tuple in new[]{("Cây xăng",Store+new Vector3(-2,.6f,0),"gas"),("Công an phường",ThreePolice+Vector3.up*.6f,"police3"),("Ba lô — ngăn nhỏ",ThreeBag+Vector3.up*.6f,"bag3"),("Cáp / ổ sạc",Room+new Vector3(2,.6f,1),"charge3")})
-            {var node=Node(tuple.Item1,tuple.Item2,tuple.Item3,mat);node.transform.SetParent(threeWorld.transform,true);}
+            threeWorld=new GameObject("Night 3 — realistic interactions");threeWorld.transform.SetParent(world.transform);
+            threeDoor=Object.FindFirstObjectByType<NightRoomDoor>();
+            BindThree(SceneObject("NPC_N3_GasAttendant"),"gas");
+            BindThree(SceneObject("PARK_N3_GasPump"),"store");
+            BindThree(story.bag == null ? null : story.bag.transform,"bag3");
+            BindThree(SceneObject("Phone box and charger"),"charge3");
+            var police=VisibleModel("Night3_PoliceDesk","env_police_station");
+            BindThree(police,"police3");
+            MissingThreeAssets=police==null?"Đêm 3 đang chờ điểm tiếp nhận của công an phường (Night3_PoliceDesk); không dùng khối thô.":"";
+            var source=story.nganPhone == null ? null : story.nganPhone.transform.Find("Ngan phone model");
+            if(source!=null && rack!=null)
+            {
+                var phone=Instantiate(source.gameObject,threeWorld.transform);phone.name="Night3 phone evidence";
+                phone.transform.localScale=Vector3.one;phone.transform.rotation=Quaternion.identity;
+                var shelfBounds=ModelBounds(rack);
+                phone.transform.position=new Vector3(shelfBounds.center.x,shelfBounds.max.y+.02f,shelfBounds.center.z);
+                foreach(var filter in phone.GetComponentsInChildren<MeshFilter>(true))
+                {
+                    var renderer=filter.GetComponent<Renderer>(); if(renderer==null || filter.sharedMesh==null)continue;
+                    var collider=filter.gameObject.AddComponent<MeshCollider>();collider.sharedMesh=filter.sharedMesh;
+                    int first=0;
+                    for(int i=0;i<filter.sharedMesh.subMeshCount;i++)
+                    {
+                        int count=(int)filter.sharedMesh.GetIndexCount(i)/3;
+                        if(i<renderer.sharedMaterials.Length && renderer.sharedMaterials[i]!=null && renderer.sharedMaterials[i].name.Contains("NganPhoneFabric"))
+                        {
+                            var patch=filter.gameObject.AddComponent<NightThreeCaseBack>();
+                            patch.firstTriangle=first;patch.triangleCount=count;
+                            patch.mesh=filter.sharedMesh;patch.submesh=i;
+                            phone.transform.rotation=Quaternion.FromToRotation(patch.SurfaceNormal,Vector3.up)*phone.transform.rotation;
+                        }
+                        first+=count;
+                    }
+                }
+                phone.SetActive(true);
+                var phoneBounds=ModelBounds(phone.transform);
+                phone.transform.position+=Vector3.up*(shelfBounds.max.y+.002f-phoneBounds.min.y);
+            }
+            else MissingThreeAssets += " Cần model mặt lưng máy Ngân và kệ để đặt máy.";
         }
         void RefreshThreeWorld()
         {
             if(threeWorld==null)return;
-            bool evening=Third.stage>=NightThreeStage.Evening;
-            worldSun.intensity=evening?.12f:1.2f;deskLamp.enabled=true;
-            story.player.eyes.backgroundColor=evening?originalSky:new Color(.42f,.62f,.78f);
-            foreach(var n in morningNodes)n.SetActive(false);
-            foreach(var n in eveningNodes)n.SetActive(false);
-            bikeNode.transform.position=Vector3.zero;
-            teaNode.SetActive(Third.teaArrived&&!Third.teaTaken);
-            threeDoor.transform.rotation=Quaternion.Euler(0,Third.doorLocked?0:90,0);
+            if(threeDoor!=null)threeDoor.SetFollowupLocked(Third.doorLocked);
+            if(milkTea!=null)milkTea.gameObject.SetActive(Third.teaArrived&&!Third.teaTaken);
+            if(bikeHomeKnown && story.ownBike!=null && !Third.riding)
+                story.ownBike.transform.SetPositionAndRotation(bikeHome,bikeHomeRotation);
         }
         string ThreePrompt(string action)
         {
@@ -104,7 +144,7 @@ namespace BaGio12.Story
             if(!ThreeReady || story.player.ActivePhone!=2 || Third.riding || Third.photos.Count>=32)return false;
             EnsureThreeCamera();var camera=story.player.eyes;
             bool evidence=Physics.Raycast(camera.transform.position,camera.transform.forward,out var hit,3,PlayerGeometry.WorldMask,QueryTriggerInteraction.Ignore)
-                && hit.collider.GetComponent<NightThreeCaseBack>()!=null;
+                && hit.collider.GetComponent<NightThreeCaseBack>() is NightThreeCaseBack patch && patch.IsEvidence(hit);
             var active=RenderTexture.active;Texture2D image=null;
             try
             {

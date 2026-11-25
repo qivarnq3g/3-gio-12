@@ -5,17 +5,18 @@ using UnityEngine.InputSystem;
 
 namespace BaGio12.Story
 {
-    // First vertical slice of #22. The temporary world is deliberately isolated
-    // from Quang's environment branch; all progression lives in the save DTO.
+    // Follow-up nights reuse the main realistic scene; progression lives in the save DTO.
     public sealed partial class NightTwoMorning : MonoBehaviour
     {
         public NightOneDirector story;
         public NightTwoMorningState State => story.InNightTwo ? story.State.nightTwo : null;
         public bool Transitioning { get; private set; }
-        public static readonly Vector3 Room = new Vector3(100, .08f, 0);
-        public static readonly Vector3 Parking = new Vector3(108, .08f, 12);
-        public static readonly Vector3 Store = new Vector3(108, .08f, 92);
-        public static readonly Vector3 Lien = new Vector3(102, 0, 9);
+        public static Vector3 Room => ScenePoint("CHECKPOINT_N1_Room7", new Vector3(-3.8f,10.28f,-44));
+        public static Vector3 Parking => ScenePoint("CHECKPOINT_N1_Garage", new Vector3(0,.08f,-50));
+        public static Vector3 Store => ScenePoint("PARK_N2_HomewareShop", new Vector3(-154,.08f,14));
+        public static Vector3 Lien => ScenePoint("OBSERVER_Lien_Gate", new Vector3(-1.8f,0,-42));
+        public static Vector3 Breakfast => ScenePoint("NPC_N2_BanhMiSeller", new Vector3(-2.3f,0,1.4f));
+        public static Vector3 Gate => new Vector3(0,.08f,-41.6f);
         string page = "";
         bool wasActive;
         float fatiguePulse;
@@ -23,6 +24,9 @@ namespace BaGio12.Story
         public bool Begin()
         {
             if (story.InNightTwo || story.Busy || story.State.ending != "night1_completed") return false;
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "NightOneRealistic")
+            { story.Say("Đêm 2 phải chạy trong cảnh NightOneRealistic."); return false; }
+            if (!ValidateSceneAssets()) { story.Say(MissingSceneAssets, 10); return false; }
             story.State.nightTwo = NightTwoMorningState.FromNightOne(story.State);
             story.State.nightTwoStarted = true;
             story.State.stage = NightStage.Room; story.State.ending = "";
@@ -43,6 +47,7 @@ namespace BaGio12.Story
             if (active) RefreshWorld();
             if (story.InNightThree) { EnsureThreeWorld(); RefreshThreeWorld(); }
             if (threeWorld != null) threeWorld.SetActive(story.InNightThree);
+            if (!story.InNightThree && threeDoor!=null)threeDoor.SetFollowupLocked(false);
             if (world != null) world.SetActive(active);
             if (!active && wasActive) story.player.eyes.backgroundColor = originalSky;
             if (active || wasActive)
@@ -103,8 +108,18 @@ namespace BaGio12.Story
 
         void SetRidePose()
         {
-            float z = State.returning ? 92 - State.routeMetres : 12 + State.routeMetres;
-            story.player.Teleport(new Vector3(112, .35f, z), State.returning ? 180 : 0);
+            // Route distance remains save-compatible; interpolate along the actual alley and street.
+            float progress = Mathf.Clamp01(State.routeMetres / FixedRouteRide.Length);
+            if (State.returning) progress = 1 - progress;
+            bool evening = State.stage == MorningStage.ToRice || State.stage == MorningStage.RiceReturn;
+            Vector3 start = evening ? EveningBike : Parking, corner = new Vector3(0,.08f,8), finish = evening ? RiceShop : Store;
+            float alley = Vector3.Distance(start,corner), road = Vector3.Distance(corner,finish);
+            float travelled = progress * (alley + road);
+            Vector3 position = travelled < alley ? Vector3.Lerp(start,corner,travelled/alley)
+                : Vector3.Lerp(corner,finish,(travelled-alley)/road);
+            Vector3 forward = travelled < alley ? corner-start : finish-corner;
+            if (State.returning) forward = -forward;
+            story.player.Teleport(position, Quaternion.LookRotation(forward).eulerAngles.y);
             story.player.RestoreView(0, false);
         }
         bool Nearby(Vector3 point, float distance = 3) => Vector3.Distance(story.player.transform.position, point) <= distance;
@@ -116,7 +131,7 @@ namespace BaGio12.Story
         }
         public bool EatBreakfast()
         {
-            if (State.stage != MorningStage.Breakfast || !Nearby(new Vector3(96, .08f, 7))) return false;
+            if (State.stage != MorningStage.Breakfast || !Nearby(Breakfast)) return false;
             State.stage = MorningStage.ToStore; story.Clock.Set("08:10", 1);
             story.Say("Cô bán bánh mì: Mới dọn tới hả cháu?"); Checkpoint(); return true;
         }
@@ -129,7 +144,7 @@ namespace BaGio12.Story
                 case MorningStage.ToStore: returning = false; at = Parking; next = MorningStage.ToStore; break;
                 case MorningStage.ReturnHome: returning = true; at = Store; next = MorningStage.ReturnHome; break;
                 case MorningStage.Evening: returning = false; at = EveningBike; next = MorningStage.ToRice; break;
-                case MorningStage.RiceShop: if (!State.hasRice) return false; returning = true; at = Store; next = MorningStage.RiceReturn; break;
+                case MorningStage.RiceShop: if (!State.hasRice) return false; returning = true; at = RiceShop; next = MorningStage.RiceReturn; break;
                 default: return false;
             }
             if (!Nearby(at, 5)) return false;
@@ -159,7 +174,7 @@ namespace BaGio12.Story
                 story.Clock.Set(State.returning ? "09:20" : "08:30", 1);
             }
             LogEngine(false); story.player.SetOverlay(false);
-            story.player.Teleport((State.returning ? evening ? EveningBike : Parking : Store) + Vector3.left * 1.2f, 90);
+            story.player.Teleport((State.returning ? evening ? EveningBike : Parking : evening ? RiceShop : Store) + Vector3.left * 1.2f, 90);
             if (evening && State.returning) ArriveHomeEvening();
             Checkpoint(); return true;
         }
@@ -184,7 +199,7 @@ namespace BaGio12.Story
         }
         public bool PassGate()
         {
-            if (State.stage != MorningStage.Gate || !Nearby(new Vector3(100, .08f, 7))) return false;
+            if (State.stage != MorningStage.Gate || !Nearby(Gate)) return false;
             State.lienSawMorning |= LienCanSee(story.player.eyes.transform.position);
             State.stage = MorningStage.Assembly;
             story.Say(State.lienSawMorning ? "Cô Liên: Căn cước nghen con, phường người ta xuống kiểm đó. Thôi lên đi." : "Bạn lách qua lúc cô Liên đang cúi lặt rau.", 8);
@@ -193,6 +208,7 @@ namespace BaGio12.Story
         public bool Assemble(int step)
         {
             if (State.stage != MorningStage.Assembly || step != State.assemblySteps || !Nearby(Room, 4)) return false;
+            if (rack == null) { story.Say(MissingSceneAssets, 8); return false; }
             State.assemblySteps++;
             story.Say("Ráp tầng kệ " + State.assemblySteps + "/4.");
             if (State.assemblySteps == 4) State.stage = MorningStage.Lamp;
@@ -201,6 +217,7 @@ namespace BaGio12.Story
         public bool TestLamp()
         {
             if (State.stage != MorningStage.Lamp || !Nearby(Room, 4)) return false;
+            if (clampLamp == null) { story.Say(MissingSceneAssets, 8); return false; }
             State.lampTested = true; State.stage = MorningStage.Rest; story.Clock.Set("11:30", 1);
             story.Say("Buồn ngủ quá. Nằm nghỉ một chút."); Checkpoint(); return true;
         }
