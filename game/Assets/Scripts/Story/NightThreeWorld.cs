@@ -20,6 +20,7 @@ namespace BaGio12.Story
         Camera threePhotoCamera;
         Texture2D threePhotoPreview;
         string selectedPhoto="";
+        readonly System.Collections.Generic.List<Mesh> threePhotoMeshes = new System.Collections.Generic.List<Mesh>();
         public string MissingThreeAssets { get; private set; } = "";
         void BindThree(Transform target, string action)
         {
@@ -54,19 +55,23 @@ namespace BaGio12.Story
                 foreach(var filter in phone.GetComponentsInChildren<MeshFilter>(true))
                 {
                     var renderer=filter.GetComponent<Renderer>(); if(renderer==null || filter.sharedMesh==null)continue;
-                    var collider=filter.gameObject.AddComponent<MeshCollider>();collider.sharedMesh=filter.sharedMesh;
-                    int first=0;
                     for(int i=0;i<filter.sharedMesh.subMeshCount;i++)
                     {
-                        int count=(int)filter.sharedMesh.GetIndexCount(i)/3;
-                        if(i<renderer.sharedMaterials.Length && renderer.sharedMaterials[i]!=null && renderer.sharedMaterials[i].name.Contains("NganPhoneFabric"))
+                        if(i>=renderer.sharedMaterials.Length || renderer.sharedMaterials[i]==null)continue;
+                        string material=renderer.sharedMaterials[i].name;
+                        // The clear protective case does not hide the fabric underneath it.
+                        if(material.Contains("NganPhoneCase"))continue;
+                        var mesh=new Mesh {name="Phone photograph surface",indexFormat=filter.sharedMesh.indexFormat};
+                        mesh.vertices=filter.sharedMesh.vertices;mesh.triangles=filter.sharedMesh.GetTriangles(i);mesh.RecalculateBounds();
+                        threePhotoMeshes.Add(mesh);
+                        var surface=new GameObject("Phone surface " + material);surface.transform.SetParent(filter.transform,false);
+                        surface.AddComponent<MeshCollider>().sharedMesh=mesh;
+                        if(material.Contains("NganPhoneFabric"))
                         {
-                            var patch=filter.gameObject.AddComponent<NightThreeCaseBack>();
-                            patch.firstTriangle=first;patch.triangleCount=count;
-                            patch.mesh=filter.sharedMesh;patch.submesh=i;
+                            var patch=surface.AddComponent<NightThreeCaseBack>();
+                            patch.firstTriangle=0;patch.triangleCount=mesh.triangles.Length/3;patch.mesh=mesh;patch.submesh=0;
                             phone.transform.rotation=Quaternion.FromToRotation(patch.SurfaceNormal,Vector3.up)*phone.transform.rotation;
                         }
-                        first+=count;
                     }
                 }
                 phone.SetActive(true);
@@ -175,6 +180,8 @@ namespace BaGio12.Story
         {
             if(threeCamera!=null){threeCamera.Release();Destroy(threeCamera);}
             if(threePhotoPreview!=null)Destroy(threePhotoPreview);
+            foreach(var mesh in threePhotoMeshes)Destroy(mesh);
+            threePhotoMeshes.Clear();
         }
     }
 }
