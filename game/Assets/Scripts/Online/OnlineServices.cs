@@ -137,7 +137,7 @@ namespace BaGio12.Online
         }
 
         static DateTime? ParseUtc(string value) =>
-            DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind | DateTimeStyles.AdjustToUniversal, out var at) ? at : (DateTime?)null;
+            DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var at) ? at : (DateTime?)null;
 
         static int SecondsSince(string startedAt, DateTime end) =>
             ParseUtc(startedAt) is DateTime start ? Math.Max(0, (int)(end - start).TotalSeconds) : 0;

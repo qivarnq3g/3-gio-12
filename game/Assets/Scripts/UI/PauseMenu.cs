@@ -223,7 +223,7 @@ namespace BaGio12.Gameplay
             for (int i = 0; i < rows.Count; i++) MakeRow(rows[i], i);
             hint = Words(settingsPage.transform, "Hint", "", 22, new Color(Paper.r, Paper.g, Paper.b, .6f));
             hint.textWrappingMode = TextWrappingModes.Normal; hint.alignment = TextAlignmentOptions.TopLeft;
-            GameUi.Place(hint.rectTransform, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(940, 186 - rows.Count * 64), new Vector2(800, 80));
+            GameUi.Place(hint.rectTransform, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(940, 122 - (rows.Count - 1) * RowStep), new Vector2(800, 80));
             RefreshRows();
 
             controlsPage = Page(lightRect, "Điều khiển");
@@ -309,9 +309,11 @@ namespace BaGio12.Gameplay
                 get = () => get(), set = v => set(Mathf.Clamp(Mathf.RoundToInt(v), 0, options.Length - 1)),
                 format = v => options[Mathf.Clamp(Mathf.RoundToInt(v), 0, options.Length - 1)] };
 
+        float RowStep => Mathf.Min(64f, 576f / Mathf.Max(1, rows.Count - 1));
+
         void MakeRow(Setting s, int index)
         {
-            float y = 230 - index * 64;
+            float y = 230 - index * RowStep;
             s.stripe = StripeImage(settingsPage.transform, "Light " + s.name, new Vector2(880, y), new Vector2(900, 92));
             s.rect = GameUi.Place(GameUi.Box(settingsPage.transform, "Row " + s.name, Color.clear), new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(920, y), new Vector2(840, 56));
             s.text = Words(s.rect, "Label", s.name, 26, Paper);

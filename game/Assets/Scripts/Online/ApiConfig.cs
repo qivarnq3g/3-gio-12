@@ -13,7 +13,7 @@ namespace BaGio12.Online
         {
             get
             {
-                string fromEnvironment = Environment.GetEnvironmentVariable("THREEGIO12_API_BASE");
+                string fromEnvironment = System.Environment.GetEnvironmentVariable("THREEGIO12_API_BASE");
                 if (!string.IsNullOrWhiteSpace(fromEnvironment)) return Trim(fromEnvironment);
                 try
                 {

@@ -41,7 +41,7 @@ namespace BaGio12.Online
         }
 
         static bool TryParse(string value, out DateTime at) =>
-            DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind | DateTimeStyles.AdjustToUniversal, out at);
+            DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out at);
 
         public static string Envelope(string installationId, string gameVersion, IList<QueuedEvent> events, int start, int count)
         {
