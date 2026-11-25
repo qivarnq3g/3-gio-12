@@ -12,7 +12,7 @@ Trước khi dựng bản phát hành, cập nhật `main` đã gộp PR này v�
 ./tools/package_macos_playtest.sh
 ```
 
-Hàm đặt kiến trúc bằng `UnityEditor.OSXStandalone.UserBuildSettings.architecture` và `UnityEditor.Build.OSArchitecture.x64ARM64`, rồi trả cấu hình cũ sau khi dựng. Không đổi backend của dự án; nếu backend không phải Mono thì báo lỗi.
+Hàm đặt kiến trúc bằng `UnityEditor.OSXStandalone.UserBuildSettings.architecture`, giá trị `x64ARM64` của enum API hiện tại, rồi trả cấu hình cũ sau khi dựng. API trong assembly module Mac được tìm bằng reflection sau bước kiểm module để project vẫn compile trên máy chỉ cài Windows/Linux Build Support. Không đổi backend của dự án; nếu backend không phải Mono thì báo lỗi.
 
 Đầu ra là `BuildMac/3gio12.app`. Script đóng gói **chạy trên Mac**, đọc tên executable từ `Info.plist`, kiểm cờ thực thi và hai kiến trúc bằng `lipo`, sau đó dùng `ditto --keepParent`. Script không ghi đè zip có sẵn. Có thể truyền đường dẫn app và zip làm hai đối số.
 

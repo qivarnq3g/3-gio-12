@@ -36,7 +36,10 @@ public static class PlaytestBuild
 
     public static void NightOneRealMac()
     {
-        var previous = UnityEditor.OSXStandalone.UserBuildSettings.architecture;
+        // Platform extension assemblies are optional on Windows/Linux Editor installations.
+        // Resolve the Mac setting only after the module check, so those projects still compile.
+        System.Reflection.PropertyInfo architecture = null;
+        object previous = null;
         bool success = false;
         try
         {
@@ -44,11 +47,16 @@ public static class PlaytestBuild
                 throw new System.InvalidOperationException("Install Mac Build Support (Mono) for Unity 6000.3.26f1.");
             if (PlayerSettings.GetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Standalone) != ScriptingImplementation.Mono2x)
                 throw new System.InvalidOperationException("The macOS playtest uses the project's Mono backend.");
-            UnityEditor.OSXStandalone.UserBuildSettings.architecture = UnityEditor.Build.OSArchitecture.x64ARM64;
+            var settings = System.Type.GetType("UnityEditor.OSXStandalone.UserBuildSettings, UnityEditor.OSXStandalone.Extensions");
+            architecture = settings?.GetProperty("architecture", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (architecture == null)
+                throw new System.MissingMemberException("Unity 6000.3 Mac Build Support has no architecture setting.");
+            previous = architecture.GetValue(null);
+            architecture.SetValue(null, System.Enum.Parse(architecture.PropertyType, "x64ARM64"));
             success = PreviewPlayer("../BuildMac/3gio12.app", BuildTarget.StandaloneOSX, NightOneRealisticSetup.ScenePath);
         }
         catch (System.Exception error) { Debug.LogException(error); }
-        finally { UnityEditor.OSXStandalone.UserBuildSettings.architecture = previous; }
+        finally { if (architecture != null && previous != null) architecture.SetValue(null, previous); }
         EditorApplication.Exit(success ? 0 : 1);
     }
 
