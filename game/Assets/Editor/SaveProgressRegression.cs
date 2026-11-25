@@ -30,7 +30,7 @@ public static class SaveProgressRegression
             throw new Exception("Set THREEGIO12_DATA_ROOT to an isolated test directory.");
         if (!read) StorageCases(root + "-storage");
         SessionState.SetBool("SaveProgressRead", read); SessionState.SetBool("SaveProgressReview", true);
-        EditorSceneManager.OpenScene("Assets/Scenes/Night01/NightOneGraybox.unity");
+        EditorSceneManager.OpenScene(NightOneRealisticSetup.ScenePath);
         EditorApplication.playModeStateChanged -= Changed; EditorApplication.playModeStateChanged += Changed;
         EditorApplication.EnterPlaymode();
     }

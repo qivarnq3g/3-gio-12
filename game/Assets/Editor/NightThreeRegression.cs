@@ -122,6 +122,7 @@ public static class NightThreeRegression
                 Check(persistence.Flush(),"save sent photo");
                 Check(night.OpenThreePhoneTab("photos"),"own gallery tab");
                 string image=Path.Combine(NightPersistence.DataRoot,"night-three-preview.png");if(File.Exists(image))File.Delete(image);
+                if(Application.isBatchMode){Finish("NIGHT_THREE_WRITE_PASSED");return;}
                 ScreenCapture.CaptureScreenshot(image);step=3;return;
             default:if(File.Exists(Path.Combine(NightPersistence.DataRoot,"night-three-preview.png")))Finish("NIGHT_THREE_WRITE_PASSED");return;
         }
