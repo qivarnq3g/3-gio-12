@@ -35,9 +35,9 @@ namespace BaGio12.Story
 
     public sealed partial class NightTwoMorning
     {
-        public static readonly Vector3 EveningBike = new Vector3(105, .08f, 13);
-        public static readonly Vector3 RiceShop = new Vector3(104, .08f, 93);
-        public static readonly Vector3 LienDesk = new Vector3(102, .08f, 7.5f);
+        public static Vector3 EveningBike => ScenePoint("PARK_N2_EveningBike", Parking);
+        public static Vector3 RiceShop => ScenePoint("PARK_N2_RiceShop", Store);
+        public static Vector3 LienDesk => ScenePoint("PersonLien", Lien);
         float eveningTimer, stillSeconds;
         string calculatorEntry = "";
         public string NganTab { get; private set; } = "messages";
@@ -128,6 +128,7 @@ namespace BaGio12.Story
         public bool BuyRice()
         {
             if (State.stage != MorningStage.RiceShop || State.hasRice || !Nearby(RiceShop, 4)) return false;
+            if (riceShop == null) { story.Say(MissingEveningAssets, 8); return false; }
             State.hasRice = true;
             story.Say("Cô bán cơm: Còn sườn với cá kho thôi con, lấy gì?\nBạn: Dạ sườn, thêm chút canh cô.\nCô bán cơm: Canh hết rồi, cô chan nước kho thêm cho nghen. ... Ăn trễ vầy hoài là bao tử nó hư đó con.", 9);
             Checkpoint(); return true;
