@@ -1,4 +1,5 @@
 using System;
+using Object = UnityEngine.Object;
 using System.IO;
 using System.Linq;
 using BaGio12.Gameplay;
