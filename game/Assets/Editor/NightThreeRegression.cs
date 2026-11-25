@@ -143,6 +143,7 @@ public static class NightThreeRegression
             case 10:
                 Check(!story.player.ExternalUI && night.Third.viewedVault.Contains("album"),"glance did not return control");
                 Check(night.Third.battery==9 && !night.WaitThreeLate(),"low battery bypassed");
+                story.player.SetPhone(0);story.player.Teleport(NightTwoMorning.Parking);
                 Check(!night.FindThreeCable(),"remote bag");story.player.SetPhone(0);story.player.Teleport(NightTwoMorning.ThreeBag+Vector3.left);
                 Check(night.FindThreeCable() && !night.FindThreeCable(),"cable/medicine");story.player.Teleport(NightTwoMorning.Room);
                 Check(night.ChargeThree() && night.Third.battery==100 && story.State.notebook.Any(x=>x.Contains("zolpidem 5 mg")),"charge/medicine note");
