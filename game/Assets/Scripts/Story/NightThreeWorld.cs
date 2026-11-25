@@ -10,7 +10,7 @@ namespace BaGio12.Story
     public sealed partial class NightTwoMorning
     {
         public static Vector3 ThreePolice => ScenePoint("ENTRANCE_Police", Vector3.zero);
-        public static Vector3 ThreeBag => ScenePoint("Bag beside door", Room);
+        public static Vector3 ThreeBag => Object.FindFirstObjectByType<NightOneDirector>()?.bag?.transform.position ?? Room;
         public static Vector3 ThreeGas => ScenePoint("PARK_N3_GasPump", Vector3.zero);
         public static Vector3 CaseBackPosition => Object.FindObjectsByType<NightThreeCaseBack>(FindObjectsInactive.Include,FindObjectsSortMode.None).FirstOrDefault()?.SurfaceCentre ?? Room;
         GameObject threeWorld;
@@ -25,7 +25,9 @@ namespace BaGio12.Story
             if (target == null) return;
             var node = new GameObject("Night3 interaction " + action);
             node.transform.SetParent(threeWorld.transform);
-            var bounds = ModelBounds(target); node.transform.position = bounds.center;
+            var bounds = ModelBounds(target);
+            if (!target.GetComponentsInChildren<Renderer>(true).Any()) bounds=new Bounds(target.position+Vector3.up*.9f,new Vector3(.6f,1.8f,.6f));
+            node.transform.position = bounds.center;
             node.AddComponent<BoxCollider>().size = Vector3.Max(bounds.size + Vector3.one*.1f, Vector3.one*.2f);
             var interaction = node.AddComponent<MorningInteraction>(); interaction.owner=this; interaction.action=action;
         }

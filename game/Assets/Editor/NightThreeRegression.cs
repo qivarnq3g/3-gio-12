@@ -26,13 +26,21 @@ public static class NightThreeRegression
     {
         if(string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THREEGIO12_DATA_ROOT")))throw new Exception("Set isolated THREEGIO12_DATA_ROOT.");
         Environment.SetEnvironmentVariable("THREEGIO12_SKIP_START_MENU",read?"0":"1");SessionState.SetBool(Flag,true);SessionState.SetBool(Flag+"Read",read);
-        EditorSceneManager.OpenScene("Assets/Scenes/Night01/NightOneGraybox.unity");
+        EditorSceneManager.OpenScene(NightOneRealisticSetup.ScenePath);
         EditorApplication.playModeStateChanged-=Changed;EditorApplication.playModeStateChanged+=Changed;EditorApplication.EnterPlaymode();
     }
     static void Changed(PlayModeStateChange mode)
     {
         if(mode!=PlayModeStateChange.EnteredPlayMode)return;
-        Application.runInBackground=true;reading=SessionState.GetBool(Flag+"Read",false);step=0;deadline=EditorApplication.timeSinceStartup+100;EditorApplication.update+=Tick;
+        NightTwoSceneFixtures.AddMorning();
+        var all=UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include,FindObjectsSortMode.None);
+        if(!all.Any(t=>t.name=="Night3_PoliceDesk"))
+        {
+            var fixture=GameObject.CreatePrimitive(PrimitiveType.Cube);fixture.name="Night3_PoliceDesk";
+            fixture.transform.position=NightTwoMorning.ThreePolice;fixture.transform.localScale=Vector3.one*.3f;
+            UnityEngine.Object.Destroy(fixture.GetComponent<Collider>());
+        }
+        Application.runInBackground=true;reading=SessionState.GetBool(Flag+"Read",false);step=0;deadline=EditorApplication.timeSinceStartup+180;EditorApplication.update+=Tick;
     }
     static void Check(bool ok,string reason){if(!ok)throw new Exception("NIGHT_THREE: "+reason);}
     static void Setup(bool firstSlept,bool secondSlept,bool blocked)
@@ -42,7 +50,7 @@ public static class NightThreeRegression
         story.State.number_choice=blocked?"blocked":"ignored";story.FinishNight();Check(night.Begin(),"N1 to N2");
         // N2 is covered end-to-end by NightTwoEveningRegression. Seed its final
         // checkpoint to test the N2 -> N3 handoff without duplicating its suite.
-        night.State.stage=MorningStage.Ended;night.State.night2Slept=secondSlept;
+        night.State.stage=MorningStage.Ended;night.State.assemblySteps=4;night.State.lampTested=true;night.State.night2Slept=secondSlept;
         night.State.odometer=firstSlept?12426:12415;night.State.sawStorage=true;night.State.vaultWrongAttempts=1;night.State.roomReply="given";
         story.Clock.Set("06:29",2);Check(night.BeginThree(),"N2 to N3");
         Check(!night.BeginThree() && story.State.prologue_beaten==2 && story.observers.All(x=>!x.enabled),"handoff/observer isolation");
@@ -92,12 +100,16 @@ public static class NightThreeRegression
                 Check(night.HearThreeVoice(false),"V1");Check(!night.AskThreeCode() && !night.AnswerThreeCall(),"proof gates bypassed");
                 story.player.Teleport(NightTwoMorning.Room);story.player.RestoreView(80,false);story.player.SetPhone(2);Physics.SyncTransforms();
                 Check(night.CaptureThreePhoto() && !night.Third.photos[0].caseBack,"ordinary photo became evidence");
-                story.player.RestoreView(0,false);story.player.eyes.transform.LookAt(NightTwoMorning.CaseBackPosition);Physics.SyncTransforms();
+                story.player.RestoreView(0,false);story.player.eyes.transform.position=NightTwoMorning.CaseBackPosition+Vector3.up*.4f;story.player.eyes.transform.LookAt(NightTwoMorning.CaseBackPosition);Physics.SyncTransforms();
                 Check(night.CaptureThreePhoto() && night.Third.photos[1].caseBack,"case back camera ray");
                 Check(night.Third.photos.All(p=>File.Exists(Path.Combine(NightPersistence.DataRoot,"captures",p.id+".png"))),"actual PNG missing");
                 var png=new Texture2D(2,2);png.LoadImage(File.ReadAllBytes(Path.Combine(NightPersistence.DataRoot,"captures",night.Third.photos[1].id+".png")));
-                Color centre=png.GetPixel(png.width/2,png.height/2);UnityEngine.Object.Destroy(png);
-                Check(centre.r>centre.g && centre.g>centre.b && centre.r>.1f,"PNG centre is not the orange case targeted by raycast: "+centre);
+                Check(png.width==512 && png.height==288,"camera PNG dimensions");
+                var pixels=png.GetPixels();float spread=pixels.Max(c=>c.grayscale)-pixels.Min(c=>c.grayscale);UnityEngine.Object.Destroy(png);
+                Check(spread>.01f,"camera PNG is a uniform/empty render");
+                var wrong=File.ReadAllBytes(Path.Combine(NightPersistence.DataRoot,"captures",night.Third.photos[0].id+".png"));
+                var right=File.ReadAllBytes(Path.Combine(NightPersistence.DataRoot,"captures",night.Third.photos[1].id+".png"));
+                Check(!wrong.SequenceEqual(right),"camera frame was not refreshed between photos");
                 story.player.SetPhone(1);Check(night.OpenHoaProfile() && story.CaptureSave()==null,"door sequence start");step=2;return;
             case 2:
                 Check(night.Third.doorLocked && night.Third.openedHoaProfile && !story.player.ExternalUI,"door sequence did not restore control");

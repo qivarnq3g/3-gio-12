@@ -179,7 +179,10 @@ namespace BaGio12.Story
         IEnumerator LockThreeDoor()
         {
             story.Say("Vậy ai nhắn cho mình ba ngày nay?",6);
-            story.player.Teleport(Room);yield return MoveThree(Room+Vector3.forward*2.2f,1);
+            Vector3 doorPoint=threeDoor!=null?threeDoor.transform.position:Room+Vector3.forward*2.2f;
+            doorPoint.y=Room.y;
+            Vector3 approach=doorPoint+(Room-doorPoint).normalized*.65f;
+            story.player.Teleport(Room);yield return MoveThree(approach,1);
             if(threeDoor!=null)threeDoor.SetFollowupLocked(true);yield return new WaitForSeconds(.4f);
             yield return MoveThree(Room,1);Third.openedHoaProfile=Third.doorLocked=true;EndThreeTransition();
         }
