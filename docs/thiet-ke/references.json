@@ -3,7 +3,7 @@
     "id": "azure-prices",
     "type": "webpage",
     "container-title": "Microsoft Azure",
-    "title": "Azure Retail Prices API (Virtual Machines, B1ms, southeastasia)",
+    "title": "Azure Retail Prices API (Virtual Machines, B1ms, malaysiawest)",
     "URL": "https://prices.azure.com/api/retail/prices",
     "author": [
       {

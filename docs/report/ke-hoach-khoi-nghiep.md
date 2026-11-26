@@ -25,7 +25,7 @@ Số liệu về quy mô thị trường nhóm tìm được chỉ nói về gam
 
 ### 2.2. Đối thủ và điểm khác biệt
 
-Bảng 2.1 liệt kê các sản phẩm gần nhất mà nhóm đã tìm hiểu.
+Bảng 4.1 liệt kê các sản phẩm gần nhất mà nhóm đã tìm hiểu.
 
 | Sản phẩm | Điểm gần với "3 GIỜ 12" | Ghi chú |
 |---|---|---|
@@ -52,7 +52,7 @@ Nhóm đề xuất bán trọn gói một lần (không có vật phẩm mua tro
 
 ### 3.2. Kênh phát hành
 
-Bảng 3.1 so sánh các kênh nhóm đã tra.
+Bảng 4.2 so sánh các kênh nhóm đã tra.
 
 | Kênh | Điều kiện đã biết | Rủi ro với "3 GIỜ 12" |
 |---|---|---|
@@ -82,13 +82,13 @@ Các phép tính dưới đây dùng tỷ giá giả định 1 USD = 26.000 đ�
 
 Người học đại học xác minh được bằng email trường có thể nhận 100 USD tín dụng Azure dùng trong 12 tháng, không cần thẻ tín dụng [@azure-students]. Với cấu hình trên, 100 USD đủ chạy khoảng 4 tháng (100 chia 23,42). Vì vậy tín dụng sinh viên chỉ che phần máy chủ trong và ngay sau học phần, không che cả năm. Gói sinh viên của nhóm chỉ cho tạo tài nguyên ở năm khu vực (Ấn Độ, Nhật Bản, Indonesia, Malaysia, Hàn Quốc), không có Singapore, nên giá tính theo khu vực dùng được gần Việt Nam nhất. Gói này cũng đang dùng chung tín dụng với một đồ án khác của học phần Điện toán đám mây, nên số tháng thực tế có thể ngắn hơn.
 
-Bảng 4.1 chưa gồm các khoản nhóm chưa có báo giá: lập doanh nghiệp, kế toán và thuế, tư vấn pháp lý, tên miền, truyền thông. Các khoản này có thể lớn hơn tổng ở bảng 4.1 (xem mục 5), nên không được dùng bảng 4.1 để kết luận có lãi.
+Bảng 4.3 chưa gồm các khoản nhóm chưa có báo giá: lập doanh nghiệp, kế toán và thuế, tư vấn pháp lý, tên miền, truyền thông. Các khoản này có thể lớn hơn tổng ở bảng 4.3 (xem mục 5), nên không được dùng bảng 4.3 để kết luận có lãi.
 
 ### 4.2. Doanh thu theo kịch bản
 
 Giá bán giả định là 45.000 đồng. Con số này lấy theo giá của Obsessed: Night Shift mà nhóm ghi nhận ngày 15/10/2026 [@steam-obsessed]; đây là một điểm tham chiếu duy nhất, chưa phải khảo sát giá. Steam giữ 30% doanh thu của mỗi game cho tới khi game đạt 10 triệu USD [@steam-share], nên mỗi bản bán ra nhóm nhận 31.500 đồng trước thuế, hoàn tiền và phí quy đổi tiền.
 
-Bảng 4.2 tính doanh thu theo ba số bản bán giả định trong 12 tháng đầu. Ba số này do nhóm chọn để so sánh, không dựa trên dữ liệu bán hàng.
+Bảng 4.4 tính doanh thu theo ba số bản bán giả định trong 12 tháng đầu. Ba số này do nhóm chọn để so sánh, không dựa trên dữ liệu bán hàng.
 
 | Số bản bán (giả định) | Doanh thu nhóm nhận | Trừ chi phí đã biết (9.906.000 đồng) |
 |---|---|---|
