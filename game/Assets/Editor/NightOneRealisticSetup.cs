@@ -15,6 +15,8 @@ public static class NightOneRealisticSetup
     public const string ScenePath = "Assets/Scenes/Night01/NightOneRealistic.unity";
     const string NavPath = "Assets/Scenes/Night01/NightOneRealisticNavMesh.asset";
     const string MatRoot = "Assets/Scenes/Night01/Materials";
+    const string PoliceStation = "env_police_station";
+    const string PoliceDesk = "Night3_PoliceDesk";
     static Transform blockout, gameplay;
     static readonly List<string> missing = new List<string>();
     static readonly List<NightObserver> watchers = new List<NightObserver>();
@@ -31,6 +33,99 @@ public static class NightOneRealisticSetup
 
     static Transform Child(string name) =>
         blockout == null ? null : blockout.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == name);
+
+    static void SetupPoliceStation(Transform marker)
+    {
+        if (marker == null) throw new System.InvalidOperationException("Missing ENTRANCE_Police.");
+
+        var station = AssetDatabase.LoadAssetAtPath<GameObject>($"{ModelImportRules.ModelsRoot}Environment/{PoliceStation}.fbx");
+        var desk = AssetDatabase.LoadAssetAtPath<GameObject>($"{ModelImportRules.ModelsRoot}Props/{PoliceDesk}.fbx");
+        if (station == null || desk == null)
+            throw new System.InvalidOperationException("The police station and reception desk FBX files are required.");
+
+        var previous = marker.Find(PoliceStation);
+        if (previous != null) Object.DestroyImmediate(previous.gameObject);
+        var exterior = PlacePoliceModel(station, marker, Vector3.zero);
+        OpenPolicePath(exterior.transform);
+
+        // The floor is 9 cm above the marker. Keep the public side of the desk within the hand-in radius.
+        PlacePoliceModel(desk, exterior.transform, new Vector3(0, .09f, 2.22f));
+        var reception = new GameObject("Police reception light").AddComponent<Light>();
+        reception.transform.SetParent(exterior.transform, false);
+        reception.transform.localPosition = new Vector3(0, 2.80f, 2.05f);
+        reception.type = LightType.Point;
+        reception.color = new Color(1f, .91f, .76f);
+        reception.range = 5f;
+        reception.intensity = 1.6f;
+
+        foreach (var name in new[] { "Police_Building", "Police_Yard", "Police_Gate_E", "Police_Gate_W",
+                                     "Police_Sign", "Police_Sign_Arm", "Police_Sign_Front" })
+        {
+            var old = marker.parent.Find(name);
+            if (old != null) old.gameObject.SetActive(false);
+        }
+    }
+
+    static void OpenPolicePath(Transform station)
+    {
+        var streetEdge = GameObject.Find("OpenLot_166")?.GetComponent<BoxCollider>();
+        if (streetEdge == null) return;
+
+        // The open-lot boundary used to seal the full lot. Retain both sides of the 3.2 m gate.
+        var center = station.InverseTransformPoint(streetEdge.transform.TransformPoint(streetEdge.center));
+        var size = streetEdge.size;
+        streetEdge.enabled = false;
+        RealisticStreetFixes.RemoveOpenLotVisual(streetEdge);
+        void AddSide(float left, float right)
+        {
+            var side = station.gameObject.AddComponent<BoxCollider>();
+            side.center = new Vector3((left + right) / 2, center.y, center.z);
+            side.size = new Vector3(right - left, size.y, size.z);
+        }
+        AddSide(center.x - size.x / 2, -1.6f);
+        AddSide(1.6f, center.x + size.x / 2);
+    }
+
+    static GameObject PlacePoliceModel(GameObject model, Transform parent, Vector3 offset)
+    {
+        var instance = (GameObject)PrefabUtility.InstantiatePrefab(model, parent);
+        instance.transform.localPosition = offset;
+        foreach (var filter in instance.GetComponentsInChildren<MeshFilter>())
+        {
+            var renderer = filter.GetComponent<MeshRenderer>();
+            renderer.sharedMaterials = renderer.sharedMaterials.Select(source =>
+            {
+                if (source.shader.name == "Universal Render Pipeline/Lit") return source;
+                var path = $"Assets/Art/MaterialsPBR/{source.name}.mat";
+                var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+                return material != null ? material : throw new System.InvalidOperationException("Missing " + path);
+            }).ToArray();
+            if (!filter.name.StartsWith("Solid_", System.StringComparison.Ordinal)) continue;
+
+            var bounds = filter.sharedMesh.bounds;
+            var collider = filter.gameObject.AddComponent<BoxCollider>();
+            if (filter.name.StartsWith("Solid_Fence wall", System.StringComparison.Ordinal))
+            {
+                // The rendered masonry stops at the rail. Keep the whole fence panel solid.
+                bounds.Encapsulate(bounds.max + Vector3.up * 1.05f);
+            }
+            collider.center = bounds.center;
+            collider.size = bounds.size;
+        }
+        return instance;
+    }
+
+    [MenuItem("3 Gio 12/Update Police Station in Night One Realistic")]
+    public static void UpdatePoliceStation()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var marker = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<Transform>(true))
+            .SingleOrDefault(t => t.name == "ENTRANCE_Police");
+        SetupPoliceStation(marker);
+        if (!EditorSceneManager.SaveScene(scene))
+            throw new System.IO.IOException("Could not save " + ScenePath);
+        Debug.Log("POLICE_STATION_UPDATED");
+    }
 
     static void FoldingGrille(Transform root, float x, float z0, float z1, float height)
     {
@@ -182,6 +277,7 @@ public static class NightOneRealisticSetup
 
         blockout = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None).FirstOrDefault(t => t.parent == null && t.name == "night1_3_blockout");
         if (blockout == null) throw new System.Exception("night1_3_blockout missing from " + SourcePath);
+        SetupPoliceStation(Child("ENTRANCE_Police"));
         gameplay = new GameObject("Night1 gameplay").transform;
         var detached = gameplay.gameObject.AddComponent<NavMeshModifier>(); detached.ignoreFromBuild = true; detached.applyToChildren = true;
 

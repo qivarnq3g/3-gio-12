@@ -13,7 +13,7 @@ Tất cả tạo ngày 18/10/2026 bằng ChatGPT (tạo ảnh trên web, gói Fr
 
 Câu lệnh chung: ảnh như chụp bằng điện thoại Android cũ ban đêm (nhiễu, mờ rìa, ánh vàng lẫn trắng), không người, không mặt, không chữ, số, biển hiệu hay logo đọc được; biểu tượng không được giống Zalo, Google, Facebook, Messenger, iCloud.
 
-Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** cho cảnh dựng 3D bằng Blender (`D:\Projects-gio-12rt-sourcelender`), không đưa thẳng vào game. Ảnh dựng xong nằm ở `Assets/Art/Scenes`.
+Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** cho cảnh dựng 3D bằng Blender, không đưa thẳng vào game. Ảnh dựng xong nằm ở `Assets/Art/Scenes`.
 
 # Model 3D
 
@@ -81,6 +81,21 @@ Cột điện và cửa xếp dựng theo ảnh chụp tải trên mạng chưa 
 
 ```powershell
 & "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --background --python-exit-code 1 --python tools/generate_issue96_props.py -- --render
+```
+
+# Điểm tiếp nhận ở công an phường (issue #135)
+
+| Tệp | Nguồn | Giấy phép | Ngày |
+|---|---|---|---|
+| `Models/Environment/env_police_station.fbx` | Tự dựng trong Blender 5.2 theo kích thước lô đất của cảnh. Tham khảo cổng sắt, tường vàng, lối vào có mái và bảng nền đỏ trong [ảnh của Công an Thành phố Hồ Chí Minh](https://congan.hochiminhcity.gov.vn/wps/portal/Home/trang-chu/noi-dung-chi-tiet/tin-chuyen-nganh/tin%2Bhoat%2Bdong/ca%2Bp3%2Bq6%2Bduoc%2Btrang%2Bcap%2Bban%2Bgiao%2Btru%2Bso%2Blam%2Bviec%2Bmoi). Biển dùng tên phường Hẻm Lương do nhóm đặt | Model của nhóm. Ảnh nguồn chưa xác nhận giấy phép riêng và chỉ được dẫn liên kết | 26/11/2026 |
+| `Models/Props/Night3_PoliceDesk.fbx` | Tự dựng trong Blender 5.2 theo kịch bản Đêm 3. Quầy gỗ có bảng tiếp nhận, biểu mẫu, bút và màn hình | Của nhóm | 26/11/2026 |
+
+Hai model dùng vật liệu hiện có của dự án và hai vật liệu biển hiệu `M_PoliceSignRed` và `M_PoliceSignGold` do nhóm tạo. Chữ là hình học tạo từ Be Vietnam Pro Medium theo giấy phép SIL Open Font License 1.1.
+
+Dựng lại model và xuất ảnh Solid bốn góc bằng Blender 5.2.
+
+```powershell
+blender --background --python-exit-code 1 --python tools/generate_issue135_police.py -- --render game/Logs/issue135-solid
 ```
 
 # Phông chữ
