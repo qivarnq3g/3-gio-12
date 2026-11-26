@@ -71,13 +71,13 @@ def build_rice_shop():
 
 def build_milk_tea():
     base.clear_scene()
-    r0, r1, h = 0.042, 0.050, 0.140
+    r0, r1, h = 0.030, 0.045, 0.160  # ly 700 ml: đáy 6 cm, miệng 9 cm, cao 16 cm
     cup = lathe("Cup", (0, 0, 0), (0, 0, 1), [(0, 0), (0, r0), (h, r1), (h, r1 - 0.002), (0.004, r0 - 0.002), (0.004, 0)], "M_Night2CartGlass", sides=24)
-    tea = lathe("Tea", (0, 0, 0.004), (0, 0, 1), [(0, 0), (0, r0 - 0.003), (0.118, r1 - 0.005), (0.118, 0)], "M_FoodBrown", sides=24)
+    tea = lathe("Tea", (0, 0, 0.004), (0, 0, 1), [(0, 0), (0, r0 - 0.003), (0.136, r1 - 0.005), (0.136, 0)], "M_MilkTeaLiquid", sides=24)
     pearls = []
     for k in range(14):
         a = k * 2.399
-        rr = 0.012 + 0.024 * ((k * 7) % 5) / 4
+        rr = 0.004 + 0.016 * ((k * 7) % 5) / 4  # stays inside the 3 cm bottom radius
         pearls.append(lathe(f"Pearl{k}", (rr * math.cos(a), rr * math.sin(a), 0.010 + 0.007 * (k % 3)), (0, 0, 1),
                             [(0, 0), (0, 0.004), (0.006, 0.0065), (0.012, 0.004), (0.013, 0)], "M_PaperWhite", sides=8))
     lid = lathe("Lid", (0, 0, h), (0, 0, 1), [(0, r1 + 0.003), (0.006, r1 + 0.002), (0.012, r1 - 0.006), (0.016, 0.02), (0.018, 0)], "M_Night2CartGlass", sides=24)
@@ -86,7 +86,7 @@ def build_milk_tea():
     base.finalize_asset(body, pivot_at=(0, 0, 0))
 
     # Giấy dán cong theo thân ly, hướng ra phía người chơi (-Y Blender = +Z Unity), UV phủ đủ ảnh 512 x 512.
-    cols, arc, z0, z1 = 12, math.radians(80), 0.035, 0.095
+    cols, arc, z0, z1 = 12, math.radians(90), 0.045, 0.110
     verts, faces, uvs = [], [], []
     for j, z in enumerate((z0, z1)):
         rad = r0 + (r1 - r0) * z / h + 0.0012

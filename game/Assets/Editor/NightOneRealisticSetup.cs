@@ -197,7 +197,7 @@ public static class NightOneRealisticSetup
             var mats = r.sharedMaterials;
             for (int i = 0; i < mats.Length; i++)
             {
-                if (mats[i] == null || mats[i].name == "M_Night2CartGlass") continue;
+                if (mats[i] == null || mats[i].name == "M_Night2CartGlass" || (go.name == "Night2_MilkTea" && mats[i].name == "M_PlasticRed")) continue;
                 var target = map != null && map.TryGetValue(mats[i].name, out var t) ? t : mats[i].name;
                 var pbr = AssetDatabase.LoadAssetAtPath<Material>($"{PbrRoot}/{target}.mat");
                 if (pbr != null) mats[i] = pbr;
@@ -313,7 +313,7 @@ public static class NightOneRealisticSetup
         var table = PlaceProp("Night2_LienTable", n2Root, tablePos, Quaternion.identity);
         if (table != null) AddBox(table, new Vector3(0, .23f, 0), new Vector3(.5f, .46f, .5f));
         else missing.Add("Night2_LienTable.fbx");
-        // Sticker keeps M_MilkTeaSticker (Toon, T_MilkTeaSticker.png) from the import; it has no PBR counterpart.
+        // Sticker and liquid keep Toon (no PBR counterpart); straw keeps Toon M_PlasticRed so it stays readable at night.
         if (PlaceProp("Night2_MilkTea", n2Root, tablePos + new Vector3(.06f, .461f, .04f), Quaternion.Euler(0, 15, 0)) == null)
             missing.Add("Night2_MilkTea.fbx");
 
