@@ -18,7 +18,7 @@ Biến `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` của `api` là bắt buộc. 
 
 ## 2. Khu vực và tài khoản
 
-Gói "Azure for Students" của nhóm có chính sách chỉ cho tạo tài nguyên ở năm khu vực: `centralindia`, `japanwest`, `indonesiacentral`, `malaysiawest`, `koreacentral` (kiểm bằng `az policy assignment list` ngày 26/11/2026). Singapore (`southeastasia`) không dùng được. Tài liệu này dùng `REGION_PLACEHOLDER`.
+Gói "Azure for Students" của nhóm có chính sách chỉ cho tạo tài nguyên ở năm khu vực: `centralindia`, `japanwest`, `indonesiacentral`, `malaysiawest`, `koreacentral` (kiểm bằng `az policy assignment list` ngày 26/11/2026). Singapore (`southeastasia`) không dùng được. Tài liệu này dùng `malaysiawest` (Malaysia West): gần Việt Nam, có máy `Standard_B1ms` (1 vCPU, 2 GB RAM, kiểm bằng `az vm list-sizes`), giá 0,0238 USD mỗi giờ. `indonesiacentral` cùng giá và cùng có máy này, dùng làm phương án dự phòng.
 
 Tín dụng sinh viên là 100 USD, dùng trong 12 tháng, một gói cho mỗi người. Nếu dùng gói đang chứa tài nguyên của môn Điện toán đám mây thì hai việc chia chung 100 USD đó. Tạo tài nguyên của nhóm trong một resource group riêng (`rg-3gio12`) để xóa gọn bằng một lệnh, không đụng tài nguyên môn kia.
 
@@ -28,7 +28,7 @@ Chạy trong PowerShell, đã `az login` và chọn đúng gói (`az account sho
 
 ```powershell
 $RG   = "rg-3gio12"
-$LOC  = "REGION_PLACEHOLDER"
+$LOC  = "malaysiawest"
 $VM   = "vm-3gio12"
 $DNS  = "<tên-duy-nhất-không-dấu>"      # DOMAIN sẽ là $DNS.$LOC.cloudapp.azure.com
 
@@ -113,5 +113,5 @@ Làm theo thứ tự và ghi kết quả vào PR hoặc issue của #32.
 - Chưa chạy các lệnh ở mục 3 đến 5 trên Azure.
 - Chưa dựng ảnh Docker của `caddy` và `api` (máy soạn không chạy Docker). Đã kiểm: `docker compose config` hợp lệ, `npm run build` của trang quản trị chạy được và đường dẫn tài nguyên bắt đầu bằng `/admin/`.
 - Chưa kiểm Caddyfile bằng `caddy validate`.
-- Chưa kiểm khả năng cấp máy B1ms ở khu vực đã chọn cho gói sinh viên của nhóm; nếu bị từ chối, thử `Standard_B2als_v2` hoặc khu vực khác trong danh sách ở mục 2.
+- Máy B1ms có trong danh sách của Malaysia West và Indonesia Central, nhưng chưa kiểm được gói sinh viên của nhóm có bị hạn chế riêng máy này không (lệnh `az vm list-skus` quá chậm khi thử). Nếu `az vm create` bị từ chối, thử `Standard_B2als_v2` (4 GB RAM, 0,0428 USD mỗi giờ) hoặc khu vực khác trong danh sách ở mục 2. VM cũ của gói này ở Hàn Quốc dùng `Standard_B2ls_v2`.
 - Website câu đố có thể cần chỉnh nếu đang giả định đường dẫn gốc khác.
