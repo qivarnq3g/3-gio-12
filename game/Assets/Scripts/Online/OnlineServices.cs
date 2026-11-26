@@ -56,7 +56,11 @@ namespace BaGio12.Online
             if (granted)
             {
                 Profile.Consent = TelemetryConsent.Granted;
-                Profile.pendingRevocations.Remove(Profile.installationId);
+                if (Profile.pendingRevocations.Contains(Profile.installationId))
+                {
+                    Profile.installationId = PlayerProfile.Create().installationId;
+                    Profile.ClearOpenSession();
+                }
                 SaveProfile();
                 if (before != TelemetryConsent.Granted) BeginSession();
                 sendRequested = true;
@@ -184,17 +188,11 @@ namespace BaGio12.Online
             {
                 request.timeout = TimeoutSeconds;
                 yield return request.SendWebRequest();
-                long status = Status(request);
-                if (status == 204 || status == 200 || status == 404)
-                {
-                    Profile.pendingRevocations.Remove(installationId); SaveProfile(); backoff = 0;
-                }
-                else
-                {
-                    var decision = TelemetryPolicy.Decide(status, request.GetResponseHeader("Retry-After"), 0, maxEvents, backoff);
-                    backoff = decision.backoffSeconds;
-                    nextAttempt = Time.realtimeSinceStartup + (float)Math.Max(1, decision.waitSeconds);
-                }
+                var decision = TelemetryPolicy.DecideRevocation(Status(request), request.GetResponseHeader("Retry-After"), backoff);
+                if (decision.logError) Debug.LogError($"Telemetry revocation for {installationId} dropped with HTTP {request.responseCode}: {request.downloadHandler?.text}");
+                if (decision.remove > 0) { Profile.pendingRevocations.Remove(installationId); SaveProfile(); }
+                backoff = decision.backoffSeconds;
+                nextAttempt = Time.realtimeSinceStartup + (float)decision.waitSeconds;
             }
             uploading = false;
         }

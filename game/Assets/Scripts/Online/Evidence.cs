@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -17,6 +18,11 @@ namespace BaGio12.Online
         public int attemptsRemaining;
     }
 
+    [Serializable] public sealed class ProblemResponse
+    {
+        public string title;
+    }
+
     public struct EvidenceOutcome
     {
         public string message;
@@ -28,6 +34,7 @@ namespace BaGio12.Online
     {
         public const string PuzzleId = "red-thread-sandal";
         public const long MaxBytes = 20L * 1024 * 1024;
+        public const string OutOfAttemptsTitle = "Hết lượt gửi", TooFastTitle = "Gửi quá nhanh";
 
         public const string Instructions =
             "Bạn chọn đúng tệp ảnh đã giải nén. Ảnh chụp màn hình hay ảnh đã lưu lại sẽ không khớp với bằng chứng.";
@@ -83,7 +90,15 @@ namespace BaGio12.Online
             if (status == 429)
             {
                 var at = nowLocal.AddSeconds(TelemetryPolicy.RetryAfterSeconds(retryAfter));
-                return new EvidenceOutcome { message = $"Bạn đã hết lượt gửi, nên hãy thử lại sau {at:HH:mm}." };
+                string when = at.ToString(at.Date == nowLocal.Date ? "HH:mm" : "HH:mm 'ngày' dd/MM", CultureInfo.InvariantCulture);
+                string title = null;
+                try { title = JsonUtility.FromJson<ProblemResponse>(body ?? "")?.title; }
+                catch (ArgumentException) { }
+                if (title == OutOfAttemptsTitle)
+                    return new EvidenceOutcome { message = $"Bạn đã hết lượt gửi, nên hãy thử lại sau {when}." };
+                if (title == TooFastTitle)
+                    return new EvidenceOutcome { message = $"Game đã gửi quá nhiều lần trong một phút, nên bạn hãy thử lại sau {when}." };
+                return new EvidenceOutcome { message = $"Bạn đã gửi quá nhiều lần, nên hãy thử lại sau {when}." };
             }
             if (status == 0)
                 return new EvidenceOutcome { message = "Game cần kết nối mạng để gửi bằng chứng, nên bạn hãy kiểm tra mạng rồi thử lại." };

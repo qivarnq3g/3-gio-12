@@ -24,7 +24,7 @@ Game đọc theo thứ tự: biến môi trường `THREEGIO12_API_BASE`, rồi 
 ## Thống kê ẩn danh (#25)
 
 - Lần đầu mở game trên Windows, menu đầu chỉ có hai mục "Gửi thống kê ẩn danh" và "Không gửi thống kê". Chưa chọn thì coi như từ chối.
-- Cài đặt có dòng "Gửi thống kê ẩn danh". Tắt dòng này thì game xóa hàng đợi, ghi mã cài đặt vào danh sách chờ rồi gọi `DELETE /api/v1/telemetry/installations/{id}`, thử lại theo nhịp lùi nếu lỗi.
+- Cài đặt có dòng "Gửi thống kê ẩn danh". Tắt dòng này thì game xóa hàng đợi, ghi mã cài đặt vào danh sách chờ rồi gọi `DELETE /api/v1/telemetry/installations/{id}`, thử lại theo nhịp lùi khi mất mạng, quá thời gian hay lỗi máy chủ, chờ `Retry-After` khi gặp `429`. Máy chủ trả `204` hoặc `404` thì coi như đã xóa; các lỗi `4xx` còn lại (như `400`, `413`) không thể thành công khi gửi lại, nên game bỏ lệnh khỏi danh sách và ghi lỗi vào log. Bật lại dòng này khi lệnh xóa còn chờ thì game giữ nguyên lệnh xóa và dùng một mã cài đặt mới, nên dữ liệu đã gửi trước lúc rút vẫn bị xóa.
 - Sự kiện: `session_started` khi bật đồng ý hoặc mở game; `session_ended` với `quit_app` khi thoát; `not_closed` ở lần mở sau nếu lần trước tắt đột ngột (thời lượng tính tới sự kiện cuối cùng của phiên đó); các sự kiện đêm từ `NightOneDirector`.
 - Game gửi khi mở game, khi hàng đợi đủ 50 sự kiện và khi có `night_completed`, rồi gửi tiếp tới khi hết hàng đợi.
 - Máy chủ chỉ nhận `platform = windows`, nên bản macOS và Linux không hỏi đồng ý và không gửi gì.
@@ -34,13 +34,13 @@ Game đọc theo thứ tự: biến môi trường `THREEGIO12_API_BASE`, rồi 
 - Mục "Gửi bằng chứng cho công an" hiện ở menu đầu khi hồ sơ có cờ đã đạt kết thúc "Về nhà". Cờ được bật khi có sự kiện `ending_reached` với `endingId = home`, kể cả khi người chơi từ chối thống kê. Đêm 3 (#90) cần phát sự kiện này ở kết thúc 6.6.
 - Chọn mục thì mở hộp chọn tệp. Game tính SHA-256 trên luồng phụ và chỉ gửi mã băm.
 - Chấp nhận thì `unlockId` (`ending_red_thread_sandal`) được lưu vào `profile.json`. Phần chơi kết thúc 6.7 thuộc Đêm 3; nó đọc `PlayerProfile.HasUnlock(PlayerProfile.SandalUnlock)`.
-- Câu báo cho từ chối, hết lượt (`429`, kèm giờ thử lại), câu đố tắt (`404`) và mất mạng hiện ở dòng trạng thái của menu.
+- Câu báo cho từ chối, hết lượt hoặc gửi quá nhanh (`429`, phân biệt theo `title` của problem+json, kèm giờ thử lại và thêm ngày khi giờ đó không thuộc hôm nay), câu đố tắt (`404`) và mất mạng hiện ở dòng trạng thái của menu.
 
 ## Kiểm thử
 
 `OnlineServicesRegression.Run` (Unity batch mode, cảnh trống, không cần Docker):
 
-- Phần logic: sức chứa hàng đợi, bỏ sự kiện cũ, giới hạn lô 100 sự kiện và 256 KiB, dạng thân lô, các mã 200/400/413/429/5xx, nhịp lùi 30 giây gấp đôi tới 30 phút, SHA-256, tệp trên 20 MiB, các câu báo bằng chứng.
-- Phần chạy thật với máy chủ giả `HttpListener`: chưa đồng ý thì không ghi; đồng ý thì gửi `session_started`; `night_completed` đẩy lô; `not_closed` sau lần tắt đột ngột; `503` giữ hàng đợi; rút đồng ý thì xóa hàng đợi và gọi `DELETE`; bằng chứng bị từ chối, được chấp nhận (lưu xuống đĩa), lỗi máy chủ.
+- Phần logic: sức chứa hàng đợi, bỏ sự kiện cũ, giới hạn lô 100 sự kiện và 256 KiB, dạng thân lô, các mã 200/400/413/429/5xx, nhịp lùi 30 giây gấp đôi tới 30 phút, mã trả về của lệnh xóa, SHA-256, tệp trên 20 MiB, các câu báo bằng chứng.
+- Phần chạy thật với máy chủ giả `HttpListener`: chưa đồng ý thì không ghi; đồng ý thì gửi `session_started`; `night_completed` đẩy lô; `not_closed` sau lần tắt đột ngột; `503` giữ hàng đợi; rút đồng ý thì xóa hàng đợi và gọi `DELETE`; bật lại rồi rút lần nữa thì gửi đủ hai lệnh xóa theo thứ tự, lệnh bị `400` chỉ gửi một lần; bằng chứng bị từ chối, được chấp nhận (lưu xuống đĩa), lỗi máy chủ.
 
 Đã chạy lại `SaveProgressRegression` (Write, Read, Menu) và đạt. Đã chụp menu trong Editor có giao diện: màn hỏi đồng ý, mục gửi bằng chứng kèm lời dặn, trang Cài đặt với 11 dòng (khoảng cách dòng tự co lại khi quá 10 dòng để gợi ý không rơi khỏi màn hình). Chưa kiểm với máy chủ thật qua Docker.

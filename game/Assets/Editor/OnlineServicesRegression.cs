@@ -79,10 +79,34 @@ public static class OnlineServicesRegression
         var capped = TelemetryPolicy.Decide(500, null, 40, 100, 1500);
         Check(first.waitSeconds == 30 && second.waitSeconds == 60 && capped.waitSeconds == 1800 && first.remove == 0, "backoff is not 30 s doubling to 30 min");
 
+        var gone = TelemetryPolicy.DecideRevocation(204, null, 120);
+        var missing = TelemetryPolicy.DecideRevocation(404, null, 0);
+        Check(gone.remove == 1 && !gone.logError && gone.backoffSeconds == 0 && missing.remove == 1 && !missing.logError, "revocation success not cleared");
+        foreach (long status in new long[] { 400, 413 })
+        {
+            var dropped = TelemetryPolicy.DecideRevocation(status, null, 0);
+            Check(dropped.remove == 1 && dropped.logError && dropped.waitSeconds == 0, status + " revocation retried forever");
+        }
+        var revokeLimited = TelemetryPolicy.DecideRevocation(429, "17", 60);
+        Check(revokeLimited.remove == 0 && revokeLimited.waitSeconds == 17 && revokeLimited.backoffSeconds == 60, "429 revocation ignored Retry-After");
+        var revokeDown = TelemetryPolicy.DecideRevocation(503, null, 30);
+        var revokeOffline = TelemetryPolicy.DecideRevocation(0, null, 0);
+        var revokeTimeout = TelemetryPolicy.DecideRevocation(408, null, 0);
+        Check(revokeDown.remove == 0 && revokeDown.waitSeconds == 60 && revokeOffline.waitSeconds == 30 && revokeTimeout.remove == 0, "revocation did not back off on server or network errors");
+
         var at = new DateTime(2026, 11, 25, 20, 0, 0);
         Check(Evidence.Interpret(200, "{\"result\":\"accepted\",\"unlockId\":\"ending_red_thread_sandal\",\"attemptsRemaining\":5,\"windowResetsAt\":\"2026-11-25T13:00:00Z\"}", null, at) is var yes && yes.accepted && yes.unlockId == PlayerProfile.SandalUnlock, "accepted response not unlocked");
         Check(Evidence.Interpret(200, "{\"result\":\"rejected\",\"attemptsRemaining\":3,\"windowResetsAt\":\"2026-11-25T13:00:00Z\"}", null, at) is var no && !no.accepted && no.message.Contains("3 lượt"), "rejected response did not show attempts left");
-        Check(Evidence.Interpret(429, "", "600", at).message.Contains("20:10"), "429 did not show the retry time");
+        string outOfAttempts = "{\"status\":429,\"title\":\"Hết lượt gửi\",\"detail\":\"Thử lại sau 600 giây.\"}";
+        string tooFast = "{\"status\":429,\"title\":\"Gửi quá nhanh\",\"detail\":\"Thử lại sau 30 giây.\"}";
+        var sameDay = Evidence.Interpret(429, outOfAttempts, "600", at).message;
+        Check(sameDay.Contains("hết lượt") && sameDay.Contains("20:10") && !sameDay.Contains("ngày"), "429 same-day message: " + sameDay);
+        var nextDays = Evidence.Interpret(429, outOfAttempts, "172800", at).message;
+        Check(nextDays.Contains("20:00 ngày 27/11"), "429 beyond today did not show the date: " + nextDays);
+        var rate = Evidence.Interpret(429, tooFast, "30", at).message;
+        Check(rate.Contains("quá nhiều lần trong một phút") && !rate.Contains("hết lượt") && rate.Contains("20:00"), "rate limit reported as out of attempts: " + rate);
+        var plain = Evidence.Interpret(429, "", null, at).message;
+        Check(plain.Contains("quá nhiều lần") && !plain.Contains("hết lượt") && plain.Contains("20:01"), "429 without title: " + plain);
         Check(!Evidence.Interpret(404, "", null, at).accepted && !Evidence.Interpret(0, "", null, at).accepted, "error statuses unlocked");
 
         string dir = Path.Combine(Path.GetTempPath(), "3gio12-online-" + Guid.NewGuid().ToString("N"));
@@ -150,7 +174,7 @@ public static class OnlineServicesRegression
         using (var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8)) body = reader.ReadToEnd();
         string path = context.Request.Url.AbsolutePath;
         received.Enqueue(new Received { method = context.Request.HttpMethod, path = path, body = body });
-        var key = replies.Keys.FirstOrDefault(k => path.StartsWith(k, StringComparison.Ordinal));
+        var key = replies.Keys.Where(k => path.StartsWith(k, StringComparison.Ordinal)).OrderByDescending(k => k.Length).FirstOrDefault();
         var reply = key != null ? replies[key] : new Reply { status = 500 };
         context.Response.StatusCode = reply.status;
         if (reply.retryAfter != null) context.Response.AddHeader("Retry-After", reply.retryAfter);
@@ -167,6 +191,9 @@ public static class OnlineServicesRegression
     }
 
     static Received waiting;
+    static string revoked, regranted;
+    static readonly List<string> deletes = new List<string>();
+    static double quietUntil;
 
     static bool Await(string method, string path)
     {
@@ -220,16 +247,28 @@ public static class OnlineServicesRegression
                     Check(online.QueuedEvents == 2, "503 dropped queued events");
                     waiting = null;
                     replies["/api/v1/telemetry/installations/"] = new Reply { status = 204 };
-                    string revoked = online.Profile.installationId;
+                    revoked = online.Profile.installationId;
                     online.SetConsent(false);
                     Check(online.QueuedEvents == 0 && online.Profile.pendingRevocations.Contains(revoked), "withdrawal kept queue or skipped revocation");
                     online.Record(new ChoiceTelemetry("4"));
                     Check(online.QueuedEvents == 0, "event queued after withdrawal");
+                    online.SetConsent(true);
+                    regranted = online.Profile.installationId;
+                    Check(online.Profile.pendingRevocations.Contains(revoked) && regranted != revoked && Guid.TryParse(regranted, out _), "re-consent cancelled the revocation or reused the revoked id");
+                    Check(online.CanSubmitEvidence, "re-consent lost the home ending flag");
+                    replies["/api/v1/telemetry/installations/" + regranted] = new Reply { status = 400, body = "{\"status\":400}" };
+                    online.SetConsent(false);
+                    Check(online.Profile.pendingRevocations.SequenceEqual(new[] { revoked, regranted }), "second withdrawal not queued after the first");
+                    deletes.Clear(); quietUntil = 0;
                     step++; break;
                 case 4:
-                    if (!Await("DELETE", "/api/v1/telemetry/installations/" + online.Profile.installationId) || online.Uploading) return;
-                    Check(online.Profile.pendingRevocations.Count == 0, "revocation not cleared after 204");
-                    waiting = null;
+                    while (received.TryDequeue(out var r)) if (r.method == "DELETE") deletes.Add(r.path);
+                    if (online.Uploading || online.Profile.pendingRevocations.Count > 0) return;
+                    if (quietUntil == 0) { quietUntil = EditorApplication.timeSinceStartup + 3; return; }
+                    if (EditorApplication.timeSinceStartup < quietUntil) return;
+                    Check(deletes.Count == 2 && deletes[0].EndsWith(revoked, StringComparison.Ordinal) && deletes[1].EndsWith(regranted, StringComparison.Ordinal), "revocations sent: " + string.Join(", ", deletes));
+                    var onDisk = new LocalJsonStore<PlayerProfile>(Path.Combine(root, "profile.json"), PlayerProfile.Valid);
+                    Check(onDisk.TryLoad(out var cleared, out _) && cleared.pendingRevocations.Count == 0, "revocations not cleared on disk");
                     string file = Path.Combine(root, "evidence.jpg"); File.WriteAllText(file, "abc");
                     replies["/api/v1/puzzles/"] = new Reply { status = 200, body = "{\"result\":\"rejected\",\"attemptsRemaining\":4,\"windowResetsAt\":\"2026-11-25T13:00:00Z\"}" };
                     reports.Clear(); online.StartCoroutine(online.Submit(file, reports.Add));

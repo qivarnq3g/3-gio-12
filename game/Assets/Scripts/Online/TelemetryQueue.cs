@@ -109,11 +109,37 @@ namespace BaGio12.Online
             }
             else
             {
-                d.backoffSeconds = backoffSeconds <= 0 ? FirstBackoff : Math.Min(MaxBackoff, backoffSeconds * 2);
+                d.backoffSeconds = NextBackoff(backoffSeconds);
                 d.waitSeconds = d.backoffSeconds;
             }
             return d;
         }
+
+        public static UploadDecision DecideRevocation(long status, string retryAfter, double backoffSeconds)
+        {
+            var d = new UploadDecision { backoffSeconds = backoffSeconds };
+            if ((status >= 200 && status < 300) || status == 404)
+            {
+                d.remove = 1; d.backoffSeconds = 0;
+            }
+            else if (status == 429)
+            {
+                d.waitSeconds = Math.Max(1, RetryAfterSeconds(retryAfter));
+            }
+            else if (status >= 400 && status < 500 && status != 408)
+            {
+                d.remove = 1; d.logError = true; d.backoffSeconds = 0;
+            }
+            else
+            {
+                d.backoffSeconds = NextBackoff(backoffSeconds);
+                d.waitSeconds = d.backoffSeconds;
+            }
+            return d;
+        }
+
+        static double NextBackoff(double backoffSeconds) =>
+            backoffSeconds <= 0 ? FirstBackoff : Math.Min(MaxBackoff, backoffSeconds * 2);
 
         public static double RetryAfterSeconds(string header)
         {
