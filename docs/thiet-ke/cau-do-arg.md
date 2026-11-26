@@ -35,7 +35,7 @@ Ba mục trong ZIP phải có phương thức AES-256. Script in SHA-256 của �
 
 ## Tệp ghi âm trong két
 
-`game/Assets/StreamingAssets/Vault/test_mic_12-11.wav` là tệp ghi âm ở phần trong của két (bước 1). Nghe như một lần thử micro điện thoại: tiếng xì phòng, tiếng điện 50 Hz và vài tiếng gõ vào micro. Từ giây 4 tới giây 10, chữ `/drop` nằm trong dải 7 đến 14 kHz, chỉ thấy khi mở phổ âm (Audacity: menu của track > Spectrogram). Phổ âm chỉ ghi đường dẫn, không ghi tên miền, nên đổi chỗ triển khai website không phải dựng lại tệp này.
+`game/Assets/StreamingAssets/Vault/test_mic_12-11.wav` là tệp ghi âm ở phần trong của két (bước 1). Nghe như một lần thử micro điện thoại: tiếng xì phòng, tiếng điện 50 Hz và vài tiếng gõ vào micro. Từ giây 4 tới giây 10, chữ `/drop` nằm trong dải 7 đến 14 kHz, chỉ thấy khi mở phổ âm (Audacity: menu của track > Spectrogram). Bản Audacity cũ đặt tần số tối đa của phổ âm là 8 kHz, khi đó gần như không thấy chữ: mở menu của track > Spectrogram Settings, đặt Max Frequency là 20000 Hz. Phổ âm chỉ ghi đường dẫn, không ghi tên miền, nên đổi chỗ triển khai website không phải dựng lại tệp này.
 
 Tệp để trong `StreamingAssets` để Unity giữ nguyên từng byte; nếu đặt ở chỗ khác, Unity nén âm thanh và có thể làm mất chữ ở tần số cao. Phần két trong game cần cho người chơi lưu tệp này ra máy để mở bằng phần mềm xem phổ âm.
 
