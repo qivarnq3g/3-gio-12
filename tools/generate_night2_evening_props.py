@@ -112,12 +112,22 @@ def build_lien_table():
     base.clear_scene()
     parts = [box("Top", (0, 0, 0.445), (0.48, 0.48, 0.03), "M_PlasticBlue", edge=0.01)]
     parts.append(box("Apron", (0, 0, 0.41), (0.44, 0.44, 0.05), "M_PlasticBlue", edge=0.006))
-    for dx in (-0.2, 0.2):
-        for dy in (-0.2, 0.2):
-            parts.append(cylinder("Leg", (dx * 1.1, dy * 1.1, 0.0), (dx, dy, 0.40), 0.018, "M_PlasticBlue", sides=10))
-            parts.append(cylinder("Foot", (dx * 1.1, dy * 1.1, 0.0), (dx * 1.1, dy * 1.1, 0.012), 0.022, "M_Rubber", sides=10))
-    parts.append(box("Brace", (0, 0, 0.12), (0.44, 0.02, 0.02), "M_PlasticBlue"))
-    parts.append(box("Brace2", (0, 0, 0.12), (0.02, 0.44, 0.02), "M_PlasticBlue"))
+    foot_offset, top_offset, leg_height = 0.22, 0.20, 0.40
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            foot = (sx * foot_offset, sy * foot_offset, 0.0)
+            top = (sx * top_offset, sy * top_offset, leg_height)
+            parts.append(cylinder("Leg", foot, top, 0.018, "M_PlasticBlue", sides=10))
+            parts.append(cylinder("Foot", foot, (foot[0], foot[1], 0.012), 0.022, "M_Rubber", sides=10))
+
+    # The legs splay out, so use their spacing at the brace height.
+    brace_height = 0.12
+    leg_offset = foot_offset + (top_offset - foot_offset) * brace_height / leg_height
+    brace_length = 2 * math.hypot(leg_offset, leg_offset)
+    for angle in (-45, 45):
+        brace = box("Brace", (0, 0, brace_height), (brace_length, 0.02, 0.02), "M_PlasticBlue")
+        brace.rotation_euler.z = math.radians(angle)
+        parts.append(brace)
     table = join_objects(parts, "Night2_LienTable")
     base.finalize_asset(table)
     return table

@@ -23,17 +23,19 @@ def main() -> None:
     image = Image.new("RGB", (W, H), (246, 244, 236))
     draw = ImageDraw.Draw(image)
     small = ImageFont.truetype(str(FONT), 26)
-    bold = ImageFont.truetype(str(FONT_BOLD), 54)
+    bold = ImageFont.truetype(str(FONT_BOLD), 50)
     head = ImageFont.truetype(str(FONT_BOLD), 30)
+    center = W // 2
 
     draw.rectangle((0, 0, W, 60), fill=(222, 120, 40))
-    draw.text((18, 14), "TRÀ SỮA NHÀ GÓC · #0412", font=head, fill=(255, 255, 255))
-    draw.text((18, 76), "Size M · Giao: gửi chủ trọ", font=small, fill=(60, 60, 60))
+    draw.text((center, 14), "TRÀ SỮA NHÀ GÓC · #0412", font=head, fill=(255, 255, 255), anchor="mt")
+    draw.text((center, 76), "Size M · Giao: gửi chủ trọ", font=small, fill=(60, 60, 60), anchor="mt")
     draw.line((18, 118, W - 18, 118), fill=(170, 170, 170), width=2)
-    draw.text((18, 128), "Ghi chú:", font=small, fill=(60, 60, 60))
+    draw.text((center, 128), "Ghi chú:", font=small, fill=(60, 60, 60), anchor="mt")
     y = 172
+    # Center the note on the part of the curved sticker facing the player.
     for line in NOTE:
-        draw.text((18, y), line, font=bold, fill=(20, 20, 20))
+        draw.text((center, y), line, font=bold, fill=(20, 20, 20), anchor="mt")
         y += 82
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
