@@ -395,7 +395,7 @@ def build_shelf_box():
 
 
 # ==============================================================================
-# Model 4: Night2_ClampLamp (Đèn bàn kẹp tay gập kiểu L511S: chao chuông đen, tay đôi, lò xo)
+# Model 4: Night2_ClampLamp (Đèn bàn kẹp tay gập: chao chuông đen, tay đôi, lò xo)
 # ==============================================================================
 def lathe(name, origin, axis, profile, mat_name, sides=20, smooth=True):
     """Revolve (distance along axis, radius) points; radius 0 collapses to a pole vertex."""

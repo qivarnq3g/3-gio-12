@@ -84,7 +84,7 @@ REF_TEXT = {
     "Night2_ClampLamp": "Đèn kẹp bàn\nchao kim loại, tay gập, kẹp vít",
     "HomewareShop_ShelfKit_Box": "Hộp các-tông đựng kệ\nbăng keo, nhãn in",
 }
-REFERENCE_PHOTOS = {"Night2_ClampLamp": ROOT / "tools/out/reference/lamp_reference_L511S.jpg"}
+REFERENCE_PHOTOS = {"Night2_ClampLamp": ROOT / "tools/out/reference/lamp_reference.jpg"}
 HEADERS = ["Ảnh tham khảo thực tế", "Ảnh Clay Mesh (Blender)", "Ảnh Render Unity Ban Ngày"]
 CELL_W, CELL_H, HEAD_H, TITLE_H, PAD = 640, 480, 44, 56, 16
 

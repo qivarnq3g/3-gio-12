@@ -222,6 +222,7 @@ public static class NightOneRealisticSetup
             cart.transform.rotation = Quaternion.Euler(0, 90, 0);
             ApplyPbrMaterials(cart);
             foreach (var r in cart.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+            AddBoundsCollider(cart);
         }
 
         // 2. Night2_Shelf: replace blockout BH_F3_Room7_Rack
@@ -284,6 +285,32 @@ public static class NightOneRealisticSetup
                 foreach (var r in box.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
             }
         }
+
+        // Night 1 must not show Night 2 props (dem-1.md 1c); NightTwoMorningWorld turns the root on when Night 2 starts.
+        n2Root.gameObject.SetActive(false);
+    }
+
+    // The FBX imports without colliders, so give the prop one box around all its meshes, in its own space.
+    static void AddBoundsCollider(GameObject root)
+    {
+        var toRoot = root.transform.worldToLocalMatrix;
+        Bounds? bounds = null;
+        foreach (var filter in root.GetComponentsInChildren<MeshFilter>(true))
+        {
+            if (filter.sharedMesh == null) continue;
+            var m = toRoot * filter.transform.localToWorldMatrix;
+            var b = filter.sharedMesh.bounds;
+            for (int i = 0; i < 8; i++)
+            {
+                var corner = m.MultiplyPoint3x4(b.center + Vector3.Scale(b.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1)));
+                if (bounds is Bounds current) { current.Encapsulate(corner); bounds = current; }
+                else bounds = new Bounds(corner, Vector3.zero);
+            }
+        }
+        if (bounds is not Bounds box) return;
+        var collider = root.AddComponent<BoxCollider>();
+        collider.center = box.center;
+        collider.size = box.size;
     }
 
     [MenuItem("3 Gio 12/Night 1/Create Realistic (overwrites scene)")]
