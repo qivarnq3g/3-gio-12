@@ -42,3 +42,20 @@ Chỉ đính zip lên release sau khi mã được gộp và release dựng từ
 - **Chưa đạt đầy đủ tiêu chí #127:** chưa chơi hết đoạn đầu, chưa xác nhận chất lượng Thấp bằng giao diện, chưa đo FPS, chưa thử Intel và chưa upload release. Cấu hình kiểm thử đã nạp quality 0 nhưng không thay cho kiểm giao diện/chơi thực tế.
 
 Giữ PR nháp. Bản zip này chỉ dùng nội bộ để kiểm, không phải release đã được duyệt.
+
+## Kiểm tiếp sau sửa menu
+
+Bản nguồn `dd481ed` đã dựng lại thành công (exit 0, `PLAYTEST_PREVIEW_RESULT StandaloneOSX Succeeded 0`). Zip nội bộ mới: `3gio12-macos-dem-1-2026-11-26-menu-fix.zip`, SHA-256 `bbd303f7878e61d84f7e130a4eb5d7575ff853044ee1febee28d24ba5a5bc935`.
+
+Sửa menu mở trước khi coroutine phiên lưu sẵn sàng: làm mới danh sách khi thay phiên, trạng thái bắt đầu hoặc có/không có bản lưu. `PauseMenuSessionRegression.Run` kiểm trên cảnh tả thực, mô phỏng menu mở sớm, gắn phiên, xuất hiện bản lưu và chuyển sang đang chơi; marker `PAUSE_MENU_SESSION_REGRESSION_PASSED`, exit 0. Đây là kiểm logic, không thay cho ảnh native.
+
+App giải nén mới trên M2 đã hiện đúng chơi mới, vào hẻm, đổi **Cao → Thấp qua giao diện**, đi tới cửa nhà xe và chạy nhánh bị phát hiện/quay về chỗ ẩn. Các vùng đã quan sát không có màu hồng tím/thiếu vật liệu. Không có managed exception hoặc sập trong lượt này; cảnh báo NavMesh/PanelSettings vẫn tồn tại.
+
+- [Menu native](qa/macos-2026-11-26/menu.png)
+- [Chất lượng Thấp trong UI](qa/macos-2026-11-26/quality-low.png)
+- [Đi trong hẻm ở mức Thấp](qa/macos-2026-11-26/walk-low.png)
+- [Đến cửa nhà xe](qa/macos-2026-11-26/garage-approach.png)
+
+Đo bằng `-playtestStats`: chỉ lấy cửa sổ 10 giây khi app có focus và không tạm dừng, tự bỏ mẫu khi đổi độ phân giải/chất lượng. Chế độ này chỉ ghi log; không tắt NPC, di chuyển người chơi hay đổi chất lượng. Kết quả 1280×720, Metal, PC Low: 17 cửa sổ, trung vị 87.6 FPS, khoảng 67.2–182.6 FPS. [Số liệu từng cửa sổ](qa/macos-2026-11-26/fps.csv). Mẫu gồm đi lại, đứng tại chỗ và chuỗi bị phát hiện, không phải benchmark tuyến cố định và không chứng minh hiệu năng toàn game.
+
+**Vẫn chưa đạt:** hoàn tất đặt máy rồi quay ra đầu hẻm; chơi liền Đêm 1→2→3; kiểm download từ release đúng commit. Chưa tạo video demo đạt yêu cầu. Chưa phát hành hoặc đánh dấu #127 xong. Ảnh và CSV là từ app native mới, không phải Editor.
