@@ -65,6 +65,8 @@ namespace BaGio12.Gameplay
         int aboutIndex = -1;
         readonly List<Item> items = new List<Item>();
         int settingsIndex, controlsIndex, confirmIndex = -1;
+        IGameSession layoutSession;
+        bool layoutAtStart, layoutHasSave;
         IGameSession Session => player.Session;
         bool AtStart => Session != null && Session.AtStart;
         Entry[] entries;
@@ -357,6 +359,7 @@ namespace BaGio12.Gameplay
         {
             items.Clear();
             var session = Session;
+            layoutSession = session; layoutAtStart = AtStart; layoutHasSave = session != null && session.HasSave;
             if (AtStart)
             {
                 if (session.HasSave) Add("Tiếp tục bản đã lưu", () => session.ContinueSaved(), null, session.SaveSummary ?? "Bạn quay lại đúng chỗ của bản lưu gần nhất.");
@@ -414,6 +417,13 @@ namespace BaGio12.Gameplay
             if (show && !shown) Open();
             if (!show && shown) Close();
             shown = show;
+            // A focus-loss pause can open this menu before the session coroutine is ready.
+            // Refresh its actions when startup/save state arrives, without requiring a reopen.
+            if (show && (layoutSession != Session || layoutAtStart != AtStart || layoutHasSave != (Session != null && Session.HasSave)))
+            {
+                selected = 0; inPage = false;
+                Layout();
+            }
             float dt = Time.unscaledDeltaTime;
             group.alpha = Mathf.MoveTowards(group.alpha, show ? 1 : 0, dt * 6);
             if (!show && group.alpha <= 0)
