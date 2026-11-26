@@ -16,19 +16,32 @@ Game gọi `https://<DOMAIN>/api/v1/...`. Trang quản trị cùng nguồn gốc
 
 Biến `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` của `api` là bắt buộc. Mã giới hạn tần suất lấy IP từ `RemoteIpAddress`; thiếu biến này thì mọi người chơi mang IP của `caddy`, và một người vượt giới hạn sẽ chặn cả nhóm.
 
-## 2. Khu vực và tài khoản
+## 2. Ai tạo máy ảo, khu vực và tài khoản
 
-Gói "Azure for Students" của nhóm có chính sách chỉ cho tạo tài nguyên ở năm khu vực: `centralindia`, `japanwest`, `indonesiacentral`, `malaysiawest`, `koreacentral` (kiểm bằng `az policy assignment list` ngày 26/11/2026). Singapore (`southeastasia`) không dùng được. Tài liệu này dùng `malaysiawest` (Malaysia West): gần Việt Nam, có máy `Standard_B1ms` (1 vCPU, 2 GB RAM, kiểm bằng `az vm list-sizes`), giá 0,0238 USD mỗi giờ. `indonesiacentral` cùng giá và cùng có máy này, dùng làm phương án dự phòng.
+Quyết định ngày 27/11/2026: Tiên tạo máy ảo bằng gói Azure for Students của Tiên (gói của Quang đang chứa tài nguyên của môn Điện toán đám mây nên không dùng). Quang đăng nhập vào máy ảo bằng SSH để làm mục 4 và 5.
 
-Tín dụng sinh viên là 100 USD, dùng trong 12 tháng, một gói cho mỗi người. Nếu dùng gói đang chứa tài nguyên của môn Điện toán đám mây thì hai việc chia chung 100 USD đó. Tạo tài nguyên của nhóm trong một resource group riêng (`rg-3gio12`) để xóa gọn bằng một lệnh, không đụng tài nguyên môn kia.
-
-## 3. Tạo máy ảo
-
-Chạy trong PowerShell, đã `az login` và chọn đúng gói (`az account show`).
+Gói Azure for Students của Quang có chính sách chỉ cho tạo tài nguyên ở năm khu vực: `centralindia`, `japanwest`, `indonesiacentral`, `malaysiawest`, `koreacentral`; Singapore không dùng được (kiểm bằng `az policy assignment list` ngày 26/11/2026). Gói của Tiên có thể khác. Kiểm trước khi tạo:
 
 ```powershell
+az account show --query "{name:name,id:id}" -o table
+az policy assignment list --query "[].{ten:displayName,khuVuc:parameters.listOfAllowedLocations.value}" -o json
+```
+
+Nếu `malaysiawest` nằm trong danh sách (hoặc gói không giới hạn khu vực) thì dùng `malaysiawest`: gần Việt Nam, có máy `Standard_B1ms` (1 vCPU, 2 GB RAM, kiểm bằng `az vm list-sizes`), giá 0,0238 USD mỗi giờ. `indonesiacentral` cùng giá và cùng có máy này, dùng làm phương án dự phòng. Nếu cả hai đều không có, chọn khu vực gần nhất trong danh sách và báo Quang để sửa bảng chi phí trong báo cáo.
+
+Tín dụng sinh viên là 100 USD, dùng trong 12 tháng, một gói cho mỗi người. Tạo tài nguyên của nhóm trong một resource group riêng (`rg-3gio12`) để xóa gọn bằng một lệnh.
+
+## 3. Tạo máy ảo (việc của Tiên)
+
+Chạy trong PowerShell từ thư mục gốc repo (cần tệp `deploy/cloud-init.yaml`), đã `az login` và chọn đúng gói (`az account show`). Máy ảo nhận hai khóa SSH: khóa của Tiên và khóa của Quang, để cả hai cùng đăng nhập được.
+
+```powershell
+# Khóa của Tiên: nếu chưa có thì tạo bằng `ssh-keygen -t ed25519`
+$TIEN_KEY  = (Get-Content "$env:USERPROFILE\.ssh\id_ed25519.pub" -Raw).Trim()
+$QUANG_KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPtO1TKxah/49QIHhdjTpsmshC3nVmfbxAnv0UFyzRL1 quang-3gio12-deploy"
+
 $RG   = "rg-3gio12"
-$LOC  = "malaysiawest"
+$LOC  = "malaysiawest"                   # đổi theo kết quả kiểm ở mục 2
 $VM   = "vm-3gio12"
 $DNS  = "<tên-duy-nhất-không-dấu>"      # DOMAIN sẽ là $DNS.$LOC.cloudapp.azure.com
 
@@ -39,21 +52,19 @@ az vm create -g $RG -n $VM -l $LOC `
   --size Standard_B1ms `
   --storage-sku StandardSSD_LRS --os-disk-size-gb 32 `
   --public-ip-sku Standard --public-ip-address-dns-name $DNS `
-  --admin-username azureuser --generate-ssh-keys `
+  --admin-username azureuser --authentication-type ssh `
+  --ssh-key-values $TIEN_KEY $QUANG_KEY `
   --custom-data deploy/cloud-init.yaml
 
 az vm open-port -g $RG -n $VM --port 80  --priority 1010
 az vm open-port -g $RG -n $VM --port 443 --priority 1020
 ```
 
-`az vm create` mở cổng 22 cho mọi địa chỉ. Giới hạn lại theo địa chỉ IP của người quản trị:
+Cổng 22 mở cho mọi địa chỉ nhưng chỉ nhận khóa SSH (mật khẩu bị tắt khi dùng `--authentication-type ssh`). Không giới hạn theo địa chỉ IP vì địa chỉ của người quản trị đổi theo mạng.
 
-```powershell
-$MYIP = (Invoke-RestMethod https://api.ipify.org)
-az network nsg rule update -g $RG --nsg-name "$($VM)NSG" -n default-allow-ssh --source-address-prefixes $MYIP
-```
+`deploy/cloud-init.yaml` cài Docker, tạo 2 GB swap (máy B1ms chỉ có 2 GB RAM, dựng ảnh .NET cần thêm bộ nhớ) và Git. Cloud-init chạy vài phút sau khi máy lên.
 
-`deploy/cloud-init.yaml` cài Docker, tạo 2 GB swap (máy B1ms chỉ có 2 GB RAM, dựng ảnh .NET cần thêm bộ nhớ) và Git.
+Xong thì Tiên báo vào issue triển khai: tên miền đầy đủ (`$DNS.$LOC.cloudapp.azure.com`), khu vực đã dùng, và kết quả `az vm show -g rg-3gio12 -n vm-3gio12 --query "{size:hardwareProfile.vmSize,state:provisioningState}" -o json`. Đừng đăng khóa riêng hay mật khẩu nào lên issue.
 
 ## 4. Đưa mã lên máy ảo
 
