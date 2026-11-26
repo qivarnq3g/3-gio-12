@@ -1,10 +1,10 @@
-"""Draw the delivery sticker on the Night 2 milk tea cup (docs/kich-ban/dem-2.md, mục 5.4 bước 6).
+"""Draw the order label and thank-you note for the Night 2 milk tea cup (section 5.4 of dem-2.md).
 
     python -m pip install pillow==12.0.0
     python tools/make_milktea_sticker.py
 
-Writes game/Assets/Art/Textures/T_MilkTeaSticker.png. Text is printed with Arial (Windows system font),
-the font file is not copied into the repo. The shop name and order code are made up.
+Writes game/Assets/Art/Textures/T_MilkTeaSticker.png. The top half is the order label
+and the bottom half is the note. The Windows font files stay outside the repo.
 """
 
 from pathlib import Path
@@ -15,28 +15,30 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "game" / "Assets" / "Art" / "Textures" / "T_MilkTeaSticker.png"
 FONT = Path("C:/Windows/Fonts/arial.ttf")
 FONT_BOLD = Path("C:/Windows/Fonts/arialbd.ttf")
+FONT_NOTE = Path("C:/Windows/Fonts/ariali.ttf")
 W, H = 512, 512
-NOTE = ["Ít đường.", "Trân châu trắng.", "Cảm ơn cháu.", "Mẹ Ngân"]
 
 
 def main() -> None:
     image = Image.new("RGB", (W, H), (246, 244, 236))
     draw = ImageDraw.Draw(image)
-    small = ImageFont.truetype(str(FONT), 26)
-    bold = ImageFont.truetype(str(FONT_BOLD), 50)
-    head = ImageFont.truetype(str(FONT_BOLD), 30)
+    small = ImageFont.truetype(str(FONT), 33)
+    bold = ImageFont.truetype(str(FONT_BOLD), 49)
+    head = ImageFont.truetype(str(FONT_BOLD), 28)
+    note = ImageFont.truetype(str(FONT_NOTE), 60)
+    signature = ImageFont.truetype(str(FONT_NOTE), 48)
     center = W // 2
 
-    draw.rectangle((0, 0, W, 60), fill=(222, 120, 40))
-    draw.text((center, 14), "TRÀ SỮA NHÀ GÓC · #0412", font=head, fill=(255, 255, 255), anchor="mt")
-    draw.text((center, 76), "Size M · Giao: gửi chủ trọ", font=small, fill=(60, 60, 60), anchor="mt")
-    draw.line((18, 118, W - 18, 118), fill=(170, 170, 170), width=2)
-    draw.text((center, 128), "Ghi chú:", font=small, fill=(60, 60, 60), anchor="mt")
-    y = 172
-    # Center the note on the part of the curved sticker facing the player.
-    for line in NOTE:
-        draw.text((center, y), line, font=bold, fill=(20, 20, 20), anchor="mt")
-        y += 82
+    draw.rectangle((0, 0, W, 61), fill=(222, 120, 40))
+    draw.text((center, 19), "TRÀ SỮA NHÀ GÓC · #0412", font=head, fill=(255, 255, 255), anchor="mt")
+    draw.text((center, 77), "Trà sữa trân châu", font=bold, fill=(20, 20, 20), anchor="mt")
+    draw.text((center, 142), "Ít đường · Trân châu trắng", font=small, fill=(60, 60, 60), anchor="mt")
+    draw.line((18, 188, W - 18, 188), fill=(170, 170, 170), width=2)
+    draw.text((center, 202), "Size M · Giao: gửi chủ trọ", font=small, fill=(60, 60, 60), anchor="mt")
+
+    draw.rectangle((0, H // 2, W, H), fill=(255, 234, 176))
+    draw.text((center, 316), "Cảm ơn cháu.", font=note, fill=(51, 37, 27), anchor="mt")
+    draw.text((center, 407), "Mẹ Ngân", font=signature, fill=(51, 37, 27), anchor="mt")
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     image.save(OUTPUT, optimize=True)

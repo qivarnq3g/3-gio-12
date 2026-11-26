@@ -85,18 +85,26 @@ def build_milk_tea():
     body = join_objects([cup, tea, *pearls, lid, straw], "Night2_MilkTea")
     base.finalize_asset(body, pivot_at=(0, 0, 0))
 
-    # Giấy dán cong theo thân ly, hướng ra phía người chơi (-Y Blender = +Z Unity), UV phủ đủ ảnh 512 x 512.
-    cols, arc, z0, z1 = 12, math.radians(90), 0.045, 0.110
+    # Hai mảnh giấy hướng ra phía người chơi (-Y Blender = +Z Unity).
+    # Tem đơn hàng ở nửa trên ảnh, lời nhắn ở nửa dưới. Chừa lề 8 px giữa
+    # UV và biên mỗi nửa để bộ lọc texture không lấy màu từ mảnh giấy kia.
+    cols = 12
     verts, faces, uvs = [], [], []
-    for j, z in enumerate((z0, z1)):
-        rad = r0 + (r1 - r0) * z / h + 0.0012
-        for i in range(cols + 1):
-            t = i / cols
-            a = -math.pi / 2 - arc / 2 + arc * t
-            verts.append((rad * math.cos(a), rad * math.sin(a), z))
-            uvs.append((t, j))
-    for i in range(cols):
-        faces.append((i, i + 1, cols + 2 + i, cols + 1 + i))
+    for z_bottom, z_top, arc_degrees, y_top, y_bottom in (
+        (0.090, 0.146, 88, 8, 248),
+        (0.039, 0.084, 78, 264, 504),
+    ):
+        arc = math.radians(arc_degrees)
+        start = len(verts)
+        for z, pixel_y in ((z_bottom, y_bottom), (z_top, y_top)):
+            rad = r0 + (r1 - r0) * z / h + 0.0012
+            for i in range(cols + 1):
+                t = i / cols
+                a = -math.pi / 2 - arc / 2 + arc * t
+                verts.append((rad * math.cos(a), rad * math.sin(a), z))
+                uvs.append((t, 1 - pixel_y / 512))
+        for i in range(start, start + cols):
+            faces.append((i, i + 1, cols + 2 + i, cols + 1 + i))
     sticker = base.mesh("Night2_MilkTea_Sticker", verts, faces, "M_PaperWhite")
     layer = sticker.data.uv_layers.new(name="UVMap")
     for poly in sticker.data.polygons:
