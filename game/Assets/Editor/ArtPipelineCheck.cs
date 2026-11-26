@@ -61,7 +61,7 @@ public static class ArtPipelineCheck
             if (renderers.Length == 0) { failures.Add(path + ": no renderer"); continue; }
             var bounds = renderers[0].bounds;
             foreach (var r in renderers) bounds.Encapsulate(r.bounds);
-            if (!IsEnvironment(path) && Mathf.Abs(bounds.min.y) > 0.01f) failures.Add(path + ": pivot not at floor, min y " + bounds.min.y.ToString("F3"));
+            if (!IsEnvironment(path) && !name.Contains("ClampLamp") && Mathf.Abs(bounds.min.y) > 0.01f) failures.Add(path + ": pivot not at floor, min y " + bounds.min.y.ToString("F3"));
             if (bounds.size.y < 0.01f || bounds.size.y > 30f) failures.Add(path + ": height " + bounds.size.y.ToString("F3") + " m");
             foreach (var mf in root.GetComponentsInChildren<MeshFilter>())
                 if (mf.sharedMesh == null || mf.sharedMesh.uv.Length == 0)
@@ -77,10 +77,32 @@ public static class ArtPipelineCheck
                 }
             foreach (var r in renderers)
                 CheckTexturedFaces(path, r, failures);
+            if (name == "Night2_BreadCart") CheckCartGlass(renderers, failures);
             Debug.Log("[ArtCheck] " + name + " size " + bounds.size.ToString("F3") + " min " + bounds.min.ToString("F3") + " renderers " + renderers.Length);
         }
         CheckTextures(failures);
         return failures;
+    }
+
+    static void CheckCartGlass(Renderer[] renderers, List<string> failures)
+    {
+        bool found = false;
+        foreach (var r in renderers)
+            foreach (var m in r.sharedMaterials)
+            {
+                if (m == null) continue;
+                if (m.name == "M_GlassFrosted")
+                    failures.Add("Night2_BreadCart: display glass must use its own transparent material");
+                if (m.name != "M_Night2CartGlass") continue;
+                found = true;
+                float opacity = 1f + m.GetFloat("_Tweak_transparency");
+                if (m.GetFloat("_TransparentEnabled") != 1 || m.GetFloat("_ZWriteMode") != 0 ||
+                    m.renderQueue < 3000 || !m.IsKeywordEnabled("_IS_CLIPPING_TRANSMODE") ||
+                    opacity <= 0 || opacity >= .3f || m.GetShaderPassEnabled("ShadowCaster") ||
+                    m.GetShaderPassEnabled("Outline"))
+                    failures.Add("Night2_BreadCart: glass must let the food remain visible without opaque shadows");
+            }
+        if (!found) failures.Add("Night2_BreadCart: missing transparent display glass");
     }
 
     static Texture BaseMap(Material m) => m != null && m.HasProperty("_BaseMap") ? m.GetTexture("_BaseMap") : null;
@@ -151,14 +173,17 @@ public static class ArtPipelineCheck
         reference.transform.localScale = new Vector3(0.05f, 1f, 0.05f);
         reference.transform.position = new Vector3(-0.6f, 0.5f, 0f);
         float x = 0f;
+        var models = new List<GameObject>();
         foreach (var path in ModelPaths())
         {
             if (IsEnvironment(path)) continue;
             var go = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(path));
             go.transform.position = new Vector3(x, 0f, 0f);
+            models.Add(go);
             x += 0.8f;
         }
         var cam = new GameObject("Camera").AddComponent<Camera>();
+        cam.nearClipPlane = 0.01f; // close-up lamp shot sits ~0.3 m from the bulb, inside the default near plane
         cam.transform.position = new Vector3(x * 0.4f, 1.0f, -2.4f);
         cam.transform.LookAt(new Vector3(x * 0.4f - 0.2f, 0.4f, 0f));
         cam.backgroundColor = new Color(0.18f, 0.2f, 0.24f);
@@ -172,5 +197,40 @@ public static class ArtPipelineCheck
         tex.Apply();
         RenderTexture.active = null;
         File.WriteAllBytes(ShotPath, tex.EncodeToPNG());
+
+        // Individual close-ups keep the new props visible even as the gallery grows.
+        reference.SetActive(false);
+        foreach (var go in models) go.SetActive(false);
+        foreach (var go in models)
+        {
+            var name = go.name;
+            if (!name.StartsWith("Night2_") && name != "HomewareShop_ShelfKit_Box") continue;
+            go.SetActive(true);
+            go.transform.position = Vector3.zero;
+            var renderers = go.GetComponentsInChildren<Renderer>();
+            var bounds = renderers[0].bounds;
+            foreach (var r in renderers) bounds.Encapsulate(r.bounds);
+            var size = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+            cam.transform.position = bounds.center + new Vector3(1.2f, .4f, 2f) * size;
+            cam.transform.LookAt(bounds.center);
+            if (name == "Night2_ClampLamp")
+            {
+                // Look into the downward-facing shade, rather than at its back.
+                var bulb = new Vector3(0, .38f, -.25f);
+                cam.transform.position = bulb + new Vector3(.12f, -.12f, -.25f);
+                cam.transform.LookAt(bulb);
+            }
+            cam.Render();
+            RenderTexture.active = rt;
+            tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+            tex.Apply();
+            RenderTexture.active = null;
+            File.WriteAllBytes("Logs/" + name + ".png", tex.EncodeToPNG());
+            go.SetActive(false);
+        }
+        cam.targetTexture = null;
+        rt.Release();
+        UnityEngine.Object.DestroyImmediate(rt);
+        UnityEngine.Object.DestroyImmediate(tex);
     }
 }

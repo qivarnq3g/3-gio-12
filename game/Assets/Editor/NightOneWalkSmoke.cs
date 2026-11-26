@@ -19,6 +19,8 @@ public static class NightOneWalkSmoke
     static NightOneWalkSmoke(){if(SessionState.GetBool("NightWalk",false))EditorApplication.playModeStateChanged+=Changed;}
     public static void Run()
     {
+        Environment.SetEnvironmentVariable("THREEGIO12_DATA_ROOT",System.IO.Path.GetFullPath(System.IO.Path.Combine("Library","NightWalk",Guid.NewGuid().ToString("N"))));
+        Environment.SetEnvironmentVariable("THREEGIO12_SKIP_START_MENU","1");
         EditorSceneManager.OpenScene("Assets/Scenes/Night01/NightOneGraybox.unity");SessionState.SetBool("NightWalk",true);
         EditorApplication.playModeStateChanged-=Changed;EditorApplication.playModeStateChanged+=Changed;EditorApplication.EnterPlaymode();
     }
