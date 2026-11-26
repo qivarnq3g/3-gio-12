@@ -8,6 +8,17 @@ public static class NightTwoSceneFixtures
     public static void AddMorning()
     {
         var all = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        if (System.Environment.GetEnvironmentVariable("THREEGIO12_REQUIRE_MORNING_MODELS") == "1")
+        {
+            foreach (string name in new[] { "Night2_BreadCart", "Night2_Shelf", "Night2_ClampLamp" })
+            {
+                var model = all.FirstOrDefault(t => t.name == name);
+                if (model == null || !model.GetComponentsInChildren<Renderer>(true).Any(r => r.enabled))
+                    throw new System.Exception("Real morning model required; fixture refused: " + name);
+            }
+            Debug.Log("NIGHT_TWO_REAL_MODELS_CONFIRMED_NO_FIXTURES");
+            return;
+        }
         var root = all.FirstOrDefault(t => t.name == "Night2 props");
         if (root == null) root = new GameObject("Night2 props").transform;
         GameObject Model(string name, Vector3 position)
