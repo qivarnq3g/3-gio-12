@@ -240,10 +240,32 @@ def front_matter():
     )
 
 
+INCLUDE = re.compile(r"^<!--\s*include:\s*(\S+)(?:\s+shift=(\d+))?\s*-->\s*$")
+
+
+def expand_includes(text, base_dir):
+    """Dòng `<!-- include: đường-dẫn shift=N -->` được thay bằng nội dung tệp đó: bỏ dòng `# Tiêu đề` đầu,
+    dời cấp tiêu đề thêm N, bỏ liên kết tương đối (chỉ giữ chữ)."""
+    out = []
+    for line in text.splitlines():
+        match = INCLUDE.match(line)
+        if not match:
+            out.append(line)
+            continue
+        path = (base_dir / match.group(1)).resolve()
+        if not path.exists():
+            sys.exit(f"Không thấy tệp được nhúng: {match.group(1)}")
+        body = strip_title_and_note(read_text(path))
+        body = shift_headings(body, int(match.group(2) or 0))
+        body = re.sub(r"(?<!!)\[([^\]]+)\]\((?!https?://)[^)]+\)", r"\1", body)
+        out.extend(["", *body.splitlines(), ""])
+    return "\n".join(out) + "\n"
+
+
 def read_chapter_file(name, title, missing):
     path = REPORT_DIR / name
     if path.exists():
-        return strip_title_and_note(read_text(path))
+        return expand_includes(strip_title_and_note(read_text(path)), path.parent)
     missing.append(f"docs/report/{name}")
     return "Phần này đang được soạn.\n"
 
