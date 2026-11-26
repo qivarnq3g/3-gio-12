@@ -285,7 +285,7 @@ def main():
         output.mkdir(parents=True, exist_ok=True)
     for folder, stem, build, target, scale in (
         ("Environment", "env_police_station", build_station, (0, -4.18, 3.06), 20.3),
-        ("Props", "Night3_PoliceDesk", build_desk, (0, 0, .73), 2.62),
+        ("Props", "Night3_PoliceDesk", build_desk, (0, 0, .76), 3.15),
     ):
         bpy.ops.wm.read_factory_settings(use_empty=True)
         bpy.context.scene.unit_settings.system = "METRIC"
