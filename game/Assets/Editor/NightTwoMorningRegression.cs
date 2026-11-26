@@ -153,7 +153,11 @@ public static class NightTwoMorningRegression
                 story.player.Teleport(NightTwoMorning.Room + Vector3.back,330);story.player.RestoreView(8,false);
                 string preview=Path.Combine(NightPersistence.DataRoot,"morning-preview.png");
                 if(File.Exists(preview))File.Delete(preview);
-                if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) { Finish("NIGHT_TWO_WRITE_PASSED"); return; }
+                if (Application.isBatchMode || SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null)
+                {
+                    Debug.Log("NIGHT_TWO_PREVIEW_SKIPPED_NO_GAME_VIEW; logic checks passed, not visual QA");
+                    Finish("NIGHT_TWO_WRITE_PASSED"); return;
+                }
                 ScreenCapture.CaptureScreenshot(preview);step=3;return;
             }
             if(step==1)
