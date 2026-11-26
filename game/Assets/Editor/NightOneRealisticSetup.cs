@@ -181,6 +181,11 @@ public static class NightOneRealisticSetup
             ["M_FoodBrown"] = "SF_goods", ["M_FoodGreen"] = "SF_goods", ["M_FoodYellow"] = "SF_goods",
         },
         ["Night2_ClampLamp"] = new Dictionary<string, string> { ["M_StainlessSteel"] = "SF_rack_chrome", ["M_SteelDark"] = "M_SteelDark" },
+        ["Night2_RiceShop"] = new Dictionary<string, string>
+        {
+            ["M_StainlessSteel"] = "SF_counter_alu",
+        },
+        ["Night2_LienTable"] = new Dictionary<string, string> { ["M_PlasticBlue"] = "SF_rack_plastic" },
     };
 
     // Swap imported FBX materials for the PBR set; cart glass keeps its transparent URP material.
@@ -286,8 +291,60 @@ public static class NightOneRealisticSetup
             }
         }
 
+        SetupNightTwoEvening(parent, n2Root);
+
         // Night 1 must not show Night 2 props (dem-1.md 1c); NightTwoMorningWorld turns the root on when Night 2 starts.
         n2Root.gameObject.SetActive(false);
+    }
+
+    // Issue #129: buổi tối Đêm 2 (dem-2.md mục 5.4). Rice shop stove and milk tea live under the Night 2 root;
+    // the evening parking spot is a plain marker that NightTwoMorningWorld moves the player's bike to.
+    static void SetupNightTwoEvening(Transform parent, Transform n2Root)
+    {
+        // env_rice_shop (#23) đã có mặt tiền, quầy món, bàn ghế; thêm bếp ga có nồi canh và nồi cơm cạnh người bán
+        // (NPC_N2_RiceSeller ở (60; -1,8)), giữa quầy món và bình gas của env_rice_shop.
+        var shop = PlaceProp("Night2_RiceShop", n2Root, OnGround(new Vector3(61.0f, 0, -1.7f)), Quaternion.identity);
+        if (shop != null) AddBox(shop, new Vector3(0, .55f, -.31f), new Vector3(.6f, 1.1f, 1.25f));
+        else missing.Add("Night2_RiceShop.fbx");
+
+        // Bàn nhựa thấp sát chậu cây phía nam cổng, ngoài lối đi qua cổng; ly trà sữa đặt trên bàn, giấy dán quay ra hẻm.
+        var tablePos = OnGround(new Vector3(-0.95f, 0, -44.55f));
+        var table = PlaceProp("Night2_LienTable", n2Root, tablePos, Quaternion.identity);
+        if (table != null) AddBox(table, new Vector3(0, .23f, 0), new Vector3(.5f, .46f, .5f));
+        else missing.Add("Night2_LienTable.fbx");
+        // Sticker keeps M_MilkTeaSticker (Toon, T_MilkTeaSticker.png) from the import; it has no PBR counterpart.
+        if (PlaceProp("Night2_MilkTea", n2Root, tablePos + new Vector3(.06f, .461f, .04f), Quaternion.Euler(0, 15, 0)) == null)
+            missing.Add("Night2_MilkTea.fbx");
+
+        // Chỗ trống sát vách phải nhà xe, giữa Garage Cub 9 và 7; đầu xe (local +Z) quay ra lối đi giữa (+X).
+        var spot = Child("PARK_N2_EveningBike") ?? new GameObject("PARK_N2_EveningBike").transform;
+        spot.SetParent(parent, true);
+        spot.SetPositionAndRotation(new Vector3(-3.15f, 0, -52.45f), Quaternion.Euler(0, 90, 0));
+    }
+
+    static GameObject PlaceProp(string stem, Transform parent, Vector3 position, Quaternion rotation)
+    {
+        var asset = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Art/Models/Props/{stem}.fbx");
+        if (asset == null) return null;
+        var go = Object.Instantiate(asset, parent);
+        go.name = stem;
+        go.transform.SetPositionAndRotation(position, rotation);
+        ApplyPbrMaterials(go);
+        foreach (var r in go.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+        return go;
+    }
+
+    static void AddBox(GameObject go, Vector3 center, Vector3 size)
+    {
+        var box = go.AddComponent<BoxCollider>();
+        box.center = center; box.size = size;
+    }
+
+    // Floor height under a point from scene colliders, so props sit on sloped alley or shop floors.
+    static Vector3 OnGround(Vector3 at)
+    {
+        Physics.SyncTransforms();
+        return Physics.Raycast(new Vector3(at.x, at.y + 3f, at.z), Vector3.down, out var hit, 6f) ? new Vector3(at.x, hit.point.y, at.z) : at;
     }
 
     // The FBX imports without colliders, so give the prop one box around all its meshes, in its own space.
