@@ -174,8 +174,12 @@ namespace BaGio12.Online
                 if (decision.remove > 0 && queue.events.Count >= decision.remove && ReferenceEquals(queue.events[0], first))
                 { queue.events.RemoveRange(0, decision.remove); SaveQueue(); }
                 maxEvents = decision.maxEvents;
-                backoff = decision.backoffSeconds;
-                nextAttempt = Time.realtimeSinceStartup + (float)decision.waitSeconds;
+                // Người chơi có thể rút đồng ý trong lúc chờ phản hồi; SetConsent(false) vừa đặt nextAttempt = 0 để lệnh xóa đi ngay.
+                if (ConsentGranted)
+                {
+                    backoff = decision.backoffSeconds;
+                    nextAttempt = Time.realtimeSinceStartup + (float)decision.waitSeconds;
+                }
                 LastUploadError = decision.remove > 0 && !decision.logError ? "" : $"HTTP {request.responseCode} {request.error}";
             }
             uploading = false;
@@ -187,6 +191,7 @@ namespace BaGio12.Online
             using (var request = UnityWebRequest.Delete(baseUrl + "/api/v1/telemetry/installations/" + installationId))
             {
                 request.timeout = TimeoutSeconds;
+                request.downloadHandler = new DownloadHandlerBuffer(); // để Debug.LogError bên dưới có nội dung lỗi 4xx
                 yield return request.SendWebRequest();
                 var decision = TelemetryPolicy.DecideRevocation(Status(request), request.GetResponseHeader("Retry-After"), backoff);
                 if (decision.logError) Debug.LogError($"Telemetry revocation for {installationId} dropped with HTTP {request.responseCode}: {request.downloadHandler?.text}");

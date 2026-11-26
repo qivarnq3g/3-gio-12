@@ -402,6 +402,8 @@ namespace BaGio12.Gameplay
             }
             selected = Mathf.Clamp(selected, 0, items.Count - 1);
             confirmIndex = -1;
+            // Danh sách mục vừa đổi (ví dụ sau khi trả lời hỏi đồng ý): bỏ dòng mô tả của danh sách cũ để Animate nạp lại.
+            aboutIndex = -1;
         }
 
         static bool HasSessionInScene()
@@ -421,7 +423,10 @@ namespace BaGio12.Gameplay
         public void ShowSettings()
         {
             if (group == null) Build();
-            Layout(); selected = settingsIndex; inPage = true; row = 0;
+            Layout();
+            // Lúc đang hỏi đồng ý gửi thống kê, Layout không dựng mục Cài đặt (settingsIndex = -1): không mở trang cài đặt.
+            if (settingsIndex < 0) return;
+            selected = settingsIndex; inPage = true; row = 0;
         }
 
         void Update()
