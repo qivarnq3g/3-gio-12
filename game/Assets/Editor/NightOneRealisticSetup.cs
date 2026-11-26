@@ -303,6 +303,7 @@ public static class NightOneRealisticSetup
     {
         // env_rice_shop (#23) đã có mặt tiền, quầy món, bàn ghế; thêm bếp ga có nồi canh và nồi cơm cạnh người bán
         // (NPC_N2_RiceSeller ở (60; -1,8)), giữa quầy món và bình gas của env_rice_shop.
+        ClearRiceCounterGlass();
         var shop = PlaceProp("Night2_RiceShop", n2Root, OnGround(new Vector3(61.0f, 0, -1.7f)), Quaternion.identity);
         if (shop != null) AddBox(shop, new Vector3(0, .55f, -.31f), new Vector3(.6f, 1.1f, 1.25f));
         else missing.Add("Night2_RiceShop.fbx");
@@ -320,6 +321,58 @@ public static class NightOneRealisticSetup
         var spot = Child("PARK_N2_EveningBike") ?? new GameObject("PARK_N2_EveningBike").transform;
         spot.SetParent(parent, true);
         spot.SetPositionAndRotation(new Vector3(-3.15f, 0, -52.45f), Quaternion.Euler(0, 90, 0));
+    }
+
+    // env_rice_shop (#23) shares one M_GlassFrosted slot between the food counter and the upper-floor windows, and
+    // that dark opaque glass hides the dishes. Move only the counter's glass triangles into a clear transparent slot.
+    static readonly Bounds RiceCounterGlass = new Bounds(new Vector3(59.9f, 1.2f, -0.9f), new Vector3(4.4f, .8f, 1.3f));
+    const string RiceShopMesh = "Assets/Art/MeshesPBR/env_rice_shop_counter_glass.asset";
+    static void ClearRiceCounterGlass()
+    {
+        var renderer = Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).FirstOrDefault(r => r.name == "env_rice_shop");
+        var filter = renderer != null ? renderer.GetComponent<MeshFilter>() : null;
+        if (filter == null || filter.sharedMesh == null) { missing.Add("env_rice_shop mesh"); return; }
+        var mats = renderer.sharedMaterials;
+        int glass = System.Array.FindIndex(mats, m => m != null && m.name == "M_GlassFrosted");
+        if (glass < 0 || glass >= filter.sharedMesh.subMeshCount) { missing.Add("env_rice_shop counter glass"); return; }
+        var mesh = Object.Instantiate(filter.sharedMesh);
+        mesh.name = "env_rice_shop_counter_glass";
+        var toWorld = renderer.transform.localToWorldMatrix;
+        var v = mesh.vertices;
+        var keep = new List<int>(); var counter = new List<int>();
+        var tris = mesh.GetTriangles(glass);
+        for (int i = 0; i < tris.Length; i += 3)
+        {
+            var c = toWorld.MultiplyPoint3x4((v[tris[i]] + v[tris[i + 1]] + v[tris[i + 2]]) / 3f);
+            (RiceCounterGlass.Contains(c) ? counter : keep).AddRange(new[] { tris[i], tris[i + 1], tris[i + 2] });
+        }
+        if (counter.Count == 0) { missing.Add("env_rice_shop counter glass triangles"); return; }
+        mesh.subMeshCount += 1;
+        mesh.SetTriangles(keep, glass);
+        mesh.SetTriangles(counter, mesh.subMeshCount - 1);
+        AssetDatabase.DeleteAsset(RiceShopMesh);
+        AssetDatabase.CreateAsset(mesh, RiceShopMesh);
+        filter.sharedMesh = mesh;
+        var collider = renderer.GetComponent<MeshCollider>();
+        if (collider != null && collider.sharedMesh == filter.sharedMesh) collider.sharedMesh = mesh;
+        renderer.sharedMaterials = mats.Concat(new[] { ClearGlass() }).ToArray();
+    }
+
+    static Material ClearGlass()
+    {
+        const string path = PbrRoot + "/M_GlassClear.mat";
+        var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (m == null) { m = new Material(Shader.Find("Universal Render Pipeline/Lit")); AssetDatabase.CreateAsset(m, path); }
+        m.SetColor("_BaseColor", new Color(.85f, .92f, .95f, .14f));
+        m.SetFloat("_Smoothness", .92f); m.SetFloat("_Metallic", 0);
+        m.SetFloat("_Surface", 1); m.SetFloat("_Blend", 0);
+        m.SetOverrideTag("RenderType", "Transparent");
+        m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        m.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        m.SetFloat("_ZWrite", 0); m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        EditorUtility.SetDirty(m);
+        return m;
     }
 
     static GameObject PlaceProp(string stem, Transform parent, Vector3 position, Quaternion rotation)
