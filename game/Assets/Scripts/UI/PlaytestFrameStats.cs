@@ -15,7 +15,7 @@ namespace BaGio12.Gameplay
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
         {
-            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-playtestStats") < 0) return;
+            if (Array.IndexOf(System.Environment.GetCommandLineArgs(), "-playtestStats") < 0) return;
             new GameObject("Playtest frame stats").AddComponent<PlaytestFrameStats>();
         }
         void Update()
