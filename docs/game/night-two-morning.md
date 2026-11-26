@@ -46,3 +46,15 @@ Các kết quả `NightTwoMorningRegression.Write/Read` cũ thuộc cảnh thô,
 `NightTwoMorningRegression.Write/Read` đã chuyển sang `NightOneRealistic` và đạt `NIGHT_TWO_WRITE_PASSED`, `NIGHT_TWO_READ_PASSED` trên Unity 6000.3.26f1, batchmode/nographics, hai tiến trình dùng chung thư mục dữ liệu cách ly. Kiểm hai nhánh ngủ/thức, báo thức, phanh/đèn đỏ, save giữa tuyến, cổng thấy/không thấy/tường che, ráp kệ từng tầng, hiển thị đèn, trả lời số phòng, từ chối NaN, nạp phần ráp dở và chơi mới.
 
 Trong lúc #121 chưa được gộp, bài kiểm tạo model giả **chỉ trong Editor Play Mode** bằng `NightTwoSceneFixtures`. Nhóm model bắt đầu tắt để kiểm điều kiện mới của #121; không ghi fixture vào scene hay bản phát hành. Kết quả này xác nhận logic và vòng đời model, không xác nhận chất lượng asset, hình ảnh, raycast chơi tay hoặc ba đêm trên bản phát hành. `FollowupSceneRegression.Run` không thêm fixture và vẫn kiểm đúng model thật trong scene. PR #121 còn yêu cầu sửa nên chưa gộp asset vào nhánh gameplay.
+
+## Kiểm tích hợp model thật — 26/11/2026
+
+Ghép thử riêng nhánh gameplay Đêm 3 `f9e6940` với đầu PR #121 `949b8de`; không gộp PR #121 vào main hoặc nhánh gameplay phát hành. Chạy Write/Read với `THREEGIO12_REQUIRE_MORNING_MODELS=1`, dữ liệu cách ly và Unity 6000.3.26f1 `-batchmode -nographics` trên M2:
+
+- `NIGHT_TWO_REAL_MODELS_CONFIRMED_NO_FIXTURES`: đủ renderer của xe bánh mì, kệ và đèn có sẵn trong cảnh; không thêm fixture, không thay trạng thái nhóm để che lỗi ban đầu.
+- `NIGHT_TWO_WRITE_PASSED`, `NIGHT_TWO_READ_PASSED`, hai tiến trình exit 0: kiểm vòng đời ẩn/hiện, lắp kệ theo tầng, đèn và lưu/đọc trạng thái với model thật.
+- Không thay cho duyệt hình dáng/nguồn asset hoặc chơi tay Đêm 1→2→3. #129 và #130 vẫn chưa xong.
+
+Bật `THREEGIO12_REQUIRE_MORNING_MODELS=1` để bài kiểm từ chối model thay thế. Mặc định giữ fixture Editor cho kiểm logic trên nhánh chưa có asset.
+
+Bài Write không chờ ảnh Game View trong batchmode nữa: ghi `NIGHT_TWO_PREVIEW_SKIPPED_NO_GAME_VIEW`, kiểm logic và thoát. Không tính đây là ảnh bằng chứng. Lượt Editor batch có GPU bị dừng exit 132, log có native crash và lỗi Metal `no member named 'mtl_Position' in 'Mtl_ControlPointIn'`; chưa xác định nguyên nhân. Không ghi nhận lượt GPU đó là đạt, không kết luận app Mac native sập từ lỗi Editor này.
