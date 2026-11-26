@@ -16,6 +16,9 @@ public static class NightOneWalkSmoke
     static int step;
     static float pausedAt;
     static Vector3 location;
+    static Func<bool> until;
+    static double deadline;
+    static bool breathed;
     static NightOneWalkSmoke(){if(SessionState.GetBool("NightWalk",false))EditorApplication.playModeStateChanged+=Changed;}
     public static void Run()
     {
@@ -30,13 +33,18 @@ public static class NightOneWalkSmoke
         story=UnityEngine.Object.FindFirstObjectByType<NightOneDirector>();Application.runInBackground=true;
         InputSystem.settings.backgroundBehavior=InputSettings.BackgroundBehavior.IgnoreFocus;
         InputSystem.settings.editorInputBehaviorInPlayMode=InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
-        keyboard=InputSystem.AddDevice<Keyboard>();step=0;next=EditorApplication.timeSinceStartup+1;EditorApplication.update+=Tick;
+        keyboard=InputSystem.AddDevice<Keyboard>();step=0;Wait(1,null,0);EditorApplication.update+=Tick;
     }
     static void Check(bool value,string message){if(!value)throw new Exception("WALK REVIEW: "+message);}
+    static void Wait(double least,Func<bool> condition,double limit){var now=EditorApplication.timeSinceStartup;next=now+least;until=condition;deadline=now+Math.Max(least,limit);}
+    static bool Climbed(Transform body)=>body.position.y>.3f && body.position.z>14.5f;
+    static string Capture(string name)=>System.IO.Path.GetFullPath(System.IO.Path.Combine("Logs",name));
     static void Tick()
     {
         InputSystem.QueueStateEvent(keyboard,new KeyboardState(held));EditorApplication.QueuePlayerLoopUpdate();
-        if(EditorApplication.timeSinceStartup<next)return;
+        if(step==1 && story.player.GetComponent<NightInjuryFeedback>().IsBreathing)breathed=true;
+        var now=EditorApplication.timeSinceStartup;
+        if(now<next || (until!=null && !until() && now<deadline))return;
         try
         {
             var player=story.player;
@@ -45,26 +53,25 @@ public static class NightOneWalkSmoke
                 case 0:
                     player.ResumeControl();foreach(var observer in story.observers)observer.enabled=false;
                     story.State.stage=NightStage.Room;story.State.timeJumped=true;story.State.numberArrived=true;story.State.hasNganPhone=true;story.State.prologue_beaten=2;
-                    player.Teleport(new Vector3(6,.05f,13.2f));held=new[]{Key.W};break;
+                    player.Teleport(new Vector3(6,.05f,13.2f));held=new[]{Key.W};breathed=false;Wait(0,()=>Climbed(player.transform)&&breathed,10);break;
                 case 1:
-                    Check(player.transform.position.y>.3f && player.transform.position.z>14.5f,"W did not climb actual stairs");
-                    Check(player.GetComponent<NightInjuryFeedback>().IsBreathing,"real stair climbing did not produce breath feedback");
-                    ScreenCapture.CaptureScreenshot("/private/tmp/3gio12-stairs-review.png");held=new[]{Key.Escape};break;
+                    Check(Climbed(player.transform),"W did not climb actual stairs");
+                    Check(breathed,"real stair climbing did not produce breath feedback");
+                    ScreenCapture.CaptureScreenshot(Capture("3gio12-stairs-review.png"));held=new[]{Key.Escape};Wait(.2,()=>player.IsPaused,5);break;
                 case 2:
-                    Check(player.IsPaused && Time.timeScale==0,"Esc did not pause gameplay");pausedAt=Time.time;location=player.transform.position;held=Array.Empty<Key>();break;
+                    Check(player.IsPaused && Time.timeScale==0,"Esc did not pause gameplay");pausedAt=Time.time;location=player.transform.position;held=Array.Empty<Key>();Wait(1,null,0);break;
                 case 3:
-                    Check(Mathf.Abs(Time.time-pausedAt)<.001f && Vector3.Distance(location,player.transform.position)<.001f,"paused world moved");held=new[]{Key.Escape};break;
+                    Check(Mathf.Abs(Time.time-pausedAt)<.001f && Vector3.Distance(location,player.transform.position)<.001f,"paused world moved");held=new[]{Key.Escape};Wait(.2,()=>!player.IsPaused,5);break;
                 case 4:
-                    Check(!player.IsPaused && Time.timeScale==1,"Esc did not resume");held=new[]{Key.W,Key.LeftShift};player.SetPhone(1);location=player.transform.position;pausedAt=Time.time;break;
+                    Check(!player.IsPaused && Time.timeScale==1,"Esc did not resume");held=new[]{Key.W,Key.LeftShift};player.SetPhone(1);location=player.transform.position;pausedAt=Time.time;Wait(1,()=>Time.time>pausedAt,5);break;
                 case 5:
                     Check(Time.timeScale==1 && Time.time>pausedAt && Vector3.Distance(location,player.transform.position)<.05f,"phone paused world or moved character");
-                    held=Array.Empty<Key>();player.SetPhone(0);player.Teleport(new Vector3(0,.05f,.5f),180);break;
+                    held=Array.Empty<Key>();player.SetPhone(0);player.Teleport(new Vector3(0,.05f,.5f),180);Wait(1,null,0);break;
                 case 6:
-                    ScreenCapture.CaptureScreenshot("/private/tmp/3gio12-arms-overlay-review.png");break;
+                    ScreenCapture.CaptureScreenshot(Capture("3gio12-arms-overlay-review.png"));Wait(1,null,0);break;
                 case 7:
                     Debug.Log("NIGHT_ONE_WALK_REVIEW_PASSED");Finish(0);return;
             }
-            next=EditorApplication.timeSinceStartup+1;
         }
         catch(Exception error){Debug.LogException(error);Finish(1);}
     }
