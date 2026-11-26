@@ -73,14 +73,14 @@ Các phép tính dưới đây dùng tỷ giá giả định 1 USD = 26.000 đ�
 | Khoản | Cách tính | Chi phí 12 tháng |
 |---|---|---|
 | Phí Steam Direct | 100 USD một lần cho mỗi game [@steam-direct] | 2.600.000 đồng |
-| Máy ảo Azure chạy máy chủ và trang quản trị | Máy ảo B1ms, Linux, khu vực Đông Nam Á: 0,0264 USD mỗi giờ [@azure-prices]; 730 giờ mỗi tháng ra khoảng 19,27 USD; 12 tháng khoảng 231 USD | 6.006.000 đồng |
+| Máy ảo Azure chạy máy chủ và trang quản trị | Máy ảo B1ms, Linux, khu vực Malaysia West: 0,0238 USD mỗi giờ, 730 giờ mỗi tháng ra khoảng 17,37 USD; địa chỉ IP tĩnh 0,005 USD mỗi giờ, khoảng 3,65 USD; ổ đĩa Standard SSD 32 GiB, 2,40 USD. Tổng khoảng 23,42 USD mỗi tháng, 12 tháng khoảng 281 USD [@azure-prices] | 7.306.000 đồng |
 | Unity, Blender | Unity Personal miễn phí theo điều kiện doanh thu của Unity (nhóm tra ngày 15/10/2026, cần kiểm lại trước khi bán); Blender miễn phí | 0 đồng |
 | Ảnh và giọng nói | Ảnh AI tạo trên máy của nhóm; giọng đọc tiếng Việt VieNeu-TTS chạy trên máy | 0 đồng (điều khoản thương mại của công cụ chưa kiểm, xem mục 8) |
-| Cộng các khoản đã biết | | 8.606.000 đồng |
+| Cộng các khoản đã biết | | 9.906.000 đồng |
 
 : Chi phí vận hành đã biết trong 12 tháng
 
-Người học đại học xác minh được bằng email trường có thể nhận 100 USD tín dụng Azure dùng trong 12 tháng, không cần thẻ tín dụng [@azure-students]. Với máy ảo B1ms, 100 USD đủ chạy khoảng 5 tháng (100 chia 19,27). Vì vậy tín dụng sinh viên chỉ che phần máy chủ trong và ngay sau học phần, không che cả năm.
+Người học đại học xác minh được bằng email trường có thể nhận 100 USD tín dụng Azure dùng trong 12 tháng, không cần thẻ tín dụng [@azure-students]. Với cấu hình trên, 100 USD đủ chạy khoảng 4 tháng (100 chia 23,42). Vì vậy tín dụng sinh viên chỉ che phần máy chủ trong và ngay sau học phần, không che cả năm. Gói sinh viên của nhóm chỉ cho tạo tài nguyên ở năm khu vực (Ấn Độ, Nhật Bản, Indonesia, Malaysia, Hàn Quốc), không có Singapore, nên giá tính theo khu vực dùng được gần Việt Nam nhất. Gói này cũng đang dùng chung tín dụng với một đồ án khác của học phần Điện toán đám mây, nên số tháng thực tế có thể ngắn hơn.
 
 Bảng 4.1 chưa gồm các khoản nhóm chưa có báo giá: lập doanh nghiệp, kế toán và thuế, tư vấn pháp lý, tên miền, truyền thông. Các khoản này có thể lớn hơn tổng ở bảng 4.1 (xem mục 5), nên không được dùng bảng 4.1 để kết luận có lãi.
 
@@ -90,15 +90,15 @@ Giá bán giả định là 45.000 đồng. Con số này lấy theo giá của 
 
 Bảng 4.2 tính doanh thu theo ba số bản bán giả định trong 12 tháng đầu. Ba số này do nhóm chọn để so sánh, không dựa trên dữ liệu bán hàng.
 
-| Số bản bán (giả định) | Doanh thu nhóm nhận | Trừ chi phí đã biết (8.606.000 đồng) |
+| Số bản bán (giả định) | Doanh thu nhóm nhận | Trừ chi phí đã biết (9.906.000 đồng) |
 |---|---|---|
-| 300 | 9.450.000 đồng | 844.000 đồng |
-| 1.000 | 31.500.000 đồng | 22.894.000 đồng |
-| 3.000 | 94.500.000 đồng | 85.894.000 đồng |
+| 300 | 9.450.000 đồng | âm 456.000 đồng |
+| 1.000 | 31.500.000 đồng | 21.594.000 đồng |
+| 3.000 | 94.500.000 đồng | 84.594.000 đồng |
 
 : Doanh thu theo kịch bản số bản bán, chưa trừ thuế và chi phí chưa có báo giá
 
-Với các giả định trên, nhóm cần bán ít nhất 274 bản để bù các chi phí đã biết (8.606.000 chia 31.500, làm tròn lên). Con số này sẽ tăng khi cộng thêm các khoản ở cuối mục 4.1.
+Với các giả định trên, nhóm cần bán ít nhất 315 bản để bù các chi phí đã biết (9.906.000 chia 31.500, làm tròn lên). Ở kịch bản 300 bản, nhóm còn lỗ so với chi phí đã biết. Con số này sẽ tăng khi cộng thêm các khoản ở cuối mục 4.1.
 
 Một số game kinh dị bán rất chạy, như The Exit 8 với hơn 3 triệu bản đến tháng 9/2026 [@gematsu-exit8]. Nhóm không dùng các trường hợp này làm căn cứ dự báo, vì chúng là ngoại lệ so với phần lớn game độc lập.
 
@@ -143,7 +143,7 @@ Về bản quyền, mô hình 3D do nhóm tự dựng trong Blender; nhóm khôn
 | Không bán được hợp pháp ở Việt Nam vì chưa có doanh nghiệp hoặc giấy phép | Cao | Hỏi luật sư trước khi mở bán; trước đó chỉ chơi thử kín, miễn phí |
 | Nội dung tự sát hoặc bạo lực vượt giới hạn quy định | Trung bình | Chỉ thể hiện kết quả; cảnh báo nội dung; tùy chọn tắt máu; đối chiếu nguyên văn quy định |
 | Thị trường kinh dị đã đông, game không nổi bật | Cao | Đo phản hồi về ba điểm khác biệt ở mục 2.2 trước khi đầu tư thêm |
-| Tín dụng Azure hết sau 12 tháng, chi phí máy chủ phát sinh | Thấp | Cấu hình máy ảo nhỏ nhất đủ chạy; tắt máy chủ khi không còn người chơi |
+| Tín dụng Azure hết sau khoảng 4 tháng, chi phí máy chủ phát sinh | Trung bình | Cấu hình máy ảo nhỏ nhất đủ chạy; tắt máy chủ khi không còn người chơi |
 | Tài sản bên thứ ba vướng giấy phép thương mại | Trung bình | Lập bảng nguồn từng tài sản (đã có `NGUON.md`); thay mesh chưa rõ giấy phép |
 | Nhóm không còn làm tiếp sau học phần | Cao | Thỏa thuận làm tiếp hay dừng ngay sau 03/12 (mục 8) |
 
