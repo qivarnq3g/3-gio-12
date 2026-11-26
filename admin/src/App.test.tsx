@@ -606,3 +606,39 @@ test("PuzzleDetailPage: rejects a malformed hash before calling the server", asy
   expect(await screen.findByRole("alert")).toHaveTextContent("64 ký tự hex");
   expect(calls).not.toContain("POST /api/admin/puzzles/red-thread-sandal/solutions");
 });
+
+test("PuzzleDetailPage: asks before removing a hash and keeps it when cancelled", async () => {
+  const withHash = {
+    ...puzzle,
+    solutions: [{ id: 7, sha256: goodHash, note: "ảnh gốc", createdAt: "2026-11-24T00:00:00Z" }],
+  };
+  const calls = serve({
+    "GET /api/admin/auth/me": () => ({ status: 200, body: account }),
+    "GET /api/admin/puzzles/red-thread-sandal": () => ({ status: 200, body: withHash }),
+    "GET /api/admin/puzzles/red-thread-sandal/submissions": () => ({ status: 200, body: emptyHistory }),
+    "DELETE /api/admin/puzzles/red-thread-sandal/solutions/7": () => ({ status: 204 }),
+  });
+  const confirm = vi.fn(() => false);
+  vi.stubGlobal("confirm", confirm);
+
+  renderAt("/puzzles/red-thread-sandal");
+  await userEvent.click(await screen.findByRole("button", { name: /Bỏ mã/ }));
+
+  expect(confirm).toHaveBeenCalledOnce();
+  expect(calls).not.toContain("DELETE /api/admin/puzzles/red-thread-sandal/solutions/7");
+});
+
+test("PuzzleDetailPage: explains when the browser cannot hash the file", async () => {
+  serve({
+    "GET /api/admin/auth/me": () => ({ status: 200, body: account }),
+    "GET /api/admin/puzzles/red-thread-sandal": () => ({ status: 200, body: puzzle }),
+    "GET /api/admin/puzzles/red-thread-sandal/submissions": () => ({ status: 200, body: emptyHistory }),
+  });
+  vi.stubGlobal("crypto", { subtle: undefined });
+
+  renderAt("/puzzles/red-thread-sandal");
+  const input = (await screen.findByLabelText("Tệp bằng chứng gốc (tự tính mã băm)")) as HTMLInputElement;
+  await userEvent.upload(input, new File(["abc"], "dep.jpg", { type: "image/jpeg" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("dán vào ô Mã SHA-256");
+});
