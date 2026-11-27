@@ -31,9 +31,9 @@ Game đọc theo thứ tự: biến môi trường `THREEGIO12_API_BASE`, rồi 
 
 ## Gửi bằng chứng (#26)
 
-- Mục "Gửi bằng chứng cho công an" hiện ở menu đầu khi hồ sơ có cờ đã đạt kết thúc "Về nhà". Cờ được bật khi có sự kiện `ending_reached` với `endingId = home`, kể cả khi người chơi từ chối thống kê. Đêm 3 (#90) cần phát sự kiện này ở kết thúc 6.6.
+- Mục "Gửi bằng chứng cho công an" hiện ở menu đầu khi hồ sơ có cờ đã đạt kết thúc "Về nhà". Cờ được bật khi có sự kiện `ending_reached` với `endingId = home`, kể cả khi người chơi từ chối thống kê. Móc chung `NightOneDirector.End("home")` phát sự kiện này. Hết Đêm 3 không tự gọi móc đó: kịch bản còn đi tiếp Đêm 4; lối chơi/trình diễn tới 6.6 chưa được triển khai trong #90.
 - Chọn mục thì mở hộp chọn tệp. Game tính SHA-256 trên luồng phụ và chỉ gửi mã băm.
-- Chấp nhận thì `unlockId` (`ending_red_thread_sandal`) được lưu vào `profile.json`. Phần chơi kết thúc 6.7 thuộc Đêm 3; nó đọc `PlayerProfile.HasUnlock(PlayerProfile.SandalUnlock)`.
+- Chấp nhận thì `unlockId` (`ending_red_thread_sandal`) được lưu vào `profile.json`. Móc chung `NightOneDirector.End("red_thread_sandal")` chỉ nhận khi `NightPersistence.Online.Profile.HasUnlock(PlayerProfile.SandalUnlock)` là true. Đây là điều kiện cho kết thúc 6.7, chưa phải lối chơi/trình diễn đầy đủ tới kết thúc đó.
 - Câu báo cho từ chối, hết lượt hoặc gửi quá nhanh (`429`, phân biệt theo `title` của problem+json, kèm giờ thử lại và thêm ngày khi giờ đó không thuộc hôm nay), câu đố tắt (`404`) và mất mạng hiện ở dòng trạng thái của menu.
 
 ## Kiểm thử

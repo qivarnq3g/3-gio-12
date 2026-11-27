@@ -1,6 +1,6 @@
 # Đêm 3 trong cảnh tả thực (#22, đang làm)
 
-Nhánh nối #83 → #85 → #90 trên Unity `6000.3.26f1`. Mở duy nhất `Assets/Scenes/Night01/NightOneRealistic.unity`. World/HUD Đêm 3 không dựng nền, đường, cửa, điện thoại hoặc NPC bằng primitive. Tương tác thêm lúc chạy nên không bị mất khi `NightOneRealisticSetup` dựng lại cảnh. Chưa đóng #22, chưa xác nhận bản phát hành chơi xuyên ba đêm.
+Nhánh nối #83 → #85 → #90, đã cập nhật `main@4f7c4dd` (gồm #121/#133/#130/#138), trên Unity `6000.3.26f1`. Mở duy nhất `Assets/Scenes/Night01/NightOneRealistic.unity`. World/HUD Đêm 3 không dựng nền, đường, cửa, điện thoại hoặc NPC bằng primitive. Tương tác thêm lúc chạy nên không bị mất khi `NightOneRealisticSetup` dựng lại cảnh. Chưa đóng #22, chưa xác nhận bản phát hành chơi xuyên ba đêm.
 
 ## Đã chuyển
 
@@ -21,15 +21,15 @@ Chọn liên lạc từ máy mình hoặc máy Ngân; ảnh bằng chứng luôn
 
 ## Còn thiếu và phụ thuộc
 
-- #121 (model buổi sáng) và #129 (model buổi tối) chưa xong; bản phát hành hiện không thể đi liền từ Đêm 1 tới Đêm 3. Không bật lại khối thô để vượt điều kiện.
-- Chưa có điểm tiếp nhận tả thực tại công an phường. Runtime nhận `Night3_PoliceDesk` hoặc `env_police_station` có renderer bật. Thiếu thì không tạo điểm nộp giả/không cho gọi API nộp máy để kết thúc. Marker `ENTRANCE_Police` không tự được coi là quầy tiếp nhận.
-- #130 chưa gộp: chưa nối `EndingTelemetry("home")`/`("scapegoat")`, `PlayerProfile.SandalUnlock` và kết thúc 6.7. Làm sau khi #130 gộp theo yêu cầu của Quang. Kết thúc buổi chơi Đêm 3 hiện chưa chứng minh hoàn tất các kết thúc đó.
+- Model buổi sáng #121, buổi tối #133 (giải quyết #129), quầy #138 và online #130 đã vào main. Không còn dùng các PR này làm blocker asset/API. Vẫn cần chơi tay/build liền ba đêm; kiểm logic không thay cho việc đó.
+- Điểm nộp máy chỉ gắn `Night3_PoliceDesk` thật, không dùng cả tòa nhà hoặc marker rỗng làm quầy. Nộp máy gọi móc kết thúc chung, phát `EndingTelemetry("scapegoat")` với `night=3`. Thao tác lại hoặc nạp lại không tự phát trùng sự kiện. Bài kiểm quầy không còn tạo cube thay thế, phải có mesh nguồn `Night3_PoliceDesk.fbx`.
+- Móc `NightOneDirector.End("home")` phát sự kiện và mở quyền gửi bằng chứng qua OnlineServices, kể cả từ chối thống kê. `End("red_thread_sandal")` đọc `NightPersistence.Online.Profile.HasUnlock(PlayerProfile.SandalUnlock)` và từ chối khi chưa có cờ. Chỉ nhận bảy endingId theo hợp đồng máy chủ, chặn gọi lặp cùng kết thúc. Đây là móc chung, chưa phải lối chơi đầy đủ tới 6.6/6.7: kịch bản Đêm 3 chỉ kết thúc đêm, giữ máy thì đi tiếp Đêm 4. Không đổi “Hết Đêm 3” thành “Về nhà” để mở bằng chứng sớm. Phạm vi bản nộp/lối trình diễn ARG được mô tả ở `docs/thiet-ke/thuyet-minh.md`; lối trình diễn chưa được triển khai trong PR này.
 - Tin thoại, ảnh album/nhật ký, animation lật máy/khóa cửa và các nội dung được duyệt còn cần hoàn thiện. Một số màn hiện bản chữ mô tả.
 - Chưa chơi tay, kiểm HUD các tỉ lệ, kiểm tuyến đi bộ bằng input hoặc build/chơi xuyên ba đêm. Không coi test có fixture là xác nhận asset thật.
 
 ## Kiểm tra
 
-`NightThreeRegression.Write/Read` mở cảnh tả thực, hai tiến trình riêng cùng thư mục dữ liệu cách ly. Fixture model chỉ tồn tại trong Editor Play Mode khi asset chưa có; không lưu scene/build. Kết thúc Đêm 2 được seed để kiểm Đêm 3; chuỗi buổi sáng/buổi tối kiểm riêng.
+`NightThreeRegression.Write/Read` mở cảnh tả thực, hai tiến trình riêng cùng thư mục dữ liệu cách ly. Fixture buổi sáng chỉ tồn tại trong Editor Play Mode khi asset chưa có (chế độ nghiêm từ chối fixture); quầy công an bắt buộc mesh FBX thật, không có nhánh tạo quầy giả. Không lưu fixture scene/build. Kết thúc Đêm 2 được seed để kiểm Đêm 3; chuỗi buổi sáng/buổi tối kiểm riêng.
 
 ```sh
 THREEGIO12_DATA_ROOT=/tmp/3gio12-night3-review /path/to/Unity \
@@ -55,3 +55,27 @@ Unity 6000.3.26f1 trên Apple M2/macOS 15.7.4, dữ liệu thử cách ly:
 | NightOneSmoke với `THREEGIO12_NIGHT_SCENE` trỏ cảnh tả thực | `NIGHT_ONE_RUNTIME_VALIDATION_PASSED` |
 
 Các tiến trình trên kết thúc mã 0. SaveProgress fixture đã cập nhật điều kiện xe tới nhà xe/giúp cô Liên của Đêm 1; bộ này không thay việc kiểm prologue. Lượt Menu không đồ họa không được tính là kiểm ảnh giao diện. Log còn lỗi SearchDatabase/indexing có sẵn ở nhiều bài; không dùng các kết quả trên để xác nhận asset đã được duyệt hoặc chơi xuyên ba đêm trên bản phát hành.
+
+## Kiểm nối ending sau #130/#138 — 27/11/2026
+
+`NightThreeEndingRegression.Run` mở cảnh chính, dùng model thật và dữ liệu cách ly, `-batchmode -nographics`. Bài kiểm seed các lựa chọn để kiểm riêng nhánh kết thúc, không mô phỏng một lượt chơi đầy đủ:
+
+- Đi hết Đêm 3 không phát `home`/không mở quyền gửi bằng chứng.
+- Nộp máy từ xa bị từ chối. Đứng phía tiếp dân, ngắm quầy và raycast theo `reach`/mask của người chơi phải trúng `MorningInteraction`; kích hoạt qua `HandleInput`.
+- Nộp tại quầy phát đúng một `scapegoat`, night 3; save/continue không phát lại, không mở quyền gửi bằng chứng.
+- Móc chung từ chối endingId không hợp lệ, chặn dép đỏ chưa mở, nhận `home` và ghi `homeReached` xuống profile dù đã từ chối thống kê; gọi lại không phát trùng.
+- Khi profile có `PlayerProfile.SandalUnlock`, móc chung cho phát `red_thread_sandal`. Cờ trong bài kiểm được tạo trực tiếp để kiểm điều kiện; không dùng kết quả này thay cho gửi bằng chứng tới máy chủ thật.
+
+Marker: `NIGHT_THREE_REAL_DESK_INTERACTION_PASSED`, `NIGHT_THREE_ENDING_REGRESSION_PASSED`.
+
+Kết quả trên mã `d44bee7` (main `4f7c4dd`), Unity 6000.3.26f1/M2/macOS 15.7.4, năm tiến trình `-batchmode -nographics`, tất cả exit 0:
+
+| Bài kiểm | Marker |
+|---|---|
+| NightThreeEndingRegression.Run | NIGHT_THREE_REAL_DESK_INTERACTION_PASSED; NIGHT_THREE_ENDING_REGRESSION_PASSED |
+| NightOneSmoke.Run, trỏ cảnh tả thực | NIGHT_ONE_RUNTIME_VALIDATION_PASSED |
+| NightTwoEveningRegression.Run | NIGHT_TWO_EVENING_PASSED |
+| SaveProgressRegression.Write | SAVE_WRITE_PROCESS_PASSED |
+| SaveProgressRegression.Read, tiến trình mới | SAVE_READ_PROCESS_PASSED |
+
+Log còn lỗi SearchDatabase/indexing có sẵn; không có lỗi biên dịch. Năm kết quả này không kiểm ảnh camera mới, HUD đa tỉ lệ, input chơi tay hoặc server thật/Docker. Kết quả camera PNG ngày 25/11 ở trên là kết quả lịch sử, không được ghi thành đã chạy lại trên main 27/11. Giữ #90 nháp cho phần còn lại; không đóng #22.
