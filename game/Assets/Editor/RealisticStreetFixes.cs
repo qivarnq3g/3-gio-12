@@ -208,6 +208,33 @@ public static class RealisticStreetFixes
         return groups.Values.Sum(g => g.Count);
     }
 
+    public static void RemoveOpenLotVisual(BoxCollider lot)
+    {
+        // ShallowAlleys batches these boxes by material. Remove only the replaced lot's triangles.
+        var batch = lot.transform.parent;
+        var renderer = batch.GetComponent<MeshRenderer>();
+        var mesh = batch.GetComponent<MeshFilter>().sharedMesh;
+        var bounds = new Bounds(lot.center, lot.size + Vector3.one * .002f);
+        int slot = System.Array.FindIndex(renderer.sharedMaterials, material => material.name == "M_TinRust");
+        if (slot < 0) return;
+
+        var triangles = mesh.GetTriangles(slot);
+        var vertices = mesh.vertices;
+        var kept = new List<int>(triangles.Length);
+        bool Inside(int index) => bounds.Contains(lot.transform.InverseTransformPoint(batch.TransformPoint(vertices[index])));
+        for (int i = 0; i < triangles.Length; i += 3)
+        {
+            if (Inside(triangles[i]) && Inside(triangles[i + 1]) && Inside(triangles[i + 2])) continue;
+            kept.Add(triangles[i]);
+            kept.Add(triangles[i + 1]);
+            kept.Add(triangles[i + 2]);
+        }
+        if (kept.Count == triangles.Length) return;
+
+        mesh.SetTriangles(kept, slot);
+        EditorUtility.SetDirty(mesh);
+    }
+
     static void AddBox(Bounds box, List<Vector3> vertices, List<Vector3> normals, List<Vector2> uvs, List<int> triangles)
     {
         foreach (var normal in new[] { Vector3.right, Vector3.left, Vector3.up, Vector3.down, Vector3.forward, Vector3.back })
