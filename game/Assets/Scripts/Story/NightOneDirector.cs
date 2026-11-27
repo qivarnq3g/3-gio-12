@@ -581,11 +581,16 @@ namespace BaGio12.Story
             TelemetryProduced?.Invoke(new NightCompletedTelemetry(isReplay,Mathf.Max(0,Mathf.FloorToInt(Time.time-nightStartedAt))));
             completedInSession=true;
         }
+        static readonly string[] EndingIds = { "bystander", "scapegoat", "freezer", "empty_room", "deadline_passed", "home", "red_thread_sandal" };
+        public bool SandalEndingUnlocked => GetComponent<BaGio12.Persistence.NightPersistence>()?.Online?.Profile?.HasUnlock(BaGio12.Online.PlayerProfile.SandalUnlock) == true;
         public void End(string ending)
         {
+            if (System.Array.IndexOf(EndingIds, ending) < 0) return;
+            if (ending == "red_thread_sandal" && !SandalEndingUnlocked) return;
+            if (State.stage == NightStage.Ended && State.ending == ending) return;
             CloseModal(); State.alarm=false; State.stage = NightStage.Ended; State.ending = ending;
             BlackTitle = "NGƯỜI QUA ĐƯỜNG"; player.SetPhone(0); player.SetOverlay(true); sound.Stop();
-            TelemetryProduced?.Invoke(new EndingTelemetry(ending));
+            TelemetryProduced?.Invoke(new EndingTelemetry(ending) { night = InNightThree ? 3 : InNightTwo ? 2 : 1 });
         }
         public void Shout(NightObserver source)
         {

@@ -34,12 +34,11 @@ public static class NightThreeRegression
         if(mode!=PlayModeStateChange.EnteredPlayMode)return;
         NightTwoSceneFixtures.AddMorning();
         var all=UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include,FindObjectsSortMode.None);
-        if(!all.Any(t=>t.name=="Night3_PoliceDesk"))
-        {
-            var fixture=GameObject.CreatePrimitive(PrimitiveType.Cube);fixture.name="Night3_PoliceDesk";
-            fixture.transform.position=NightTwoMorning.ThreePolice;fixture.transform.localScale=Vector3.one*.3f;
-            UnityEngine.Object.Destroy(fixture.GetComponent<Collider>());
-        }
+        var desk = all.FirstOrDefault(t=>t.name=="Night3_PoliceDesk");
+        if (desk == null || !desk.GetComponentsInChildren<Renderer>(true).Any(r=>r.enabled)
+            || !desk.GetComponentsInChildren<MeshFilter>(true).Any(m => AssetDatabase.GetAssetPath(m.sharedMesh) == "Assets/Art/Models/Props/Night3_PoliceDesk.fbx"))
+            throw new Exception("Night 3 regression requires the real police desk FBX; no fixture is permitted.");
+        Debug.Log("NIGHT_THREE_REAL_POLICE_DESK_NO_FIXTURE");
         Application.runInBackground=true;reading=SessionState.GetBool(Flag+"Read",false);step=0;deadline=EditorApplication.timeSinceStartup+180;EditorApplication.update+=Tick;
     }
     static void Check(bool ok,string reason){if(!ok)throw new Exception("NIGHT_THREE: "+reason);}

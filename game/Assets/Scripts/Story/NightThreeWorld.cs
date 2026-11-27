@@ -42,7 +42,7 @@ namespace BaGio12.Story
             BindThree(SceneObject("PARK_N3_GasPump"),"store");
             BindThree(story.bag == null ? null : story.bag.transform,"bag3");
             BindThree(SceneObject("Phone box and charger"),"charge3");
-            var police=VisibleModel("Night3_PoliceDesk","env_police_station");
+            var police=VisibleModel("Night3_PoliceDesk");
             BindThree(police,"police3");
             MissingThreeAssets=police==null?"Đêm 3 đang chờ điểm tiếp nhận của công an phường (Night3_PoliceDesk); không dùng khối thô.":"";
             var source=story.nganPhone == null ? null : story.nganPhone.transform.Find("Ngan phone model");

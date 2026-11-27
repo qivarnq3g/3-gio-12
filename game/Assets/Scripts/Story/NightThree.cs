@@ -250,8 +250,8 @@ namespace BaGio12.Story
         public bool ThreeHandInPhone()
         {
             if(!ThreeReady || !Third.policeIntent || !Nearby(ThreePolice,3))return false;
-            if(VisibleModel("Night3_PoliceDesk","env_police_station")==null){story.Say(MissingThreeAssets);return false;}
-            Third.stage=NightThreeStage.Scapegoat;Third.ending="scapegoat";story.State.ending="scapegoat";
+            if(VisibleModel("Night3_PoliceDesk")==null){story.Say(MissingThreeAssets);return false;}
+            Third.stage=NightThreeStage.Scapegoat;Third.ending="scapegoat";story.End("scapegoat");
             story.player.SetPhone(0);story.player.SetOverlay(true);Checkpoint();return true;
         }
         public bool FindThreeCable()
