@@ -1,0 +1,56 @@
+# Bản triển khai thật (bản nộp và chơi thử). Chạy trên một máy ảo Linux; xem docs/deploy-azure.md.
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+# Khác docker-compose.yml (máy phát triển): thêm `caddy` mở 80 và 443; `postgres` và `api` không mở cổng ra ngoài.
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-threetwelve}
+      POSTGRES_USER: ${POSTGRES_USER:-threetwelve}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Phải đặt POSTGRES_PASSWORD trong .env.production}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./server
+    restart: unless-stopped
+    environment:
+      ConnectionStrings__Database: Host=postgres;Port=5432;Database=${POSTGRES_DB:-threetwelve};Username=${POSTGRES_USER:-threetwelve};Password=${POSTGRES_PASSWORD}
+      Database__MigrateOnStartup: "true"
+      Admin__Email: ${ADMIN_EMAIL:?Phải đặt ADMIN_EMAIL trong .env.production}
+      Admin__Password: ${ADMIN_PASSWORD:?Phải đặt ADMIN_PASSWORD trong .env.production}
+      # Bắt buộc sau proxy: không có dòng này, mã giới hạn tần suất theo IP thấy mọi người chơi
+      # cùng một địa chỉ (của caddy) và chặn cả nhóm khi một người vượt giới hạn.
+      # Chỉ an toàn vì `api` không mở cổng ra ngoài; chỉ `caddy` nói chuyện được với nó.
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  caddy:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.caddy
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Phải đặt DOMAIN trong .env.production}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

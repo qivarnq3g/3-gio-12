@@ -14,5 +14,10 @@ namespace BaGio12.Gameplay
         bool PrepareQuit();
         void ImportSettings(GameSettings settings);
         bool SaveSettings(GameSettings settings);
+        bool AskTelemetryConsent { get; }
+        bool TelemetryConsent { get; set; }
+        void AnswerTelemetryConsent(bool granted);
+        bool CanSubmitEvidence { get; }
+        void SubmitEvidence();
     }
 }
