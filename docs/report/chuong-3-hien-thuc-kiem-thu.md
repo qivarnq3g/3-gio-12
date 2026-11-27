@@ -89,7 +89,7 @@ Bộ điều phối phát sự kiện nghiệp vụ; `OnlineServices` phụ trá
 
 Quyền gửi bằng chứng ngoài game được ghi vào hồ sơ khi nhận sự kiện kết thúc “Về nhà”, kể cả khi người chơi từ chối thống kê. Game chỉ tính và gửi mã băm SHA-256 của tệp được chọn, không tải nguyên tệp lên máy chủ. Phản hồi chấp nhận lưu cờ mở kết thúc vào hồ sơ; mã điều phối phải đọc cờ đó trước khi cho phép kết thúc tương ứng. Việc mở kết thúc và ghi nhận thống kê là hai trách nhiệm tách biệt.
 
-Phạm vi bản nộp chỉ gồm ba đêm đầu, trong khi đường truyện tới kết thúc “Về nhà” còn thuộc các đêm sau. Vì vậy, các móc sự kiện và điều kiện hồ sơ đã có không đồng nghĩa người chơi đã đi được tới toàn bộ kết thúc theo cốt truyện. Lối trình diễn câu đố ngoài game và kết quả chạy trọn với máy chủ thật cần được cập nhật khi nhóm hoàn tất tích hợp, không được suy ra từ kiểm thử logic của một phương thức.
+Phạm vi bản nộp chỉ gồm ba đêm đầu, trong khi đường truyện tới kết thúc “Về nhà” còn thuộc các đêm sau. Vì vậy, các móc sự kiện và điều kiện hồ sơ đã có không đồng nghĩa người chơi đã đi được tới toàn bộ kết thúc theo cốt truyện. Nhóm quyết định giữ nguyên mạch truyện và không thêm lối tắt: trong bản nộp, mục gửi bằng chứng không xuất hiện và kết thúc thật nằm ngoài phạm vi. Luồng này được kiểm bằng `OnlineServicesRegression` (máy chủ giả: bằng chứng bị từ chối, được chấp nhận, lỗi máy chủ) và bài kiểm API của máy chủ; chưa có lượt chạy trọn từ game tới máy chủ thật.
 
 ## 3. Mô hình 3D và đồ vật
 
