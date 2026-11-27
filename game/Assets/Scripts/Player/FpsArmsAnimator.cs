@@ -38,7 +38,9 @@ namespace BaGio12.Gameplay
             phone = System.Array.Find(GetComponentsInChildren<MeshRenderer>(true), r => r.name == "prop_ngan_phone");
             if (phone != null) phone.forceRenderingOff = true;
             if (player == null) player = GetComponentInParent<FirstPersonPlayer>();
-            pickupDuration = System.Array.Find(animator.runtimeAnimatorController.animationClips, clip => clip.name == "PickUp").length;
+            var controller = animator.runtimeAnimatorController;
+            if (controller != null)
+                pickupDuration = System.Array.Find(controller.animationClips, clip => clip != null && clip.name == "PickUp")?.length ?? 0f;
         }
 
         void OnEnable() { if (player != null) player.PickedUp += StartPickup; }
@@ -46,6 +48,8 @@ namespace BaGio12.Gameplay
 
         void StartPickup()
         {
+            if (pickupDuration <= 0f) return;
+
             pickupUntil = Time.time + pickupDuration;
             animator.Play(PickUp, 0, 0);
             state = PickUp;
@@ -55,7 +59,7 @@ namespace BaGio12.Gameplay
         void Update()
         {
             UpdateOutfit();
-            if (player == null || Time.time < pickupUntil) return;
+            if (player == null || animator.runtimeAnimatorController == null || Time.time < pickupUntil) return;
             bool holdingPhone = player.ActivePhone != 0 || (Story != null && Story.CarryingProloguePhone);
             int next = holdingPhone ? HoldPhone : player.IsRunning ? Run : player.IsMoving ? Walk : Idle;
             if (next == state) return;

@@ -63,13 +63,13 @@ Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** c
 
 | Asset | Nguồn | Giấy phép | Ngày |
 |---|---|---|---|
-| `Models/Characters/char_fps_arms.fbx` | Nhóm dựng tay, băng và rig trong Blender 5.2, có các clip `Idle`, `Walk`, `Run`, `HoldPhone`, `PickUp` và bản lưu `Walk_before_mirror`. Điện thoại là biến thể mô hình máy Ngân do nhóm dựng. | Của nhóm | 19/11/2026 |
+| `Models/Characters/char_fps_arms.fbx` | Nhóm dựng tay, băng và rig trong Blender 5.2, có các clip `Idle`, `Walk`, `Run`, `HoldPhone`, `PickUp`. Điện thoại là biến thể mô hình máy Ngân do nhóm dựng. | Của nhóm | 19/11/2026 |
 | `Textures/T_Fps*.png` | Màu da, băng và bản đồ vật liệu điện thoại do nhóm tạo. Kích thước tối đa 1024; bản đồ metallic/smoothness là dữ liệu tuyến tính. | Của nhóm | 19/11/2026 |
 
-Tay FPS dùng URP Lit và camera tham chiếu trong FBX để lấy chuyển động cúi khi nhặt vật. File Blender nguồn được quản lý riêng theo quy ước lưu nguồn trên Drive nhóm.
+Tay FPS dùng URP Lit và camera tham chiếu trong FBX để lấy chuyển động cúi khi nhặt vật.
 
 | `Models/Characters/char_landlady_lien.fbx`, `Textures/T_Lien*.png` | Xuất nhân vật cô Liên, chổi và các đoạn animation từ bản dựng Blender 5.2 của nhóm. Ảnh vân được bake từ vật liệu của bản dựng. | Của nhóm | 20/11/2026 |
-| `Models/Characters/char_fps_raincoat.fbx`, `Textures/T_TileFpsRaincoat*.png` | Xuất tay áo mưa và găng từ bản dựng Blender 5.2 của nhóm, dùng cùng rig tay FPS. Texture bake từ vật liệu áo mưa và găng trong bản dựng. | Của nhóm | 20/11/2026 |
+| `Models/Characters/char_fps_raincoat.fbx`, `Textures/T_TileFpsRaincoat*.png` | Xuất tay áo mưa và găng từ bản dựng Blender 5.2 của nhóm, dùng cùng rig tay FPS. Blender: `_Source/Blender~/char_fps_raincoat.blend`. Texture bake từ vật liệu áo mưa và găng trong bản dựng. | Của nhóm | 20/11/2026 |
 
 # Phông chữ
 
