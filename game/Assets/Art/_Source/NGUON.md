@@ -95,7 +95,7 @@ Cột điện và cửa xếp dựng theo ảnh chụp tải trên mạng chưa 
 | Tệp | Nguồn | Giấy phép | Ngày |
 |---|---|---|---|
 | `Models/Environment/env_police_station.fbx` | Tự dựng trong Blender 5.2 theo kích thước lô đất của cảnh. Tham khảo cổng sắt, tường vàng, lối vào có mái và bảng nền đỏ trong [ảnh của Công an Thành phố Hồ Chí Minh](https://congan.hochiminhcity.gov.vn/wps/portal/Home/trang-chu/noi-dung-chi-tiet/tin-chuyen-nganh/tin%2Bhoat%2Bdong/ca%2Bp3%2Bq6%2Bduoc%2Btrang%2Bcap%2Bban%2Bgiao%2Btru%2Bso%2Blam%2Bviec%2Bmoi). Biển dùng tên phường Hẻm Lương do nhóm đặt | Model của nhóm. Không xác nhận được giấy phép của ảnh nguồn, nên ảnh chỉ dùng làm tham chiếu hình dáng, không đưa vào game hay kho mã và chỉ được dẫn liên kết | 26/11/2026 |
-| `Models/Props/Night3_PoliceDesk.fbx` | Tự dựng trong Blender 5.2 theo kịch bản Đêm 3. Quầy gỗ có bảng tiếp nhận, biểu mẫu, bút và màn hình. Vỏ màn hình dùng `M_ScreenBlack` (đen nhám) thay cho `M_SteelDark`, vì bản PBR của `M_SteelDark` dán texture kim loại gỉ làm màn hình trông nâu | Của nhóm | 26/11/2026 |
+| `Models/Props/Night3_PoliceDesk.fbx` | Tự dựng trong Blender 5.2 theo kịch bản Đêm 3. Quầy gỗ có bảng tiếp nhận, biểu mẫu, bút và màn hình. Vỏ màn hình dùng `M_BikeBlack` (đen nhám) thay cho `M_SteelDark`, vì bản PBR của `M_SteelDark` dán texture kim loại gỉ làm màn hình trông nâu | Của nhóm | 26/11/2026 |
 
 Hai model dùng vật liệu hiện có của dự án và hai vật liệu biển hiệu `M_PoliceSignRed` và `M_PoliceSignGold` do nhóm tạo. Chữ là hình học tạo từ Be Vietnam Pro Medium theo giấy phép SIL Open Font License 1.1.
 

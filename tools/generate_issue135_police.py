@@ -21,7 +21,7 @@ PALETTE = {
     "M_ShutterGreen": (0.065, 0.16, 0.11),
     "M_SteelDark": (0.07, 0.08, 0.08),
     "M_GlassDark": (0.12, 0.19, 0.19),
-    "M_ScreenBlack": (0.06, 0.07, 0.08),
+    "M_BikeBlack": (0.12, 0.12, 0.13),
     "M_PoliceSignRed": (0.51, 0.031, 0.024),
     "M_PoliceSignGold": (0.97, 0.69, 0.16),
     "M_DoorWoodBrown": (0.34, 0.19, 0.10),
@@ -222,9 +222,9 @@ def build_desk():
     for i in range(5):
         box("Form rule", (-.44, .168 - i * .021, 1.109), (.187, .004, .001), steel)
     tube("Ballpoint pen", (-.61, .032, 1.109), (-.54, -.070, 1.109), .006, "M_PlasticBlue")
-    box("Monitor foot", (.35, -.175, 1.102), (.34, .23, .025), "M_ScreenBlack", .016)
-    box("Monitor stand", (.35, -.185, 1.231), (.062, .06, .24), "M_ScreenBlack", .015)
-    box("Monitor case", (.35, -.16, 1.407), (.55, .097, .35), "M_ScreenBlack", .020)
+    box("Monitor foot", (.35, -.175, 1.102), (.34, .23, .025), "M_BikeBlack", .016)
+    box("Monitor stand", (.35, -.185, 1.231), (.062, .06, .24), "M_BikeBlack", .015)
+    box("Monitor case", (.35, -.16, 1.407), (.55, .097, .35), "M_BikeBlack", .020)
     box("Monitor screen", (.35, -.212, 1.407), (.51, .012, .30), "M_GlassDark", .009)
 
 
