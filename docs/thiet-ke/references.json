@@ -1,5 +1,47 @@
 [
   {
+    "id": "azure-prices",
+    "type": "webpage",
+    "container-title": "Microsoft Azure",
+    "title": "Azure Retail Prices API (Virtual Machines, B1ms, malaysiawest)",
+    "URL": "https://prices.azure.com/api/retail/prices",
+    "author": [
+      {
+        "literal": "Microsoft"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          26
+        ]
+      ]
+    }
+  },
+  {
+    "id": "azure-students",
+    "type": "webpage",
+    "container-title": "Microsoft Azure",
+    "title": "Azure for College Students: offer details",
+    "URL": "https://azure.microsoft.com/en-us/pricing/offers/ms-azr-0170p",
+    "author": [
+      {
+        "literal": "Microsoft"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          26
+        ]
+      ]
+    }
+  },
+  {
     "id": "bass",
     "type": "book",
     "edition": "4",
@@ -258,6 +300,48 @@
     }
   },
   {
+    "id": "gematsu-exit8",
+    "type": "webpage",
+    "container-title": "Gematsu",
+    "title": "The Exit 8 sales top three million",
+    "URL": "https://www.gematsu.com/2026/09/the-exit-8-sales-top-three-million",
+    "author": [
+      {
+        "literal": "Gematsu"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          10,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "gematsu-simulacra",
+    "type": "webpage",
+    "container-title": "Gematsu",
+    "title": "FMV horror game Simulacra coming to PS4, Xbox One, and Switch on December 3",
+    "URL": "https://gematsu.com/2019/10/fmv-horror-game-simulacra-coming-to-ps4-xbox-one-and-switch-on-december-3",
+    "author": [
+      {
+        "literal": "Gematsu"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          10,
+          15
+        ]
+      ]
+    }
+  },
+  {
     "id": "gof",
     "type": "book",
     "ISBN": "978-0-201-63361-0",
@@ -371,6 +455,50 @@
         ]
       ]
     }
+  },
+  {
+    "id": "luatvietnam-g1",
+    "type": "webpage",
+    "container-title": "LuatVietnam",
+    "title": "Làm thế nào để được cung cấp trò chơi điện tử G1",
+    "URL": "https://luatvietnam.vn/linh-vuc-khac/lam-the-nao-de-duoc-cung-cap-tro-choi-dien-tu-g1-883-99958-article.html",
+    "author": [
+      {
+        "literal": "LuatVietnam"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          10,
+          14
+        ]
+      ]
+    },
+    "language": "vi"
+  },
+  {
+    "id": "luatvietnam-g2",
+    "type": "webpage",
+    "container-title": "LuatVietnam",
+    "title": "Điều kiện, thủ tục để cung cấp dịch vụ trò chơi điện tử G2, G3, G4",
+    "URL": "https://luatvietnam.vn/doanh-nghiep/dieu-kien-thu-tuc-de-cung-cap-dich-vu-tro-choi-dien-tu-g2-g3-g4-561-101208-article.html",
+    "author": [
+      {
+        "literal": "LuatVietnam"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          10,
+          15
+        ]
+      ]
+    },
+    "language": "vi"
   },
   {
     "id": "mdn-spa",
@@ -719,6 +847,28 @@
         ]
       ]
     }
+  },
+  {
+    "id": "nd147-nhan-tuoi",
+    "type": "webpage",
+    "container-title": "LSVN",
+    "title": "Phân loại game theo độ tuổi từ 25/12/2024",
+    "URL": "https://lsvn.vn/phan-loai-game-theo-do-tuoi-tu-25-12-2024-a150127.html",
+    "author": [
+      {
+        "literal": "LSVN"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          10,
+          15
+        ]
+      ]
+    },
+    "language": "vi"
   },
   {
     "id": "openapi",
@@ -1233,6 +1383,48 @@
     "genre": "RFC"
   },
   {
+    "id": "sara-is-missing",
+    "type": "webpage",
+    "container-title": "itch.io",
+    "title": "Sara Is Missing",
+    "URL": "https://saraismissing.itch.io/sim",
+    "author": [
+      {
+        "literal": "Monsoon Lab"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          10,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "shacknews-itch",
+    "type": "webpage",
+    "container-title": "Shacknews",
+    "title": "itch.io removes NSFW content from search and browse",
+    "URL": "https://www.shacknews.com/article/145244/itchio-nsfw-content-removed",
+    "author": [
+      {
+        "literal": "Shacknews"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          10,
+          15
+        ]
+      ]
+    }
+  },
+  {
     "id": "sommerville",
     "type": "book",
     "edition": "10",
@@ -1286,6 +1478,112 @@
         ]
       ]
     }
+  },
+  {
+    "id": "steam-ai",
+    "type": "webpage",
+    "container-title": "tbreak",
+    "title": "Steam AI disclosure policy update for developers",
+    "URL": "https://tbreak.com/steam-ai-disclosure-policy-update-developers/",
+    "author": [
+      {
+        "literal": "tbreak"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          10,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "steam-direct",
+    "type": "webpage",
+    "container-title": "Steamworks",
+    "title": "Steam Direct",
+    "URL": "https://partner.steamgames.com/steamdirect",
+    "author": [
+      {
+        "literal": "Valve"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          10,
+          15
+        ]
+      ]
+    }
+  },
+  {
+    "id": "steam-obsessed",
+    "type": "webpage",
+    "container-title": "Steam",
+    "title": "Obsessed : Night Shift",
+    "URL": "https://store.steampowered.com/app/3831660/Obsessed__Night_Shift/",
+    "author": [
+      {
+        "literal": "Akhir Hayat Studio"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          26
+        ]
+      ]
+    }
+  },
+  {
+    "id": "steam-share",
+    "type": "webpage",
+    "container-title": "FinalBoss Insights",
+    "title": "Steam, Epic and store fees: what headline rates leave out",
+    "URL": "https://insights.finalboss.io/briefings/steam-epic-and-store-fees-what-headline-rates-leave-out",
+    "author": [
+      {
+        "literal": "FinalBoss Insights"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          11,
+          26
+        ]
+      ]
+    }
+  },
+  {
+    "id": "tuoitre-game-2026",
+    "type": "webpage",
+    "container-title": "Tuổi Trẻ Online",
+    "title": "Với 1,29 tỉ lượt tải, người dùng Việt chơi game di động nhiều và lâu hàng đầu khu vực",
+    "URL": "https://tuoitre.vn/voi-1-29-ti-luot-tai-nguoi-dung-viet-choi-game-di-dong-nhieu-va-lau-hang-dau-khu-vuc-20260528141837525.htm",
+    "author": [
+      {
+        "literal": "Tuổi Trẻ"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          10,
+          14
+        ]
+      ]
+    },
+    "language": "vi"
   },
   {
     "id": "typescript",
@@ -1612,6 +1910,28 @@
         ]
       ]
     }
+  },
+  {
+    "id": "voh-gioi-han",
+    "type": "webpage",
+    "container-title": "VOH",
+    "title": "Giới hạn thời gian chơi game của người dưới 18 tuổi",
+    "URL": "https://voh.com.vn/xa-hoi/gioi-han-thoi-gian-choi-game-cua-nguoi-duoi-18-tuoi-567266.html",
+    "author": [
+      {
+        "literal": "VOH"
+      }
+    ],
+    "accessed": {
+      "date-parts": [
+        [
+          "2026",
+          10,
+          15
+        ]
+      ]
+    },
+    "language": "vi"
   },
   {
     "id": "whatwg-fetch",

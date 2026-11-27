@@ -502,3 +502,143 @@ test("DashboardPage: displays clean empty state when database has 0 events", asy
   expect(screen.getByText("Chưa có người chơi nào hoàn thành kết thúc.")).toBeInTheDocument();
   expect(screen.getByText("Không có lựa chọn nào được ghi nhận.")).toBeInTheDocument();
 });
+
+const goodHash = "3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b";
+
+const puzzle = {
+  puzzleId: "red-thread-sandal",
+  title: "Đôi dép chỉ đỏ",
+  unlockId: "ending_red_thread_sandal",
+  isEnabled: false,
+  maxFailedAttempts: 5,
+  attemptWindowMinutes: 60,
+  solutions: [] as { id: number; sha256: string; note: string; createdAt: string }[],
+  updatedAt: "2026-11-20T00:00:00Z",
+};
+
+const emptyHistory = { items: [], page: 1, pageSize: 50, total: 0 };
+
+test("PuzzlesPage: lists puzzles with their state and links to the detail page", async () => {
+  serve({
+    "GET /api/admin/auth/me": () => ({ status: 200, body: account }),
+    "GET /api/admin/puzzles": () => ({ status: 200, body: [puzzle] }),
+  });
+
+  renderAt("/puzzles");
+
+  expect(await screen.findByRole("link", { name: "Đôi dép chỉ đỏ" })).toHaveAttribute("href", "/puzzles/red-thread-sandal");
+  expect(screen.getByText("Đang tắt")).toBeInTheDocument();
+  expect(screen.getByText("5 lượt / 60 phút")).toBeInTheDocument();
+});
+
+test("PuzzleDetailPage: adds a valid hash and saves a new attempt limit", async () => {
+  let current = { ...puzzle, solutions: [...puzzle.solutions] };
+  const bodies: unknown[] = [];
+  const calls = serve({
+    "GET /api/admin/auth/me": () => ({ status: 200, body: account }),
+    "GET /api/admin/puzzles/red-thread-sandal": () => ({ status: 200, body: current }),
+    "GET /api/admin/puzzles/red-thread-sandal/submissions": () => ({ status: 200, body: emptyHistory }),
+    "POST /api/admin/puzzles/red-thread-sandal/solutions": () => {
+      const added = { id: 7, sha256: goodHash, note: "ảnh gốc", createdAt: "2026-11-24T00:00:00Z" };
+      current = { ...current, solutions: [added] };
+      return { status: 201, body: added };
+    },
+    "PATCH /api/admin/puzzles/red-thread-sandal": () => {
+      current = { ...current, maxFailedAttempts: 3 };
+      return { status: 200, body: current };
+    },
+  });
+  const realFetch = globalThis.fetch;
+  vi.stubGlobal("fetch", async (input: Request) => {
+    if (input.method !== "GET") bodies.push(await input.clone().json());
+    return realFetch(input);
+  });
+
+  renderAt("/puzzles/red-thread-sandal");
+  expect(await screen.findByRole("heading", { name: "Đôi dép chỉ đỏ" })).toBeInTheDocument();
+  expect(screen.getByText("Chưa có lượt gửi nào.")).toBeInTheDocument();
+
+  await userEvent.type(screen.getByLabelText("Mã SHA-256"), goodHash);
+  await userEvent.type(screen.getByLabelText("Ghi chú"), "ảnh gốc");
+  await userEvent.click(screen.getByRole("button", { name: "Thêm mã băm" }));
+  expect(await screen.findByRole("status")).toHaveTextContent("Đã thêm mã băm hợp lệ.");
+  expect(await screen.findByText("ảnh gốc")).toBeInTheDocument();
+
+  const max = screen.getByLabelText("Số lượt sai tối đa");
+  await userEvent.clear(max);
+  await userEvent.type(max, "3");
+  await userEvent.click(screen.getByRole("button", { name: "Lưu giới hạn" }));
+  expect(await screen.findByRole("status")).toHaveTextContent("Đã lưu giới hạn lượt gửi.");
+
+  expect(calls).toContain("POST /api/admin/puzzles/red-thread-sandal/solutions");
+  expect(bodies).toContainEqual({ sha256: goodHash, note: "ảnh gốc" });
+  expect(bodies).toContainEqual({ maxFailedAttempts: 3, attemptWindowMinutes: 60 });
+});
+
+test("PuzzleDetailPage: shows the server's reason when enabling without a hash", async () => {
+  serve({
+    "GET /api/admin/auth/me": () => ({ status: 200, body: account }),
+    "GET /api/admin/puzzles/red-thread-sandal": () => ({ status: 200, body: puzzle }),
+    "GET /api/admin/puzzles/red-thread-sandal/submissions": () => ({ status: 200, body: emptyHistory }),
+    "PATCH /api/admin/puzzles/red-thread-sandal": () => ({
+      status: 409,
+      body: { status: 409, title: "Trái với trạng thái hiện tại", detail: "Câu đố chưa có mã băm hợp lệ nào; thêm mã băm trước khi bật." },
+    }),
+  });
+
+  renderAt("/puzzles/red-thread-sandal");
+  await userEvent.click(await screen.findByRole("button", { name: "Bật câu đố" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("thêm mã băm trước khi bật");
+});
+
+test("PuzzleDetailPage: rejects a malformed hash before calling the server", async () => {
+  const calls = serve({
+    "GET /api/admin/auth/me": () => ({ status: 200, body: account }),
+    "GET /api/admin/puzzles/red-thread-sandal": () => ({ status: 200, body: puzzle }),
+    "GET /api/admin/puzzles/red-thread-sandal/submissions": () => ({ status: 200, body: emptyHistory }),
+  });
+
+  renderAt("/puzzles/red-thread-sandal");
+  await userEvent.type(await screen.findByLabelText("Mã SHA-256"), "abc");
+  await userEvent.click(screen.getByRole("button", { name: "Thêm mã băm" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("64 ký tự hex");
+  expect(calls).not.toContain("POST /api/admin/puzzles/red-thread-sandal/solutions");
+});
+
+test("PuzzleDetailPage: asks before removing a hash and keeps it when cancelled", async () => {
+  const withHash = {
+    ...puzzle,
+    solutions: [{ id: 7, sha256: goodHash, note: "ảnh gốc", createdAt: "2026-11-24T00:00:00Z" }],
+  };
+  const calls = serve({
+    "GET /api/admin/auth/me": () => ({ status: 200, body: account }),
+    "GET /api/admin/puzzles/red-thread-sandal": () => ({ status: 200, body: withHash }),
+    "GET /api/admin/puzzles/red-thread-sandal/submissions": () => ({ status: 200, body: emptyHistory }),
+    "DELETE /api/admin/puzzles/red-thread-sandal/solutions/7": () => ({ status: 204 }),
+  });
+  const confirm = vi.fn(() => false);
+  vi.stubGlobal("confirm", confirm);
+
+  renderAt("/puzzles/red-thread-sandal");
+  await userEvent.click(await screen.findByRole("button", { name: /Bỏ mã/ }));
+
+  expect(confirm).toHaveBeenCalledOnce();
+  expect(calls).not.toContain("DELETE /api/admin/puzzles/red-thread-sandal/solutions/7");
+});
+
+test("PuzzleDetailPage: explains when the browser cannot hash the file", async () => {
+  serve({
+    "GET /api/admin/auth/me": () => ({ status: 200, body: account }),
+    "GET /api/admin/puzzles/red-thread-sandal": () => ({ status: 200, body: puzzle }),
+    "GET /api/admin/puzzles/red-thread-sandal/submissions": () => ({ status: 200, body: emptyHistory }),
+  });
+  vi.stubGlobal("crypto", { subtle: undefined });
+
+  renderAt("/puzzles/red-thread-sandal");
+  const input = (await screen.findByLabelText("Tệp bằng chứng gốc (tự tính mã băm)")) as HTMLInputElement;
+  await userEvent.upload(input, new File(["abc"], "dep.jpg", { type: "image/jpeg" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("dán vào ô Mã SHA-256");
+});

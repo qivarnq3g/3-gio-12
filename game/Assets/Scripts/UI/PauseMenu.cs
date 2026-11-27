@@ -12,7 +12,7 @@ namespace BaGio12.Gameplay
     [RequireComponent(typeof(FirstPersonPlayer))]
     public sealed class PauseMenu : MonoBehaviour
     {
-        const int EntryCount = 6;
+        const int EntryCount = 7;
         const float IdleSeconds = 40, TrackWidth = 220;
         const string Regular = "Fonts/BeVietnamPro-Regular", Medium = "Fonts/BeVietnamPro-Medium";
         static readonly Color Warm = new Color(1, .8f, .52f);
@@ -206,18 +206,24 @@ namespace BaGio12.Gameplay
                 Choice("Khử răng cưa", "Làm mịn mép răng cưa của đồ vật. SMAA nét và ổn định nên được chọn sẵn, FXAA nhẹ hơn nhưng hình hơi mờ, còn TAA mịn nhất nhưng song sắt và dây điện có thể lấp lóa.", GameSettings.AntialiasingNames,
                     () => settings.antialiasing, v => settings.antialiasing = v),
             };
-            if (Session != null)
+            if (Session != null || HasSessionInScene())
             {
-                rows.Add(Choice("Chất lượng đồ họa", "Chọn mức thấp hơn nếu game chạy giật trên máy yếu.", QualitySettings.names,
-                    () => Session.Quality, v => Session.Quality = v));
+                var order = GameSettings.QualityOrder();
+                rows.Add(Choice("Chất lượng đồ họa", "Chọn Thấp nếu game chạy giật trên máy yếu. Ở mức này, game vẽ hình nhỏ hơn rồi phóng lên màn hình và làm bóng đổ bớt nét để chạy nhẹ hơn.",
+                    Array.ConvertAll(order, i => GameSettings.QualityLabel(i)),
+                    () => Array.IndexOf(order, Session != null ? Session.Quality : QualitySettings.GetQualityLevel()),
+                    v => { if (Session != null) Session.Quality = order[v]; else QualitySettings.SetQualityLevel(order[v], true); }));
                 rows.Add(Toggle("Cảnh báo nội dung", "Hiện cảnh báo nội dung ở màn hình đầu khi mở game.",
-                    () => Session.ShowWarning ? 1 : 0, v => Session.ShowWarning = v > .5f));
+                    () => Session == null || Session.ShowWarning ? 1 : 0, v => { if (Session != null) Session.ShowWarning = v > .5f; }));
+                if (BaGio12.Online.OnlineServices.TelemetrySupported)
+                    rows.Add(Toggle("Gửi thống kê ẩn danh", "Gửi số liệu chơi không kèm tên. Khi tắt, game xóa số liệu chưa gửi và nhờ máy chủ xóa số liệu đã gửi.",
+                        () => Session != null && Session.TelemetryConsent ? 1 : 0, v => { if (Session != null) Session.TelemetryConsent = v > .5f; }));
             }
             rows.Add(new Setting { name = "Khôi phục mặc định", hint = "Đưa mọi cài đặt ở trên về như lúc đầu.", kind = Kind.Action, run = ResetDefaults });
             for (int i = 0; i < rows.Count; i++) MakeRow(rows[i], i);
             hint = Words(settingsPage.transform, "Hint", "", 22, new Color(Paper.r, Paper.g, Paper.b, .6f));
             hint.textWrappingMode = TextWrappingModes.Normal; hint.alignment = TextAlignmentOptions.TopLeft;
-            GameUi.Place(hint.rectTransform, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(940, 186 - rows.Count * 64), new Vector2(800, 80));
+            GameUi.Place(hint.rectTransform, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(940, 122 - (rows.Count - 1) * RowStep), new Vector2(800, 80));
             RefreshRows();
 
             controlsPage = Page(lightRect, "Điều khiển");
@@ -303,9 +309,11 @@ namespace BaGio12.Gameplay
                 get = () => get(), set = v => set(Mathf.Clamp(Mathf.RoundToInt(v), 0, options.Length - 1)),
                 format = v => options[Mathf.Clamp(Mathf.RoundToInt(v), 0, options.Length - 1)] };
 
+        float RowStep => Mathf.Min(64f, 576f / Mathf.Max(1, rows.Count - 1));
+
         void MakeRow(Setting s, int index)
         {
-            float y = 230 - index * 64;
+            float y = 230 - index * RowStep;
             s.stripe = StripeImage(settingsPage.transform, "Light " + s.name, new Vector2(880, y), new Vector2(900, 92));
             s.rect = GameUi.Place(GameUi.Box(settingsPage.transform, "Row " + s.name, Color.clear), new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(920, y), new Vector2(840, 56));
             s.text = Words(s.rect, "Label", s.name, 26, Paper);
@@ -354,11 +362,22 @@ namespace BaGio12.Gameplay
         {
             items.Clear();
             var session = Session;
+            if (AtStart && session.AskTelemetryConsent)
+            {
+                settingsIndex = controlsIndex = -1;
+                Add("Gửi thống kê ẩn danh", () => session.AnswerTelemetryConsent(true), null,
+                    "Game gửi số liệu chơi không kèm tên, như chỗ bạn bị bắt, để nhóm chỉnh độ khó.");
+                Add("Không gửi thống kê", () => session.AnswerTelemetryConsent(false), null,
+                    "Game không gửi số liệu nào lên máy chủ. Bạn đổi ý được trong Cài đặt.");
+                ShowItems();
+                return;
+            }
             if (AtStart)
             {
-                if (session.HasSave) Add("Tiếp tục bản đã lưu", () => session.ContinueSaved(), null, "Bạn quay lại đúng chỗ của bản lưu gần nhất.");
+                if (session.HasSave) Add("Tiếp tục bản đã lưu", () => session.ContinueSaved(), null, session.SaveSummary ?? "Bạn quay lại đúng chỗ của bản lưu gần nhất.");
                 Add("Chơi mới Đêm 1", () => session.StartNewGame(), session.HasSave ? "Nhấn lần nữa để chơi lại từ đầu" : null,
                     session.HasSave ? "Bạn bắt đầu lại Đêm 1 từ lúc 20:56, và bản lưu cũ sẽ bị xóa." : "Bạn bắt đầu Đêm 1 từ lúc 20:56 trong con hẻm.");
+                if (session.CanSubmitEvidence) Add("Gửi bằng chứng cho công an", session.SubmitEvidence, null, BaGio12.Online.Evidence.Instructions);
             }
             else
             {
@@ -370,6 +389,11 @@ namespace BaGio12.Gameplay
             if (AtStart && session.HasSave) Add("Xóa tiến độ", () => session.DeleteProgress(), "Nhấn lần nữa để xóa tiến độ", "Bản lưu của game sẽ bị xóa và không lấy lại được.");
             if (session != null && !AtStart) Add("Lưu và thoát", QuitGame, "Nhấn lần nữa để thoát", "Game lưu tiến độ hiện tại rồi đóng lại.");
             else Add("Thoát game", QuitGame, "Nhấn lần nữa để thoát", "Game đóng lại, tiến độ đã lưu vẫn được giữ.");
+            ShowItems();
+        }
+
+        void ShowItems()
+        {
             for (int i = 0; i < entries.Length; i++)
             {
                 bool used = i < items.Count;
@@ -378,6 +402,20 @@ namespace BaGio12.Gameplay
             }
             selected = Mathf.Clamp(selected, 0, items.Count - 1);
             confirmIndex = -1;
+            // Danh sách mục vừa đổi (ví dụ sau khi trả lời hỏi đồng ý): bỏ dòng mô tả của danh sách cũ để Animate nạp lại.
+            aboutIndex = -1;
+        }
+
+        static bool HasSessionInScene()
+        {
+            foreach (var b in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None)) if (b is IGameSession) return true;
+            return false;
+        }
+
+        public bool HasSettingRow(string name)
+        {
+            if (group == null) Build();
+            return rows.Exists(r => r.name == name);
         }
 
         void Add(string label, Action run, string confirm = null, string about = null) => items.Add(new Item { label = label, run = run, confirm = confirm, about = about });
@@ -385,7 +423,10 @@ namespace BaGio12.Gameplay
         public void ShowSettings()
         {
             if (group == null) Build();
-            Layout(); selected = settingsIndex; inPage = true; row = 0;
+            Layout();
+            // Lúc đang hỏi đồng ý gửi thống kê, Layout không dựng mục Cài đặt (settingsIndex = -1): không mở trang cài đặt.
+            if (settingsIndex < 0) return;
+            selected = settingsIndex; inPage = true; row = 0;
         }
 
         void Update()
@@ -462,7 +503,11 @@ namespace BaGio12.Gameplay
             lightsOn = on;
             clicks.pitch = on ? 1 : .82f;
             clicks.PlayOneShot(MenuSounds.Relay, on ? 1f : .7f);
-            if (on) { flickerAt = Time.unscaledTime; if (!hum.isPlaying) hum.Play(); }
+            if (on)
+            {
+                flickerAt = Time.unscaledTime;
+                if (AtStart && !hum.isPlaying) hum.Play();
+            }
         }
 
         void SaveIfDirty()
@@ -663,7 +708,7 @@ namespace BaGio12.Gameplay
             dim.color = new Color(Night.r, Night.g, Night.b, Damp(dim.color.a, dimTarget, lightsOn ? 6 : 1.2f, dt));
             bool haveBackdrop = backdrop.texture != null && !backdropStale;
             backdrop.color = new Color(1, 1, 1, Damp(backdrop.color.a, haveBackdrop ? 1 : 0, 5, dt));
-            hum.volume = Mathf.MoveTowards(hum.volume, lightsOn && shown ? .08f : 0, dt * .5f);
+            hum.volume = Mathf.MoveTowards(hum.volume, AtStart && lightsOn && shown ? .08f : 0, dt * .5f);
             if (!lightsOn && hum.volume <= 0 && hum.isPlaying) hum.Stop();
 
             float mark = OutCubic(since / .7f);

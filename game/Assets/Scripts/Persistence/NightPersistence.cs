@@ -3,6 +3,7 @@ using System.Collections;
 using System.IO;
 using System.Threading.Tasks;
 using BaGio12.Gameplay;
+using BaGio12.Online;
 using BaGio12.Story;
 using UnityEngine;
 
@@ -12,9 +13,40 @@ namespace BaGio12.Persistence
     {
         public NightOneDirector story;
         public GamePreferences Preferences { get; private set; }
-        public string Status { get; private set; } = "";
+        public string Status
+        {
+            get => AtStart && AskTelemetryConsent ? "Trước khi chơi, bạn chọn có gửi thống kê ẩn danh cho nhóm làm game hay không." : status;
+            private set => status = value;
+        }
+        string status = "";
+        public OnlineServices Online { get; private set; }
+        public bool AskTelemetryConsent => Online != null && Online.AskConsent;
+        public bool TelemetryConsent
+        {
+            get => Online != null && Online.ConsentGranted;
+            set { if (Online != null) Online.SetConsent(value); }
+        }
+        public void AnswerTelemetryConsent(bool granted)
+        {
+            if (Online == null) return;
+            Online.SetConsent(granted);
+            Status = granted ? "Đã bật gửi thống kê ẩn danh. Bạn đổi ý được trong Cài đặt." : "Game sẽ không gửi thống kê. Bạn đổi ý được trong Cài đặt.";
+        }
+        public bool CanSubmitEvidence => Online != null && Online.CanSubmitEvidence;
+        public void SubmitEvidence() { if (Online != null) Online.SubmitEvidence(message => Status = message); }
         public bool Ready { get; private set; }
         public bool HasSave => saves != null && saves.Exists;
+        public string SaveSummary
+        {
+            get
+            {
+                if (saves == null || !saves.TryLoad(out var save, out _)) return null;
+                string text = $"Bạn quay lại lúc {save.state.clock} trong đêm, đúng chỗ của bản lưu gần nhất";
+                if (DateTime.TryParse(save.savedAt, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var at))
+                    text += $", lưu ngày {at.ToLocalTime():dd/MM} lúc {at.ToLocalTime():HH:mm}";
+                return text + ".";
+            }
+        }
         LocalJsonStore<NightSaveData> saves;
         LocalJsonStore<GamePreferences> preferences;
         NightSaveData initial, lastStable;
@@ -47,6 +79,7 @@ namespace BaGio12.Persistence
             preferences = new LocalJsonStore<GamePreferences>(Path.Combine(DataRoot, "preferences.json"), GamePreferences.Valid);
             if (!preferences.TryLoad(out var loaded, out var warning)) loaded = new GamePreferences();
             Preferences = loaded; Preferences.Apply(story.player); Status = warning;
+            Online = gameObject.AddComponent<OnlineServices>(); Online.Initialize(DataRoot); story.TelemetryProduced += Online.Record;
             initial = story.CaptureSave(); Ready = true; story.player.Session = this;
             if (System.Environment.GetEnvironmentVariable("THREEGIO12_SKIP_START_MENU") == "1") { playing = true; yield break; }
             startup = true; story.player.SetPaused(true); story.player.PauseMenuLocked = true;
@@ -119,6 +152,7 @@ namespace BaGio12.Persistence
             if (!Ready) return false;
             Settle(); written = savedMilestone = null;
             if (!saves.Delete(out var message)) { Status = message; return false; }
+            Online?.ResetProfile();
             // A paused current session must not silently re-create the deleted slot.
             playing = false; lastStable = null; startup = true;
             story.player.SetPaused(true); story.player.PauseMenuLocked = true;
@@ -144,6 +178,7 @@ namespace BaGio12.Persistence
         public bool PrepareQuit()
         {
             if (playing && !Flush()) return false;
+            Online?.EndSession("quit_app");
             quitting = true; return true;
         }
         public void OpenSettings()
@@ -152,7 +187,7 @@ namespace BaGio12.Persistence
         { startup = false; story.player.PauseMenuLocked = false; story.player.ResumeControl(); }
         void OnApplicationPause(bool paused) { if (paused) Flush(); }
         void OnApplicationFocus(bool focus) { if (!focus) Flush(); }
-        void OnApplicationQuit() { if (!quitting) Flush(); }
-        void OnDestroy() { Settle(); if (story != null && story.player != null && ReferenceEquals(story.player.Session, this)) { story.player.Session = null; story.player.PauseMenuLocked = false; } }
+        void OnApplicationQuit() { if (!quitting) Flush(); Online?.EndSession("quit_app"); }
+        void OnDestroy() { Settle(); if (story != null && Online != null) story.TelemetryProduced -= Online.Record; if (story != null && story.player != null && ReferenceEquals(story.player.Session, this)) { story.player.Session = null; story.player.PauseMenuLocked = false; } }
     }
 }

@@ -18,7 +18,8 @@ namespace BaGio12.Persistence
         {
             AudioListener.volume = volume;
             player.sensitivity = mouseSensitivity;
-            if (quality >= 0 && quality != QualitySettings.GetQualityLevel()) QualitySettings.SetQualityLevel(quality, true);
+            int level = quality >= 0 ? quality : GameSettings.DefaultQuality();
+            if (level != QualitySettings.GetQualityLevel()) QualitySettings.SetQualityLevel(level, true);
         }
     }
 }

@@ -15,6 +15,8 @@ public static class NightOneRealisticSetup
     public const string ScenePath = "Assets/Scenes/Night01/NightOneRealistic.unity";
     const string NavPath = "Assets/Scenes/Night01/NightOneRealisticNavMesh.asset";
     const string MatRoot = "Assets/Scenes/Night01/Materials";
+    const string PoliceStation = "env_police_station";
+    const string PoliceDesk = "Night3_PoliceDesk";
     static Transform blockout, gameplay;
     static readonly List<string> missing = new List<string>();
     static readonly List<NightObserver> watchers = new List<NightObserver>();
@@ -31,6 +33,99 @@ public static class NightOneRealisticSetup
 
     static Transform Child(string name) =>
         blockout == null ? null : blockout.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == name);
+
+    static void SetupPoliceStation(Transform marker)
+    {
+        if (marker == null) throw new System.InvalidOperationException("Missing ENTRANCE_Police.");
+
+        var station = AssetDatabase.LoadAssetAtPath<GameObject>($"{ModelImportRules.ModelsRoot}Environment/{PoliceStation}.fbx");
+        var desk = AssetDatabase.LoadAssetAtPath<GameObject>($"{ModelImportRules.ModelsRoot}Props/{PoliceDesk}.fbx");
+        if (station == null || desk == null)
+            throw new System.InvalidOperationException("The police station and reception desk FBX files are required.");
+
+        var previous = marker.Find(PoliceStation);
+        if (previous != null) Object.DestroyImmediate(previous.gameObject);
+        var exterior = PlacePoliceModel(station, marker, Vector3.zero);
+        OpenPolicePath(exterior.transform);
+
+        // The floor is 9 cm above the marker. Keep the public side of the desk within the hand-in radius.
+        PlacePoliceModel(desk, exterior.transform, new Vector3(0, .09f, 2.22f));
+        var reception = new GameObject("Police reception light").AddComponent<Light>();
+        reception.transform.SetParent(exterior.transform, false);
+        reception.transform.localPosition = new Vector3(0, 2.80f, 2.05f);
+        reception.type = LightType.Point;
+        reception.color = new Color(1f, .91f, .76f);
+        reception.range = 5f;
+        reception.intensity = 1.6f;
+
+        foreach (var name in new[] { "Police_Building", "Police_Yard", "Police_Gate_E", "Police_Gate_W",
+                                     "Police_Sign", "Police_Sign_Arm", "Police_Sign_Front" })
+        {
+            var old = marker.parent.Find(name);
+            if (old != null) old.gameObject.SetActive(false);
+        }
+    }
+
+    static void OpenPolicePath(Transform station)
+    {
+        var streetEdge = GameObject.Find("OpenLot_166")?.GetComponent<BoxCollider>();
+        if (streetEdge == null) return;
+
+        // The open-lot boundary used to seal the full lot. Retain both sides of the 3.2 m gate.
+        var center = station.InverseTransformPoint(streetEdge.transform.TransformPoint(streetEdge.center));
+        var size = streetEdge.size;
+        streetEdge.enabled = false;
+        RealisticStreetFixes.RemoveOpenLotVisual(streetEdge);
+        void AddSide(float left, float right)
+        {
+            var side = station.gameObject.AddComponent<BoxCollider>();
+            side.center = new Vector3((left + right) / 2, center.y, center.z);
+            side.size = new Vector3(right - left, size.y, size.z);
+        }
+        AddSide(center.x - size.x / 2, -1.6f);
+        AddSide(1.6f, center.x + size.x / 2);
+    }
+
+    static GameObject PlacePoliceModel(GameObject model, Transform parent, Vector3 offset)
+    {
+        var instance = (GameObject)PrefabUtility.InstantiatePrefab(model, parent);
+        instance.transform.localPosition = offset;
+        foreach (var filter in instance.GetComponentsInChildren<MeshFilter>())
+        {
+            var renderer = filter.GetComponent<MeshRenderer>();
+            renderer.sharedMaterials = renderer.sharedMaterials.Select(source =>
+            {
+                if (source.shader.name == "Universal Render Pipeline/Lit") return source;
+                var path = $"Assets/Art/MaterialsPBR/{source.name}.mat";
+                var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+                return material != null ? material : throw new System.InvalidOperationException("Missing " + path);
+            }).ToArray();
+            if (!filter.name.StartsWith("Solid_", System.StringComparison.Ordinal)) continue;
+
+            var bounds = filter.sharedMesh.bounds;
+            var collider = filter.gameObject.AddComponent<BoxCollider>();
+            if (filter.name.StartsWith("Solid_Fence wall", System.StringComparison.Ordinal))
+            {
+                // The rendered masonry stops at the rail. Keep the whole fence panel solid.
+                bounds.Encapsulate(bounds.max + Vector3.up * 1.05f);
+            }
+            collider.center = bounds.center;
+            collider.size = bounds.size;
+        }
+        return instance;
+    }
+
+    [MenuItem("3 Gio 12/Update Police Station in Night One Realistic")]
+    public static void UpdatePoliceStation()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var marker = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<Transform>(true))
+            .SingleOrDefault(t => t.name == "ENTRANCE_Police");
+        SetupPoliceStation(marker);
+        if (!EditorSceneManager.SaveScene(scene))
+            throw new System.IO.IOException("Could not save " + ScenePath);
+        Debug.Log("POLICE_STATION_UPDATED");
+    }
 
     static void FoldingGrille(Transform root, float x, float z0, float z1, float height)
     {
@@ -170,6 +265,259 @@ public static class NightOneRealisticSetup
         return bounds;
     }
 
+    const string PbrRoot = "Assets/Art/MaterialsPBR";
+    static readonly Dictionary<string, Dictionary<string, string>> PbrMap = new Dictionary<string, Dictionary<string, string>>
+    {
+        ["HomewareShop_ShelfKit_Box"] = new Dictionary<string, string> { ["M_Cardboard"] = "PH_cardboard_box_01" },
+        ["Night2_Shelf"] = new Dictionary<string, string> { ["M_PlasticBlue"] = "SF_rack_plastic", ["M_PlasticWhite"] = "M_SteelGalv" },
+        ["Night2_BreadCart"] = new Dictionary<string, string>
+        {
+            ["M_TinRoof"] = "M_TinRust", ["M_StainlessSteel"] = "SF_counter_alu",
+            ["M_FoodBrown"] = "SF_goods", ["M_FoodGreen"] = "SF_goods", ["M_FoodYellow"] = "SF_goods",
+        },
+        ["Night2_ClampLamp"] = new Dictionary<string, string> { ["M_StainlessSteel"] = "SF_rack_chrome", ["M_SteelDark"] = "M_SteelDark" },
+        ["Night2_RiceShop"] = new Dictionary<string, string>
+        {
+            ["M_StainlessSteel"] = "SF_counter_alu",
+        },
+        ["Night2_LienTable"] = new Dictionary<string, string> { ["M_PlasticBlue"] = "SF_rack_plastic" },
+    };
+
+    // Swap imported FBX materials for the PBR set; cart glass keeps its transparent URP material.
+    static void ApplyPbrMaterials(GameObject go)
+    {
+        PbrMap.TryGetValue(go.name, out var map);
+        foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+        {
+            var mats = r.sharedMaterials;
+            for (int i = 0; i < mats.Length; i++)
+            {
+                if (mats[i] == null || mats[i].name == "M_Night2CartGlass" || (go.name == "Night2_MilkTea" && mats[i].name == "M_PlasticRed")) continue;
+                var target = map != null && map.TryGetValue(mats[i].name, out var t) ? t : mats[i].name;
+                var pbr = AssetDatabase.LoadAssetAtPath<Material>($"{PbrRoot}/{target}.mat");
+                if (pbr != null) mats[i] = pbr;
+            }
+            r.sharedMaterials = mats;
+        }
+    }
+
+    static void SetupNightTwoProps(Transform parent)
+    {
+        var n2Root = new GameObject("Night2 props").transform;
+        n2Root.SetParent(parent, false);
+
+        // 1. Night2_BreadCart: replace blockout BanhMi_Cart
+        var oldCart = Child("BanhMi_Cart");
+        if (oldCart != null)
+        {
+            foreach (var r in oldCart.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
+            foreach (var c in oldCart.GetComponentsInChildren<Collider>(true)) c.enabled = false;
+        }
+        var breadCartAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/Night2_BreadCart.fbx");
+        if (breadCartAsset != null)
+        {
+            var cart = Object.Instantiate(breadCartAsset, n2Root);
+            cart.name = "Night2_BreadCart";
+            cart.transform.position = new Vector3(-2.3f, 0.08f, 2.2f);
+            cart.transform.rotation = Quaternion.Euler(0, 90, 0);
+            ApplyPbrMaterials(cart);
+            foreach (var r in cart.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+            AddBoundsCollider(cart);
+        }
+
+        // 2. Night2_Shelf: replace blockout BH_F3_Room7_Rack
+        var oldRack = Child("BH_F3_Room7_Rack");
+        if (oldRack != null)
+        {
+            foreach (var r in oldRack.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
+            foreach (var c in oldRack.GetComponentsInChildren<Collider>(true)) c.enabled = false;
+        }
+        var shelfAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/Night2_Shelf.fbx");
+        if (shelfAsset != null)
+        {
+            var shelf = Object.Instantiate(shelfAsset, n2Root);
+            shelf.name = "Night2_Shelf";
+            shelf.transform.position = new Vector3(-2.05f, 10.28f, -44.15f);
+            shelf.transform.rotation = Quaternion.identity;
+            ApplyPbrMaterials(shelf);
+            foreach (var r in shelf.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+        }
+
+        // 3. Night2_ClampLamp
+        var lampAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/Night2_ClampLamp.fbx");
+        if (lampAsset != null)
+        {
+            var lamp = Object.Instantiate(lampAsset, n2Root);
+            lamp.name = "Night2_ClampLamp";
+            lamp.transform.position = new Vector3(-2.05f, 11.15f, -44.15f);
+            lamp.transform.rotation = Quaternion.identity;
+            ApplyPbrMaterials(lamp);
+            foreach (var r in lamp.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+
+            var bulb = lamp.transform.Find("Night2_ClampLamp_Bulb");
+            var lightObj = new GameObject("DeskLampLight");
+            lightObj.transform.SetParent(bulb != null ? bulb : lamp.transform, false);
+            lightObj.transform.localPosition = Vector3.zero;
+            var l = lightObj.AddComponent<Light>();
+            l.type = LightType.Point;
+            l.color = new Color(1f, 0.82f, 0.55f);
+            l.intensity = 2.5f;
+            l.range = 4.5f;
+            l.enabled = false;
+        }
+
+        // 4. HomewareShop_ShelfKit_Box
+        var oldBox = Child("HomewareShop_ShelfKit_Box");
+        if (oldBox != null)
+        {
+            foreach (var r in oldBox.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+            ApplyPbrMaterials(oldBox.gameObject);
+        }
+        else
+        {
+            var boxAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/HomewareShop_ShelfKit_Box.fbx");
+            if (boxAsset != null)
+            {
+                var box = Object.Instantiate(boxAsset, n2Root);
+                box.name = "HomewareShop_ShelfKit_Box";
+                box.transform.position = new Vector3(5.75f, 0.08f, -2.15f);
+                ApplyPbrMaterials(box);
+                foreach (var r in box.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+            }
+        }
+
+        SetupNightTwoEvening(parent, n2Root);
+
+        // Night 1 must not show Night 2 props (dem-1.md 1c); NightTwoMorningWorld turns the root on when Night 2 starts.
+        n2Root.gameObject.SetActive(false);
+    }
+
+    // Issue #129: buổi tối Đêm 2 (dem-2.md mục 5.4). Rice shop stove and milk tea live under the Night 2 root;
+    // the evening parking spot is a plain marker that NightTwoMorningWorld moves the player's bike to.
+    static void SetupNightTwoEvening(Transform parent, Transform n2Root)
+    {
+        // env_rice_shop (#23) đã có mặt tiền, quầy món, bàn ghế; thêm bếp ga có nồi canh và nồi cơm cạnh người bán
+        // (NPC_N2_RiceSeller ở (60; -1,8)), giữa quầy món và bình gas của env_rice_shop.
+        ClearRiceCounterGlass();
+        var shop = PlaceProp("Night2_RiceShop", n2Root, OnGround(new Vector3(61.0f, 0, -1.7f)), Quaternion.identity);
+        if (shop != null) AddBox(shop, new Vector3(0, .55f, -.31f), new Vector3(.6f, 1.1f, 1.25f));
+        else missing.Add("Night2_RiceShop.fbx");
+
+        // Bàn nhựa thấp sát chậu cây phía nam cổng, ngoài lối đi qua cổng; ly trà sữa đặt trên bàn, giấy dán quay ra hẻm.
+        var tablePos = OnGround(new Vector3(-0.95f, 0, -44.55f));
+        var table = PlaceProp("Night2_LienTable", n2Root, tablePos, Quaternion.identity);
+        if (table != null) AddBox(table, new Vector3(0, .23f, 0), new Vector3(.5f, .46f, .5f));
+        else missing.Add("Night2_LienTable.fbx");
+        // Sticker and liquid keep Toon (no PBR counterpart); straw keeps Toon M_PlasticRed so it stays readable at night.
+        if (PlaceProp("Night2_MilkTea", n2Root, tablePos + new Vector3(.06f, .461f, .04f), Quaternion.Euler(0, 15, 0)) == null)
+            missing.Add("Night2_MilkTea.fbx");
+
+        // Chỗ trống sát vách phải nhà xe, giữa Garage Cub 9 và 7; đầu xe (local +Z) quay ra lối đi giữa (+X).
+        var spot = Child("PARK_N2_EveningBike") ?? new GameObject("PARK_N2_EveningBike").transform;
+        spot.SetParent(parent, true);
+        spot.SetPositionAndRotation(new Vector3(-3.15f, 0, -52.45f), Quaternion.Euler(0, 90, 0));
+    }
+
+    // env_rice_shop (#23) shares one M_GlassFrosted slot between the food counter and the upper-floor windows, and
+    // that dark opaque glass hides the dishes. Move only the counter's glass triangles into a clear transparent slot.
+    static readonly Bounds RiceCounterGlass = new Bounds(new Vector3(59.9f, 1.2f, -0.9f), new Vector3(4.4f, .8f, 1.3f));
+    const string RiceShopMesh = "Assets/Art/MeshesPBR/env_rice_shop_counter_glass.asset";
+    static void ClearRiceCounterGlass()
+    {
+        var renderer = Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).FirstOrDefault(r => r.name == "env_rice_shop");
+        var filter = renderer != null ? renderer.GetComponent<MeshFilter>() : null;
+        if (filter == null || filter.sharedMesh == null) { missing.Add("env_rice_shop mesh"); return; }
+        var mats = renderer.sharedMaterials;
+        int glass = System.Array.FindIndex(mats, m => m != null && m.name == "M_GlassFrosted");
+        if (glass < 0 || glass >= filter.sharedMesh.subMeshCount) { missing.Add("env_rice_shop counter glass"); return; }
+        var mesh = Object.Instantiate(filter.sharedMesh);
+        mesh.name = "env_rice_shop_counter_glass";
+        var toWorld = renderer.transform.localToWorldMatrix;
+        var v = mesh.vertices;
+        var keep = new List<int>(); var counter = new List<int>();
+        var tris = mesh.GetTriangles(glass);
+        for (int i = 0; i < tris.Length; i += 3)
+        {
+            var c = toWorld.MultiplyPoint3x4((v[tris[i]] + v[tris[i + 1]] + v[tris[i + 2]]) / 3f);
+            (RiceCounterGlass.Contains(c) ? counter : keep).AddRange(new[] { tris[i], tris[i + 1], tris[i + 2] });
+        }
+        if (counter.Count == 0) { missing.Add("env_rice_shop counter glass triangles"); return; }
+        mesh.subMeshCount += 1;
+        mesh.SetTriangles(keep, glass);
+        mesh.SetTriangles(counter, mesh.subMeshCount - 1);
+        AssetDatabase.DeleteAsset(RiceShopMesh);
+        AssetDatabase.CreateAsset(mesh, RiceShopMesh);
+        filter.sharedMesh = mesh;
+        var collider = renderer.GetComponent<MeshCollider>();
+        if (collider != null && collider.sharedMesh == filter.sharedMesh) collider.sharedMesh = mesh;
+        renderer.sharedMaterials = mats.Concat(new[] { ClearGlass() }).ToArray();
+    }
+
+    static Material ClearGlass()
+    {
+        const string path = PbrRoot + "/M_GlassClear.mat";
+        var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (m == null) { m = new Material(Shader.Find("Universal Render Pipeline/Lit")); AssetDatabase.CreateAsset(m, path); }
+        m.SetColor("_BaseColor", new Color(.85f, .92f, .95f, .14f));
+        m.SetFloat("_Smoothness", .92f); m.SetFloat("_Metallic", 0);
+        m.SetFloat("_Surface", 1); m.SetFloat("_Blend", 0);
+        m.SetOverrideTag("RenderType", "Transparent");
+        m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        m.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        m.SetFloat("_ZWrite", 0); m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        EditorUtility.SetDirty(m);
+        return m;
+    }
+
+    static GameObject PlaceProp(string stem, Transform parent, Vector3 position, Quaternion rotation)
+    {
+        var asset = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Art/Models/Props/{stem}.fbx");
+        if (asset == null) return null;
+        var go = Object.Instantiate(asset, parent);
+        go.name = stem;
+        go.transform.SetPositionAndRotation(position, rotation);
+        ApplyPbrMaterials(go);
+        foreach (var r in go.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+        return go;
+    }
+
+    static void AddBox(GameObject go, Vector3 center, Vector3 size)
+    {
+        var box = go.AddComponent<BoxCollider>();
+        box.center = center; box.size = size;
+    }
+
+    // Floor height under a point from scene colliders, so props sit on sloped alley or shop floors.
+    static Vector3 OnGround(Vector3 at)
+    {
+        Physics.SyncTransforms();
+        return Physics.Raycast(new Vector3(at.x, at.y + 3f, at.z), Vector3.down, out var hit, 6f) ? new Vector3(at.x, hit.point.y, at.z) : at;
+    }
+
+    // The FBX imports without colliders, so give the prop one box around all its meshes, in its own space.
+    static void AddBoundsCollider(GameObject root)
+    {
+        var toRoot = root.transform.worldToLocalMatrix;
+        Bounds? bounds = null;
+        foreach (var filter in root.GetComponentsInChildren<MeshFilter>(true))
+        {
+            if (filter.sharedMesh == null) continue;
+            var m = toRoot * filter.transform.localToWorldMatrix;
+            var b = filter.sharedMesh.bounds;
+            for (int i = 0; i < 8; i++)
+            {
+                var corner = m.MultiplyPoint3x4(b.center + Vector3.Scale(b.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1)));
+                if (bounds is Bounds current) { current.Encapsulate(corner); bounds = current; }
+                else bounds = new Bounds(corner, Vector3.zero);
+            }
+        }
+        if (bounds is not Bounds box) return;
+        var collider = root.AddComponent<BoxCollider>();
+        collider.center = box.center;
+        collider.size = box.size;
+    }
+
     [MenuItem("3 Gio 12/Night 1/Create Realistic (overwrites scene)")]
     public static void Create()
     {
@@ -182,6 +530,7 @@ public static class NightOneRealisticSetup
 
         blockout = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None).FirstOrDefault(t => t.parent == null && t.name == "night1_3_blockout");
         if (blockout == null) throw new System.Exception("night1_3_blockout missing from " + SourcePath);
+        SetupPoliceStation(Child("ENTRANCE_Police"));
         gameplay = new GameObject("Night1 gameplay").transform;
         var detached = gameplay.gameObject.AddComponent<NavMeshModifier>(); detached.ignoreFromBuild = true; detached.applyToChildren = true;
 
@@ -274,8 +623,8 @@ public static class NightOneRealisticSetup
         if (waveRenderers.Length == 0) missing.Add("Garage Cub (Wave)");
         else { waveBounds = waveRenderers[0].bounds; foreach (var r in waveRenderers) waveBounds.Encapsulate(r.bounds); }
         var beside = new Vector3(Mathf.Max(waveBounds.max.x + .12f, slot.x), 0, waveBounds.center.z);
-        var zone = waveBounds; zone.Encapsulate(beside + new Vector3(.15f, 0, .15f));
-        Interact("Place phone beside bike", zone, .08f, NightAction.PlacePhone, "Đặt / lấy chiếc máy");
+        Interact("Place phone beside bike", waveBounds, .08f, NightAction.PlacePhone, "Đặt / lấy chiếc máy");
+        Interact("Place phone slot", At(beside + Vector3.up * .015f, new Vector3(.5f, .03f, .6f)), 0, NightAction.PlacePhone, "Đặt / lấy chiếc máy");
         if (waveBike != null) foreach (var c in waveBike.GetComponents<Collider>()) c.enabled = false;
         story.nganPhone = Interact("Ngan phone", At(beside + Vector3.up * .007f, new Vector3(.08f, .012f, .16f)), 0, NightAction.Phone, "Nhặt chiếc máy", dark);
         story.nganPhone.transform.rotation = Quaternion.Euler(0, 28, 0);
@@ -326,6 +675,7 @@ public static class NightOneRealisticSetup
         var leaf = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None).FirstOrDefault(t => t.name == "env_room7_door");
         if (leaf == null) missing.Add("env_room7_door");
         else { door.leaf = leaf; door.hinge = new Vector3(top.max.x, room.min.y, -41.65f); }
+        if (leaf != null && leaf.parent != null) leaf.parent.gameObject.AddComponent<BaGio12.Environment.ProbeLitOverride>();
         var roomPoint = Point("CHECKPOINT_N1_Room7", new Vector3(-3.5f, 10.2f, -44));
         story.roomSpawn = Marker("Checkpoint room7", new Vector3(roomPoint.x, room.min.y + .08f, roomPoint.z), 0);
         var doorBag = Point("PLACE_N1_BackpackDoor", new Vector3(-2.5f, 10.2f, -42));
@@ -348,6 +698,7 @@ public static class NightOneRealisticSetup
             var t = Child(ghost); var c = t == null ? null : t.GetComponent<Collider>(); var r = t == null ? null : t.GetComponent<Renderer>();
             if (c != null && c.enabled && (r == null || !r.enabled)) { c.enabled = false; Debug.Log("NIGHT1_REAL_HIDDEN_BLOCKER_OFF " + ghost); }
         }
+        SetupNightTwoProps(gameplay);
         var sill = new GameObject("Night1 boarding gate sill").AddComponent<BoxCollider>();
         sill.transform.position = new Vector3(gate.center.x - .02f, -.05f, gate.center.z - 1.1f); sill.size = new Vector3(.5f, .1f, 2.2f);
         var nav = new GameObject("Night1 navigation").AddComponent<NavMeshSurface>();

@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BaGio12.Gameplay;
+using BaGio12.Prototype;
 using UnityEngine;
 using UnityEngine.InputSystem;
 namespace BaGio12.Story
 {
     public sealed class NightOneHud : MonoBehaviour
     {
+        const string NganPhoneScreen = "nganPhone";
         public NightOneDirector story;
         readonly HudChoices phoneChoices = new HudChoices(), modalChoices = new HudChoices(), endChoices = new HudChoices(), alarmChoices = new HudChoices();
         readonly HudFade playFade = new HudFade();
@@ -34,10 +36,13 @@ namespace BaGio12.Story
         string ScreenId()
         {
             if(story.BlackTitle!="")return "title";
+            if(story.player.ActivePhone==1 && !story.Busy && PhonePrototype.Instance!=null)return NganPhoneScreen;
             if(story.player.ActivePhone!=0 && !story.Busy)return "phone"+story.player.ActivePhone;
             if(story.Modal!="")return "modal:"+story.Modal;
             return "";
         }
+
+        static bool IsHudOverlay(string id) => id!="" && id!="title" && id!=NganPhoneScreen;
 
         void Transition()
         {
@@ -53,7 +58,7 @@ namespace BaGio12.Story
             if(story.State.alarm && !alarmWasOn)alarmChoices.Reset(.25f);
             alarmWasOn=story.State.alarm;
             if(id==current)return;
-            bool wasOverlay=current!="" && current!="title", isOverlay=id!="" && id!="title";
+            bool wasOverlay=IsHudOverlay(current), isOverlay=IsHudOverlay(id);
             if(wasOverlay){closing=current;closedAt=Now;ghost=(current.StartsWith("phone")?phoneChoices:modalChoices).Snapshot();}
             if(!Quiet)
             {
@@ -70,7 +75,8 @@ namespace BaGio12.Story
         {
             if(story.player.IsPaused){playFade.Snap(false);return;}
             var state=story.State;
-            bool overlay=current!="" && current!="title";
+            bool overlay=IsHudOverlay(current);
+            bool covered=overlay || current==NganPhoneScreen;
             float play=playFade.Step(current=="" && !story.Busy,.28f,.12f);
             if(current!="title" && play>.001f){HudKit.Push(HudKit.OutCubic(play));DrawPlay(state);HudKit.Pop();}
             float closeAge=Now-closedAt, closeAlpha=closing!=""?1-HudKit.InQuad(closeAge/.16f):0;
@@ -92,7 +98,7 @@ namespace BaGio12.Story
                 DrawScreen(current,null);
                 HudKit.Pop();
             }
-            if(current!="title" && (overlay || !story.Busy))HudKit.Subtitle(story.Subtitle,overlay?70:150);
+            if(current!="title" && (covered || !story.Busy))HudKit.Subtitle(story.Subtitle,covered?70:150);
             if(current!="title")DrawImpact();
         }
 
