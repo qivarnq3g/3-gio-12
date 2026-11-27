@@ -18,9 +18,9 @@ Biến `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` của `api` là bắt buộc. 
 
 ## 2. Ai tạo máy ảo, khu vực và tài khoản
 
-Quyết định ngày 27/11/2026: Tiên tạo máy ảo bằng gói Azure for Students của Tiên (gói của Quang đang chứa tài nguyên của môn Điện toán đám mây nên không dùng). Quang đăng nhập vào máy ảo bằng SSH để làm mục 4 và 5.
+Cập nhật phân công theo lịch #147: Phúc nhận tạo máy ảo (#145) vì gói Azure của Tiên đã hết hạn mức. Dùng subscription còn hiệu lực do Phúc chọn; chưa xác nhận tài khoản/tín dụng của Phúc. Gói của Quang đang dùng cho môn khác nên không dùng. Quang đăng nhập SSH để làm mục 4 và 5. Hạn tạo máy theo lịch mới là 12:00 ngày 28/11.
 
-Gói Azure for Students của Quang có chính sách chỉ cho tạo tài nguyên ở năm khu vực: `centralindia`, `japanwest`, `indonesiacentral`, `malaysiawest`, `koreacentral`; Singapore không dùng được (kiểm bằng `az policy assignment list` ngày 26/11/2026). Gói của Tiên có thể khác. Kiểm trước khi tạo:
+Gói Azure for Students của Quang có chính sách chỉ cho tạo tài nguyên ở năm khu vực: `centralindia`, `japanwest`, `indonesiacentral`, `malaysiawest`, `koreacentral`; Singapore không dùng được (kiểm bằng `az policy assignment list` ngày 26/11/2026). Gói của Phúc có thể khác. Kiểm trước khi tạo:
 
 ```powershell
 az account show --query "{name:name,id:id}" -o table
@@ -31,13 +31,13 @@ Nếu `malaysiawest` nằm trong danh sách (hoặc gói không giới hạn khu
 
 Tín dụng sinh viên là 100 USD, dùng trong 12 tháng, một gói cho mỗi người. Tạo tài nguyên của nhóm trong một resource group riêng (`rg-3gio12`) để xóa gọn bằng một lệnh.
 
-## 3. Tạo máy ảo (việc của Tiên)
+## 3. Tạo máy ảo (việc của Phúc)
 
-Chạy trong PowerShell từ thư mục gốc repo (cần tệp `deploy/cloud-init.yaml`), đã `az login` và chọn đúng gói (`az account show`). Máy ảo nhận hai khóa SSH: khóa của Tiên và khóa của Quang, để cả hai cùng đăng nhập được.
+Chạy trong PowerShell từ thư mục gốc repo (cần tệp `deploy/cloud-init.yaml`), đã `az login` và chọn đúng gói (`az account show`). Máy ảo nhận hai khóa SSH: khóa của Phúc và khóa của Quang, để cả hai cùng đăng nhập được.
 
 ```powershell
-# Khóa của Tiên: nếu chưa có thì tạo bằng `ssh-keygen -t ed25519`
-$TIEN_KEY  = (Get-Content "$env:USERPROFILE\.ssh\id_ed25519.pub" -Raw).Trim()
+# Khóa của Phúc: nếu chưa có thì tạo bằng `ssh-keygen -t ed25519`
+$PHUC_KEY  = (Get-Content "$env:USERPROFILE\.ssh\id_ed25519.pub" -Raw).Trim()
 $QUANG_KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPtO1TKxah/49QIHhdjTpsmshC3nVmfbxAnv0UFyzRL1 quang-3gio12-deploy"
 
 $RG   = "rg-3gio12"
@@ -53,7 +53,7 @@ az vm create -g $RG -n $VM -l $LOC `
   --storage-sku StandardSSD_LRS --os-disk-size-gb 32 `
   --public-ip-sku Standard --public-ip-address-dns-name $DNS `
   --admin-username azureuser --authentication-type ssh `
-  --ssh-key-values $TIEN_KEY $QUANG_KEY `
+  --ssh-key-values $PHUC_KEY $QUANG_KEY `
   --custom-data deploy/cloud-init.yaml
 
 az vm open-port -g $RG -n $VM --port 80  --priority 1010
@@ -64,7 +64,45 @@ Cổng 22 mở cho mọi địa chỉ nhưng chỉ nhận khóa SSH (mật khẩ
 
 `deploy/cloud-init.yaml` cài Docker, tạo 2 GB swap (máy B1ms chỉ có 2 GB RAM, dựng ảnh .NET cần thêm bộ nhớ) và Git. Cloud-init chạy vài phút sau khi máy lên.
 
-Xong thì Tiên báo vào issue triển khai: tên miền đầy đủ (`$DNS.$LOC.cloudapp.azure.com`), khu vực đã dùng, và kết quả `az vm show -g rg-3gio12 -n vm-3gio12 --query "{size:hardwareProfile.vmSize,state:provisioningState}" -o json`. Đừng đăng khóa riêng hay mật khẩu nào lên issue.
+Xong thì Phúc báo vào issue triển khai: tên miền đầy đủ (`$DNS.$LOC.cloudapp.azure.com`), khu vực đã dùng, và kết quả `az vm show -g rg-3gio12 -n vm-3gio12 --query "{size:hardwareProfile.vmSize,state:provisioningState}" -o json`. Đừng đăng khóa riêng hay mật khẩu nào lên issue.
+
+### Chạy từ macOS, Linux hoặc Azure Cloud Shell
+
+Có thể dùng `tools/provision_azure_vm.py` (Python 3, không cần thư viện ngoài). Mặc định script chỉ in kế hoạch, không cần Azure CLI và không gọi Azure. `--check` đọc tài khoản/SKU/DNS/quota; `--apply` kiểm trước rồi tạo tài nguyên có tính phí. Mọi lệnh đều truyền subscription đã chọn, không đổi gói mặc định của CLI.
+
+Trên máy chưa có CLI, dùng Azure Cloud Shell sau khi đăng nhập tài khoản của Phúc, hoặc cài [Azure CLI cho macOS](https://learn.microsoft.com/cli/azure/install-azure-cli-macos). Không gửi mật khẩu, mã đăng nhập hoặc tệp khóa riêng lên GitHub/chat.
+
+```bash
+# Tạo khóa riêng của Phúc nếu chưa có; không ghi đè khóa đang dùng.
+ssh-keygen -t ed25519 -f ~/.ssh/3gio12-azure-phuc
+# Có thể chọn passphrase; chỉ tệp .pub được đưa vào lệnh tạo VM.
+az login
+az account list --query '[].{name:name,id:id,state:state}' -o table
+
+# Thay hai giá trị dưới đây bằng gói Phúc chọn và nhãn DNS duy nhất.
+PHUC_SUBSCRIPTION='<subscription-uuid>'
+PHUC_DNS='3gio12-phuc-<nhan-duy-nhat>'
+python3 tools/provision_azure_vm.py --subscription "$PHUC_SUBSCRIPTION" \
+  --dns "$PHUC_DNS" --public-key ~/.ssh/3gio12-azure-phuc.pub
+# Sau khi xem kế hoạch, kiểm chỉ đọc:
+python3 tools/provision_azure_vm.py --subscription "$PHUC_SUBSCRIPTION" \
+  --dns "$PHUC_DNS" --public-key ~/.ssh/3gio12-azure-phuc.pub --check
+# Khi đúng subscription/khu vực/DNS, mới chạy bước tạo:
+python3 tools/provision_azure_vm.py --subscription "$PHUC_SUBSCRIPTION" \
+  --dns "$PHUC_DNS" --public-key ~/.ssh/3gio12-azure-phuc.pub --apply
+```
+
+Cloud Shell đã đăng nhập thì không cần gọi `az login` lần nữa. Nếu dùng khóa của Cloud Shell, cần giữ khóa riêng theo cơ chế lưu trữ của tài khoản để đăng nhập lại; không đưa vào repo. Chạy từ bản checkout có `deploy/cloud-init.yaml`.
+
+Script cố định B1ms/Ubuntu 24.04/SSD 32 GiB/Standard public IP như phương án trên; thêm hai public key khác nhau của Phúc và Quang. Từ chối nếu gói bị vô hiệu, ID tài khoản không khớp, nhóm tài nguyên đã tồn tại, SKU bị chặn ở khu vực, DNS bị dùng hoặc thiếu quota vCPU. Không tự đổi sang máy đắt hơn và không tự xóa tài nguyên khi lỗi. Nếu bước tạo dở, xem nhóm đã tạo trước khi chạy lại; script sẽ dừng nếu nhóm tồn tại.
+
+Preflight không kiểm hết Azure Policy, tín dụng hay bảo đảm còn capacity. Các điều kiện này có thể khiến Azure từ chối dù kiểm chỉ đọc đạt. Xem [Azure CLI VM](https://learn.microsoft.com/cli/azure/vm) và [quota vCPU](https://learn.microsoft.com/azure/virtual-machines/quotas). Sau khi tạo vẫn phải đợi cloud-init, kiểm SSH của Phúc, báo domain/khu vực/trạng thái vào #145 và chờ Quang xác nhận khóa của Quang đăng nhập được. Không đánh dấu hoàn tất chỉ vì lệnh tạo trả thành công.
+
+Đã kiểm script bằng test với Azure CLI giả: kế hoạch không gọi CLI; kiểm chỉ đọc không tạo tài nguyên; tài khoản sai/bị tắt, nhóm có sẵn, SKU/DNS/quota không đạt đều chặn trước bước ghi; khóa riêng và DNS không hợp lệ bị từ chối. **Chưa đăng nhập hoặc tạo VM thật trên Azure.**
+
+```bash
+python3 -m unittest discover -s tools/tests -p test_provision_azure_vm.py -v
+```
 
 ## 4. Đưa mã lên máy ảo
 
