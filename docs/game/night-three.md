@@ -79,3 +79,14 @@ Kết quả trên mã `d44bee7` (main `4f7c4dd`), Unity 6000.3.26f1/M2/macOS 15.
 | SaveProgressRegression.Read, tiến trình mới | SAVE_READ_PROCESS_PASSED |
 
 Log còn lỗi SearchDatabase/indexing có sẵn; không có lỗi biên dịch. Năm kết quả này không kiểm ảnh camera mới, HUD đa tỉ lệ, input chơi tay hoặc server thật/Docker. Kết quả camera PNG ngày 25/11 ở trên là kết quả lịch sử, không được ghi thành đã chạy lại trên main 27/11. Giữ #90 nháp cho phần còn lại; không đóng #22.
+
+## Camera và lưu/nạp Đêm 3 — kiểm tiếp 27/11/2026
+
+Chạy thêm trên mã `16c4ef7`, Unity 6000.3.26f1/M2/macOS 15.7.4, dữ liệu cách ly và `THREEGIO12_REQUIRE_MORNING_MODELS=1`:
+
+- `NightThreeRegression.Write`: batchmode **có GPU**, `NIGHT_THREE_REAL_POLICE_DESK_NO_FIXTURE`, `NIGHT_THREE_WRITE_PASSED`, exit 0.
+- `NightThreeRegression.Read`: tiến trình mới không đồ họa, cùng dữ liệu; `NIGHT_THREE_REAL_POLICE_DESK_NO_FIXTURE`, `NIGHT_THREE_READ_PASSED`, exit 0.
+
+Write tạo hai PNG thật ở hai góc ngắm khác nhau, kiểm 512×288, ảnh không đồng màu và nội dung khác nhau, phân biệt ảnh thường/mặt vải, từ chối gửi sai ảnh hoặc gửi từ máy Ngân. Read kiểm ảnh và trạng thái liên lạc qua lần mở Unity mới, pin/mã/két, R2/R3, ngủ/thức, nộp máy và chơi mới. Bài kiểm seed lựa chọn, vị trí và góc camera để kiểm riêng từng cơ chế; không thay cho đi/chụp bằng input người chơi. Cả hai lượt dùng model thật, không tạo quầy giả.
+
+Như vậy lượt này đã kiểm camera trên nhánh tích hợp hiện tại; ghi chú “chưa chạy lại camera” ở kết quả năm bài kiểm phía trên là trạng thái trước lượt bổ sung này. Vẫn chưa xác nhận chơi tay liên tục N1→N2→N3 hoặc chất lượng ảnh/giao diện trong bản phát hành. Các thay đổi làm tròn float ở vật liệu do Editor sinh đã được phục hồi, không đưa vào PR.
