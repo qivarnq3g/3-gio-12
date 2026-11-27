@@ -38,7 +38,7 @@ namespace BaGio12.Story
                 hidingSeconds = save.hidingSeconds; hideAnchor = save.position;
                 roomSeconds = save.roomSeconds; immuneUntil = Time.time + save.immuneRemaining;
                 PrologueElapsed = save.prologueElapsed; PrologueDeparted = save.prologueDeparted; leftStart = save.leftStart; shoutCount = save.shoutCount;
-                nightStartedAt = Time.time - save.playedSeconds; isReplay = save.isReplay; completedInSession = save.completedInSession;
+                nightStartedAt = Time.time - save.playedSeconds; isReplay = save.isReplay; completedInSession |= save.completedInSession;
                 player.SetOverlay(false); player.SetPhone(0); player.Teleport(save.position, save.yaw); player.RestoreView(save.pitch, save.crouched);
                 player.RunMultiplier = State.stage == NightStage.Prologue && State.prologue_beaten >= 2 ? 2f / 3 : 1;
                 for (int i = 0; i < observers.Length; i++) observers[i].ApplyObserver(save.observers[i]);

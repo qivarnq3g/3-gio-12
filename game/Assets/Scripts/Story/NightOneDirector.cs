@@ -119,7 +119,6 @@ namespace BaGio12.Story
             PhonePrototype.Instance?.SyncWithState(State);
             nightStartedAt=Time.time;
             isReplay=completedInSession;
-            TelemetryProduced?.Invoke(new NightStartedTelemetry(isReplay));
             Checkpoints.Save("n1.alley_start", State, alleyStart.position, StartYaw);
             Objective = "Bạn cần mang chiếc điện thoại đang cầm trên tay vào nhà xe ở cuối hẻm, rồi cúi xuống đặt nó trên nền xi măng, ngay dưới chân chiếc Cub màu đỏ.";
             Say("Trong hẻm vẫn còn người ngồi trước cửa nhà, và bạn không được để bất kỳ ai nhìn thấy mình trên đường vào nhà xe.", 9);
@@ -683,6 +682,13 @@ namespace BaGio12.Story
             if(parkingAlertLight!=null)parkingAlertLight.enabled=false;
             Objective = "Bạn cần mang chiếc điện thoại đang cầm trên tay vào nhà xe ở cuối hẻm, rồi cúi xuống đặt nó trên nền xi măng, ngay dưới chân chiếc Cub màu đỏ.";
         }
+        public void StartNightTelemetry()
+        {
+            nightStartedAt=Time.time;
+            isReplay=completedInSession;
+            TelemetryProduced?.Invoke(new NightStartedTelemetry(isReplay));
+        }
+        public void ClearSessionCompletion() { completedInSession = false; }
         public void RestoreCheckpoint()
         {
             if (Busy) return;
@@ -701,7 +707,7 @@ namespace BaGio12.Story
             if (!Checkpoints.Restore(out var state, out var point, out float yaw)) return;
             State = state; Clock = new StoryClock(State); player.Teleport(point,yaw);
             PhonePrototype.Instance?.SyncWithState(State);
-            if(replayFromEnd) {isReplay=completedInSession;nightStartedAt=Time.time;TelemetryProduced?.Invoke(new NightStartedTelemetry(isReplay));}
+            if(replayFromEnd) StartNightTelemetry();
             player.RunMultiplier = State.stage == NightStage.Prologue && State.prologue_beaten >= 2 ? 2f/3 : 1;
             BlackTitle = ""; roomSeconds = 0; hidingSeconds = 0; hideAnchor = player.transform.position;
             foreach (var o in observers) o.ResetObserver(State.phonePlaced);
