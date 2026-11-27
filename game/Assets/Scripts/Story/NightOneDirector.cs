@@ -86,6 +86,8 @@ namespace BaGio12.Story
         public bool CanPlace => State.stage == NightStage.Prologue && !State.phonePlaced && !Busy && !observers.Any(x => x.ActiveThreat);
         public bool NotebookOpen { get; private set; }
         public bool HasNgan => State.hasNganPhone;
+        public bool InNightTwo => State.nightTwoStarted;
+        public NightTwoMorning Morning { get; private set; }
         float subtitleUntil, roomSeconds, immuneUntil;
         float hidingSeconds;
         Vector3 hideAnchor;
@@ -125,6 +127,8 @@ namespace BaGio12.Story
             Say("Trong hẻm vẫn còn người ngồi trước cửa nhà, và bạn không được để bất kỳ ai nhìn thấy mình trên đường vào nhà xe.", 9);
             SyncWorld();
             gameObject.AddComponent<BaGio12.Persistence.NightPersistence>().story = this;
+            Morning = gameObject.AddComponent<NightTwoMorning>();
+            Morning.story = this;
         }
         void OnDestroy()
         {
@@ -134,8 +138,9 @@ namespace BaGio12.Story
         }
         void Update()
         {
-            if(player.IsPaused)return;
             if (Time.time > subtitleUntil) Subtitle = "";
+            if (InNightTwo) return;
+            if(player.IsPaused)return;
             if (HoldProgress > 0) HoldProgress = Mathf.Max(0, HoldProgress - Time.deltaTime * .1f);
             var flat = Vector3.ProjectOnPlane(player.transform.position - lastPlayerPoint, Vector3.up);
             stillSeconds = flat.magnitude < Time.deltaTime * .3f ? stillSeconds + Time.deltaTime : 0;
@@ -218,6 +223,7 @@ namespace BaGio12.Story
         }
         void PhoneChanged(int previous, int next)
         {
+            if (InNightTwo) return;
             if (restoringSave) return;
             if (State.stage == NightStage.Room && InRoom)
             {
@@ -228,6 +234,7 @@ namespace BaGio12.Story
         }
         public void Act(NightAction action)
         {
+            if (InNightTwo) return;
             if (Busy || State.stage == NightStage.Ended) return;
             if (State.stage == NightStage.Prologue)
             {
@@ -700,6 +707,7 @@ namespace BaGio12.Story
             CloseModal(); player.SetPhone(0); sound.Stop();
             if (!Checkpoints.Restore(out var state, out var point, out float yaw)) return;
             State = state; Clock = new StoryClock(State); player.Teleport(point,yaw);
+            Morning.SyncWorld();
             PhonePrototype.Instance?.SyncWithState(State);
             if(replayFromEnd) {isReplay=completedInSession;nightStartedAt=Time.time;TelemetryProduced?.Invoke(new NightStartedTelemetry(isReplay));}
             player.RunMultiplier = State.stage == NightStage.Prologue && State.prologue_beaten >= 2 ? 2f/3 : 1;
@@ -709,6 +717,7 @@ namespace BaGio12.Story
             Objective = State.stage >= NightStage.Room ? "Khám phá phòng 7 rồi tới nệm." : "Khám phá hẻm, đọc tin và lên phòng 7.";
             bag.transform.position = State.hasBagPosition ? State.bagPosition : bagAtDoor.position;
             SyncWorld();
+            if (InNightTwo) Morning.RestoreControl();
         }
         void SyncWorld()
         {
