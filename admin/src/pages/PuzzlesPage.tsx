@@ -259,8 +259,13 @@ export function PuzzleDetailPage() {
   async function handlePickFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    setNewSha(await sha256OfFile(file));
-    if (!newNote) setNewNote(file.name);
+    try {
+      setNewSha(await sha256OfFile(file));
+      if (!newNote) setNewNote(file.name);
+    } catch {
+      // crypto.subtle only exists on HTTPS or localhost.
+      setError("Trình duyệt không tính được mã băm ở trang này (cần HTTPS). Hãy tính SHA-256 của tệp rồi dán vào ô Mã SHA-256.");
+    }
   }
 
   async function handleAddSolution(event: FormEvent) {
@@ -294,6 +299,7 @@ export function PuzzleDetailPage() {
   }
 
   async function handleRemove(solution: PuzzleSolution) {
+    if (!window.confirm(`Bỏ mã băm ${shortHash(solution.sha256)}? Game sẽ không nhận bằng chứng này nữa.`)) return;
     setError(null);
     setSuccess(null);
     setRemovingId(solution.id);
