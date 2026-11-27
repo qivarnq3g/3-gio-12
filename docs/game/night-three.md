@@ -90,3 +90,7 @@ Chạy thêm trên mã `16c4ef7`, Unity 6000.3.26f1/M2/macOS 15.7.4, dữ liệu
 Write tạo hai PNG thật ở hai góc ngắm khác nhau, kiểm 512×288, ảnh không đồng màu và nội dung khác nhau, phân biệt ảnh thường/mặt vải, từ chối gửi sai ảnh hoặc gửi từ máy Ngân. Read kiểm ảnh và trạng thái liên lạc qua lần mở Unity mới, pin/mã/két, R2/R3, ngủ/thức, nộp máy và chơi mới. Bài kiểm seed lựa chọn, vị trí và góc camera để kiểm riêng từng cơ chế; không thay cho đi/chụp bằng input người chơi. Cả hai lượt dùng model thật, không tạo quầy giả.
 
 Như vậy lượt này đã kiểm camera trên nhánh tích hợp hiện tại; ghi chú “chưa chạy lại camera” ở kết quả năm bài kiểm phía trên là trạng thái trước lượt bổ sung này. Vẫn chưa xác nhận chơi tay liên tục N1→N2→N3 hoặc chất lượng ảnh/giao diện trong bản phát hành. Các thay đổi làm tròn float ở vật liệu do Editor sinh đã được phục hồi, không đưa vào PR.
+
+## Kiểm buổi tối không fixture — bổ sung 27/11
+
+Đã ghép sửa bài kiểm từ #85 vào nhánh Đêm 3, mã kiểm `d9479e6`. Chạy `NightTwoEveningRegression.Run` với `THREEGIO12_REQUIRE_EVENING_MODELS=1`, dữ liệu cách ly, Unity 6000.3.26f1/M2/macOS 15.7.4/nographics: `NIGHT_TWO_EVENING_REAL_MODELS_CONFIRMED_NO_FIXTURES`, `NIGHT_TWO_EVENING_PASSED`, exit 0. Đây là lượt kiểm riêng buổi tối với model FBX thật trên nhánh tích hợp Đêm 3; không dùng kết quả để nhận đã chơi tay toàn tuyến. Chi tiết ba nhánh và sửa điều kiện nhóm cha đang tắt ở `night-two-evening.md`.
