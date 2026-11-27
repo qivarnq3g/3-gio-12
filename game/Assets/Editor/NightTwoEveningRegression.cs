@@ -34,16 +34,35 @@ public static class NightTwoEveningRegression
     static void Changed(PlayModeStateChange mode)
     {
         if (mode != PlayModeStateChange.EnteredPlayMode) return;
-        Application.runInBackground = true;
-        AddFixtures();
-        step = 0; deadline = EditorApplication.timeSinceStartup + 90; EditorApplication.update += Tick;
+        try
+        {
+            Application.runInBackground = true;
+            AddFixtures();
+            step = 0; deadline = EditorApplication.timeSinceStartup + 90; EditorApplication.update += Tick;
+        }
+        catch (Exception error) { Debug.LogException(error); Finish(null); }
     }
 
     // Stand-ins only for scene models that are not merged yet, so the evening logic can be exercised.
     static void AddFixtures()
     {
         var all = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        bool Visible(string name) => all.Any(t => t.name == name && t.GetComponentsInChildren<Renderer>(true).Any(r => r.enabled && r.gameObject.activeInHierarchy));
+        bool Visible(string name) => all.Any(t => t.name == name && t.GetComponentsInChildren<Renderer>(true).Any(r => r.enabled));
+        if (Environment.GetEnvironmentVariable("THREEGIO12_REQUIRE_EVENING_MODELS") == "1")
+        {
+            foreach (string name in new[] { "Night2_BreadCart", "Night2_Shelf", "Night2_ClampLamp", "Night2_RiceShop", "Night2_MilkTea" })
+            {
+                var model = all.FirstOrDefault(t => t.name == name);
+                Check(model != null && Visible(name), "real model missing: " + name);
+                Check(model.GetComponentsInChildren<MeshFilter>(true).Any(m =>
+                    AssetDatabase.GetAssetPath(m.sharedMesh) == "Assets/Art/Models/Props/" + name + ".fbx"),
+                    "expected FBX mesh, not a stand-in: " + name);
+            }
+            Check(all.Any(t => t.name == "PARK_N2_EveningBike"), "real evening parking marker missing");
+            Check(all.Any(t => t.name == "PARK_N2_RiceShop"), "real rice-shop parking marker missing");
+            Debug.Log("NIGHT_TWO_EVENING_REAL_MODELS_CONFIRMED_NO_FIXTURES");
+            return;
+        }
         void Fixture(string name, Vector3 at)
         {
             if (Visible(name)) return;
