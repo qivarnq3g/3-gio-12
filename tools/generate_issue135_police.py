@@ -1,8 +1,10 @@
 """Build the ward police station and reception counter with Blender 5.2."""
 
 import argparse
+import json
 import math
 import sys
+import urllib.request
 from pathlib import Path
 
 import bpy
@@ -12,6 +14,7 @@ from mathutils import Vector
 ROOT = Path(__file__).resolve().parents[1]
 ART = ROOT / "game/Assets/Art"
 PROJECT_FONT = ART / "Resources/Fonts/BeVietnamPro-Medium.ttf"
+POLYHAVEN_CACHE = ROOT / "tools/out/polyhaven"
 PALETTE = {
     "M_WallPaintYellow": (0.74, 0.57, 0.32),
     "M_WallPaintOffWhite": (0.79, 0.75, 0.63),
@@ -26,7 +29,6 @@ PALETTE = {
     "M_AluminumFrame": (0.62, 0.64, 0.66),
     "M_MetalHandle": (0.55, 0.56, 0.58),
     "M_Rubber": (0.05, 0.05, 0.05),
-    "M_ScreenBlack": (0.06, 0.07, 0.08),
     "M_PlasticRed": (0.60, 0.05, 0.04),
     "M_PoliceSignRed": (0.51, 0.031, 0.024),
     "M_PoliceSignGold": (0.97, 0.69, 0.16),
@@ -46,6 +48,77 @@ def use_material(obj, name):
         if name == "M_PoliceGlass":
             mat.surface_render_method = "BLENDED"
     obj.data.materials.append(mat)
+
+
+def fetch_polyhaven(asset):
+    """Download a CC0 Poly Haven model (glTF, 1K textures) once and export URP textures for Unity."""
+    folder = POLYHAVEN_CACHE / asset
+    gltf = folder / f"{asset}.gltf"
+    if not gltf.exists():
+        def get(url):
+            # Poly Haven refuses Python's default user agent.
+            request = urllib.request.Request(url, headers={"User-Agent": "asset-build-script"})
+            with urllib.request.urlopen(request) as response:
+                return response.read()
+        files = json.loads(get(f"https://api.polyhaven.com/files/{asset}"))["gltf"]["1k"]["gltf"]
+        for relative, url in [(gltf.name, files["url"])] + [(k, v["url"]) for k, v in files["include"].items()]:
+            target = folder / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(get(url))
+    name = f"PH_{asset}"
+    # ArtPipelineCheck only allows prop textures under Assets/Art/Textures, named T_<EnglishName>.png.
+    stem = "T_" + "".join(word.title() for word in asset.split("_"))
+    textures = folder / "textures"
+
+    def save(pixels, size, kind, data):
+        image = bpy.data.images.new(f"{stem}{kind}", size[0], size[1], alpha=True, is_data=data)
+        image.pixels = pixels
+        image.filepath_raw = str(ART / "Textures" / f"{stem}{kind}.png")
+        image.file_format = "PNG"
+        image.save()
+
+    for kind, suffix in (("Albedo", "diff"), ("Normal", "nor_gl")):
+        source = bpy.data.images.load(str(textures / f"{asset}_{suffix}_1k.jpg"))
+        if kind == "Normal":
+            source.colorspace_settings.name = "Non-Color"
+        save(list(source.pixels), source.size, kind, kind == "Normal")
+    # Poly Haven ARM is R=occlusion, G=roughness, B=metal; URP Lit reads R=metal, G=occlusion, A=smoothness.
+    arm = bpy.data.images.load(str(textures / f"{asset}_arm_1k.jpg"))
+    arm.colorspace_settings.name = "Non-Color"
+    source = list(arm.pixels)
+    mask = [0.0] * len(source)
+    mask[0::4], mask[1::4], mask[3::4] = source[2::4], source[0::4], [1 - g for g in source[1::4]]
+    save(mask, arm.size, "Mask", True)
+    return gltf, name
+
+
+def place_scan(asset, picks):
+    """Import a Poly Haven scan and set each picked mesh down on the counter top."""
+    gltf, material_name = fetch_polyhaven(asset)
+    before = set(bpy.context.scene.objects)
+    bpy.ops.import_scene.gltf(filepath=str(gltf))
+    imported = [obj for obj in bpy.context.scene.objects if obj not in before]
+    meshes = {obj.name: obj for obj in imported if obj.type == "MESH"}
+    for material in {slot.material for obj in meshes.values() for slot in obj.material_slots if slot.material}:
+        material.name = material_name
+    kept = []
+    for source, rotation, (x, y, z) in picks:
+        obj = meshes[source]
+        if obj in kept:
+            obj = obj.copy()
+            obj.data = obj.data.copy()
+            bpy.context.collection.objects.link(obj)
+        obj.parent = None
+        obj.rotation_mode = "XYZ"
+        obj.rotation_euler = rotation
+        bpy.context.view_layer.update()
+        corners = [obj.matrix_world @ Vector(c) for c in obj.bound_box]
+        low = Vector((sum(c.x for c in corners) / 8, sum(c.y for c in corners) / 8, min(c.z for c in corners)))
+        obj.location += Vector((x, y, z)) - low
+        kept.append(obj)
+    for obj in imported:
+        if obj not in kept:
+            bpy.data.objects.remove(obj, do_unlink=True)
 
 
 def box(name, center, size, material, bevel=0, solid=False):
@@ -256,7 +329,7 @@ def build_desk():
     box("Keyboard", (.35, -.27, 1.10), (.44, .14, .022), black, .006)
     for row in range(4):
         for col in range(12):
-            box("Key", (.163 + col * .034, -.317 + row * .029, 1.114), (.028, .024, .008), "M_ScreenBlack", .002)
+            box("Key", (.163 + col * .034, -.317 + row * .029, 1.114), (.028, .024, .008), "M_Rubber", .002)
     box("Mouse pad", (.66, -.26, 1.091), (.20, .18, .004), "M_Rubber")
     box("Mouse", (.66, -.26, 1.106), (.06, .10, .028), black, .012)
 
@@ -264,28 +337,33 @@ def build_desk():
     box("Phone base", (-.02, -.20, 1.114), (.20, .17, .05), black, .012)
     for row in range(4):
         for col in range(3):
-            box("Phone key", (-.01 + col * .025, -.255 + row * .022, 1.141), (.018, .015, .005), "M_PlasticWhite", .002)
+            box("Phone key", (-.01 + col * .025, -.255 + row * .022, 1.141), (.018, .015, .005), "M_PaperWhite", .002)
     box("Phone handset", (-.07, -.17, 1.152), (.05, .19, .03), black, .013)
 
-    # Open visitor ledger, stamp and ink pad, pen cup, two-tier document tray.
-    box("Ledger cover", (-.34, -.21, 1.093), (.40, .28, .008), "M_PoliceSignRed", .003)
-    for x in (-.44, -.24):
-        box("Ledger page", (x, -.21, 1.101), (.19, .26, .012), paper, .002)
-        for i in range(7):
-            box("Ledger rule", (x, -.12 - i * .028, 1.1075), (.16, .003, .001), black)
+    # Tray frame; the paper, ledger, pens and clipboard on it are Poly Haven scans.
+    for z in (1.095, 1.175):
+        box("Tray shelf", (-.62, .05, z), (.34, .25, .008), black, .003)
+        box("Tray lip", (-.62, -.073, z + .015), (.34, .006, .03), black)
     box("Ink pad", (-.70, -.29, 1.098), (.11, .075, .018), black, .004)
     box("Ink", (-.70, -.29, 1.1075), (.09, .055, .002), "M_PlasticRed")
     box("Stamp base", (-.62, -.30, 1.104), (.05, .05, .03), black, .005)
     tube("Stamp handle", (-.62, -.30, 1.119), (-.62, -.30, 1.185), .014, dark)
     tube("Stamp knob", (-.62, -.30, 1.18), (-.62, -.30, 1.205), .021, dark)
-    tube("Pen cup", (-.86, -.12, 1.089), (-.86, -.12, 1.19), .035, "M_PlasticBlue")
-    for (dx, dy), color in zip(((-.012, .008), (.010, -.006), (.002, .014)), (black, "M_PlasticRed", "M_PlasticBlue")):
-        tube("Pen", (-.86 + dx, -.12 + dy, 1.11), (-.86 + dx * 3, -.12 + dy * 3, 1.255), .005, color)
-    for z in (1.095, 1.175):
-        box("Tray shelf", (-.62, .05, z), (.34, .25, .008), black, .003)
-        box("Tray lip", (-.62, -.073, z + .015), (.34, .006, .03), black)
-        for i in range(3):
-            box("Tray form", (-.62 + i * .006, .06 + i * .004, z + .006 + i * .004), (.29, .205, .004), paper)
+    top = 1.089
+    place_scan("binder_notebook", [("binder_notebook", (0, 0, math.pi), (-.30, -.21, top))])
+    place_scan("office_notepads", [
+        ("office_notepads_a4_stack", (0, 0, math.pi / 2), (-.62, .05, 1.0995)),
+        ("office_notepads_a4_stack", (0, 0, math.pi / 2), (-.62, .05, 1.1795)),
+        ("office_notepads_sticky_stack", (0, 0, .3), (.66, .04, top)),
+        ("office_notepads_yellow_pad", (0, 0, 1.45), (.02, .07, top)),
+    ])
+    place_scan("clipboard", [("clipboard", (0, 0, -.2), (-.23, .08, top + .002))])
+    place_scan("stationery_supplies", [
+        ("stationery_supplies_pencilcup", (0, 0, 0), (-.86, -.12, top)),
+        ("stationery_supplies_pen_red", (0, math.radians(-78), .4), (-.872, -.11, top + .012)),
+        ("stationery_supplies_pencil_new_a", (0, math.radians(-83), 2.1), (-.85, -.128, top + .012)),
+        ("stationery_supplies_pen_fancy", (0, math.radians(-75), 4.0), (-.858, -.106, top + .012)),
+    ])
     for x in (-.78, -.46):
         for y in (-.07, .17):
             tube("Tray post", (x, y, 1.095), (x, y, 1.175), .005, black)
@@ -318,7 +396,7 @@ def render_views(output, stem, target, scale):
     scene.render.resolution_y = 768
     scene.render.resolution_percentage = 100
     scene.display.shading.light = "STUDIO"
-    scene.display.shading.color_type = "MATERIAL"
+    scene.display.shading.color_type = "TEXTURE"
     scene.display.shading.show_shadows = True
     scene.display.shading.show_cavity = True
     scene.display.shading.cavity_type = "BOTH"
