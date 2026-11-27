@@ -21,7 +21,9 @@ public class ModelImportRules : AssetPostprocessor
         importer.maxTextureSize = 1024;
         importer.textureCompression = TextureImporterCompression.CompressedHQ;
         var name = System.IO.Path.GetFileNameWithoutExtension(assetPath);
-        if (name.EndsWith("_Normal")) { importer.textureType = TextureImporterType.NormalMap; importer.sRGBTexture = false; }
+        // Poly Haven sets are named T_XNormal / T_XMask (no underscore); both hold data, not color.
+        if (name.EndsWith("Normal")) { importer.textureType = TextureImporterType.NormalMap; importer.sRGBTexture = false; }
+        if (name.EndsWith("Mask")) importer.sRGBTexture = false;
         if (name.EndsWith("Leaves")) { importer.alphaIsTransparency = true; importer.mipMapsPreserveCoverage = true; importer.alphaTestReferenceValue = .4f; }
     }
 
