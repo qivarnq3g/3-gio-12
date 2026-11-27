@@ -1,0 +1,9 @@
+# Chỉ ảnh `caddy` dùng tệp này. Bản build game (LFS, hàng nghìn tệp) không thuộc ngữ cảnh dựng.
+.git
+game
+server
+tools
+docs/*
+!docs/api
+**/node_modules
+**/dist
