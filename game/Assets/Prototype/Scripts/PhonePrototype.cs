@@ -158,6 +158,12 @@ namespace BaGio12.Prototype
 
         void OnPlayerPhoneChanged(int previous, int next)
         {
+            var director = FindAnyObjectByType<NightOneDirector>();
+            if (director != null && director.InNightTwo)
+            {
+                SetPhoneOpen(false);
+                return;
+            }
             if (next == 1)
             {
                 SetPhoneOpen(true);
@@ -219,6 +225,7 @@ namespace BaGio12.Prototype
             switch (key)
             {
                 case "batchB": return d.batchB;
+                case "batchBSilent": return d.batchBSilent;
                 case "cameraYes": return d.cameraYes;
                 case "cameraNo": return d.cameraNo;
                 case "why": return d.why;
@@ -543,7 +550,7 @@ namespace BaGio12.Prototype
                 if (blocked.Contains(c.id)) continue;
                 foreach (var m in c.messages)
                 {
-                    if (!InBatch(m, batch)) continue;
+                    if (!InBatch(m, batch) || !ArrivesFor(m, c.id, sent)) continue;
                     if (!string.IsNullOrEmpty(m.answers))
                     {
                         string key = c.id + "/" + m.answers;
@@ -558,6 +565,13 @@ namespace BaGio12.Prototype
         }
 
         static bool InBatch(Message m, string batch) => (m.batch ?? "") == batch;
+
+        public static bool ArrivesFor(Message m, string contactId, ICollection<string> sent)
+        {
+            if (string.IsNullOrEmpty(m.when)) return true;
+            bool replied = sent.Any(k => k.StartsWith(contactId + "/"));
+            return m.when == "replied" ? replied : m.when == "silent" ? !replied : true;
+        }
 
         void ApplySent(string key, string time)
         {

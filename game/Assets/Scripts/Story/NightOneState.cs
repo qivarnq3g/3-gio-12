@@ -24,6 +24,10 @@ namespace BaGio12.Story
         public List<string> messages = new List<string>();
         public List<string> pendingMessages = new List<string>();
         public List<string> notebook = new List<string>();
+        // Explicit flag: JsonUtility can materialize inline null objects on copy.
+        // Missing flag in existing v1 envelopes means the player is still in N1.
+        public NightTwoMorningState nightTwo;
+        public bool nightTwoStarted;
         public void Note(string text)
         {
             if (!notebook.Exists(x => x.EndsWith(" - " + text))) notebook.Add(clock + " - " + text);
@@ -59,6 +63,6 @@ namespace BaGio12.Story
     [Serializable] public sealed class NightDialogue
     {
         public string[] batchA;
-        public string batchB, cameraYes, cameraNo, why, warning, stranger, batchD, callReply;
+        public string batchB, batchBSilent, cameraYes, cameraNo, why, warning, stranger, batchD, callReply;
     }
 }

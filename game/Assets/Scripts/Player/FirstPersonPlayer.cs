@@ -25,12 +25,14 @@ namespace BaGio12.Gameplay
         public float staminaSeconds = 3.2f, staminaRecovery = .22f, staminaResume = .4f;
         public float Stamina { get; private set; } = 1f;
         public bool Winded { get; private set; }
+        public bool IsMoving { get; private set; }
         public bool IsRunning { get; private set; }
         public bool IsPaused => paused;
         public uint PoseRevision { get; private set; }
         public bool PauseChangedThisFrame => pauseFrame == Time.frameCount;
         public System.Func<int, bool> CanOpenPhone;
         public event System.Action<int, int> PhoneChanged;
+        public event System.Action PickedUp;
         public event System.Action FellOutOfWorld;
         public bool IsCrouched { get; private set; }
         public int ActivePhone { get; private set; }
@@ -112,7 +114,8 @@ namespace BaGio12.Gameplay
                 if (target != null) target.HandleInput(this, interact.WasPressedThisFrame(), interact.IsPressed());
             }
             var axis = control ? Vector2.ClampMagnitude(move.ReadValue<Vector2>(), 1) : Vector2.zero;
-            IsRunning = control && SprintAllowed && !IsCrouched && !Winded && sprint.IsPressed() && axis.sqrMagnitude > .01f;
+            IsMoving = axis.sqrMagnitude > .01f;
+            IsRunning = IsMoving && SprintAllowed && !IsCrouched && !Winded && sprint.IsPressed();
             if (StaminaLimited && IsRunning) Stamina = Mathf.Max(0, Stamina - Time.deltaTime / staminaSeconds);
             else Stamina = Mathf.Min(1, Stamina + Time.deltaTime * staminaRecovery);
             if (!StaminaLimited) Stamina = 1;
@@ -179,7 +182,8 @@ namespace BaGio12.Gameplay
             SetCrouch(crouched); pitch = Mathf.Clamp(savedPitch, -80, 80);
             eyes.transform.localRotation = Quaternion.Euler(pitch, 0, 0);
         }
-        public void Collect() { ItemsCollected++; Notify("Đã nhặt vật chứng"); }
+        public void Collect() { ItemsCollected++; SignalPickup(); Notify("Đã nhặt vật chứng"); }
+        public void SignalPickup() => PickedUp?.Invoke();
         public void Notify(string message) { notice = message; noticeUntil = Time.time + 3; }
         void OnGUI()
         {

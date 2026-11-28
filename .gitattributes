@@ -30,3 +30,6 @@
 game/Assets/Scenes/Night01/NightOneNavMesh.asset -text
 **/LightingData.asset -text
 game/Assets/Scenes/Night01/NightOneRealisticNavMesh.asset -text
+
+# Blender source snapshot requested in issue #16.
+game/Assets/Art/_Source/Blender~/char_fps_raincoat.blend filter=lfs diff=lfs merge=lfs -text
