@@ -124,6 +124,13 @@ Dựng lại model và xuất ảnh Solid bốn góc bằng Blender 5.2.
 blender --background --python-exit-code 1 --python tools/generate_issue135_police.py -- --render game/Logs/issue135-solid
 ```
 
+## Cửa phòng 7 (issue #24)
+
+| Tệp | Nguồn và cách dựng | Giấy phép |
+|---|---|---|
+| `Models/Props/prop_room7_door.fbx` | Dựng trong Blender từ hình khối cơ bản theo mô tả cửa phòng 7 trong kịch bản. Khung thép và ô thoáng tách khỏi cánh cửa, tâm xoay cánh đặt tại bản lề. | Asset nội bộ dự án. |
+| `MeshesPBR/Room7_Walls_NewDoor.asset` | Chỉnh từ mesh phòng 7 có sẵn trong Unity, bỏ khung và song sắt cũ. Mesh dùng cho cả hiển thị và va chạm của tường. | Theo asset phòng 7 của dự án. |
+
 # Phông chữ
 
 | Tệp | Nguồn | Giấy phép | Ngày |
