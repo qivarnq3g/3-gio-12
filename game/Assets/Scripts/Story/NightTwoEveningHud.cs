@@ -34,7 +34,7 @@ namespace BaGio12.Story
             {
                 Background(new Rect(0, 0, 1280, 720), Color.black);
                 Label(new Rect(280, 260, 750, 100), "HẾT ĐÊM 2", titleStyle);
-                Label(new Rect(280, 330, 750, 70), State.vigilDozed ? "Bạn ngủ gật lúc nào không hay. Trời đã sáng." : "Sáng 26/11 thuộc đêm 3, đang được làm trong #22.", textStyle);
+                Label(new Rect(280, 330, 750, 70), State.vigilDozed ? "Bạn ngủ gật lúc nào không hay. Trời đã sáng." : "Sáng 26/11.", textStyle);
                 if (Button(new Rect(280, 420, 300, 50), "Chơi lại đêm 1")) story.GetComponent<NightPersistence>().StartNewGame();
                 return true;
             }
@@ -82,7 +82,6 @@ namespace BaGio12.Story
                 case "lock": DrawLock(); break;
                 default: DrawEveningMessages(); break;
             }
-            Label(new Rect(65, 660, 1080, 40), "Giao diện tạm cho bản thô, chờ ghép điện thoại #17.", textStyle);
         }
 
         void DrawEveningMessages()
