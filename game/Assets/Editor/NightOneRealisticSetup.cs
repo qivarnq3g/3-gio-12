@@ -128,6 +128,24 @@ public static class NightOneRealisticSetup
         Debug.Log("POLICE_STATION_UPDATED");
     }
 
+    [MenuItem("3 Gio 12/Update Bread Cart in Night One Realistic")]
+    public static void UpdateBreadCart()
+    {
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        var cart = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<Transform>(true))
+            .Single(t => t.name == "Night2_BreadCart").gameObject;
+        var asset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/Night2_BreadCart.fbx");
+        var source = asset.GetComponentsInChildren<Renderer>(true);
+        var target = cart.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < target.Length; i++) target[i].sharedMaterials = source[i].sharedMaterials;
+        ApplyPbrMaterials(cart);
+        foreach (var c in cart.GetComponents<BoxCollider>()) Object.DestroyImmediate(c);
+        AddBoundsCollider(cart);
+        if (!EditorSceneManager.SaveScene(scene))
+            throw new System.IO.IOException("Could not save " + ScenePath);
+        Debug.Log("BREAD_CART_UPDATED " + cart.GetComponent<BoxCollider>().size + " " + string.Join(",", target.SelectMany(r => r.sharedMaterials).Select(m => m == null ? "null" : m.name)));
+    }
+
     static void FoldingGrille(Transform root, float x, float z0, float z1, float height)
     {
         var steel = AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/MaterialsPBR/M_SteelPaintedGreen.mat");
@@ -274,7 +292,6 @@ public static class NightOneRealisticSetup
         ["Night2_BreadCart"] = new Dictionary<string, string>
         {
             ["M_TinRoof"] = "M_TinRust", ["M_StainlessSteel"] = "SF_counter_alu",
-            ["M_FoodBrown"] = "SF_goods", ["M_FoodGreen"] = "SF_goods", ["M_FoodYellow"] = "SF_goods",
         },
         ["Night2_ClampLamp"] = new Dictionary<string, string> { ["M_StainlessSteel"] = "SF_rack_chrome", ["M_SteelDark"] = "M_SteelDark" },
         ["Night2_RiceShop"] = new Dictionary<string, string>
