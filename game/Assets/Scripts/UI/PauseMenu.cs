@@ -65,6 +65,8 @@ namespace BaGio12.Gameplay
         int aboutIndex = -1;
         readonly List<Item> items = new List<Item>();
         int settingsIndex, controlsIndex, confirmIndex = -1;
+        IGameSession layoutSession;
+        bool layoutAtStart, layoutHasSave, layoutAskConsent, layoutCanSubmitEvidence;
         IGameSession Session => player.Session;
         bool AtStart => Session != null && Session.AtStart;
         Entry[] entries;
@@ -107,10 +109,17 @@ namespace BaGio12.Gameplay
         {
             backdrop.color = new Color(1, 1, 1, 0);
             if (Application.isBatchMode) yield break;
-            yield return new WaitForEndOfFrame();
+            // Capture the world without baking our own notice/menu into its blurred background.
+            var canvas = group.GetComponent<Canvas>();
             Texture2D shot = null;
-            try { shot = ScreenCapture.CaptureScreenshotAsTexture(); }
-            catch (Exception) { shot = null; }
+            canvas.enabled = false;
+            try
+            {
+                yield return new WaitForEndOfFrame();
+                try { shot = ScreenCapture.CaptureScreenshotAsTexture(); }
+                catch (Exception) { shot = null; }
+            }
+            finally { if (canvas != null) canvas.enabled = true; }
             if (shot == null) yield break;
             int w = Mathf.Max(8, shot.width / 16), h = Mathf.Max(8, shot.height / 16);
             if (blurred == null || blurred.width != w || blurred.height != h)
@@ -394,6 +403,9 @@ namespace BaGio12.Gameplay
         {
             items.Clear();
             var session = Session;
+            layoutSession = session; layoutAtStart = AtStart; layoutHasSave = session != null && session.HasSave;
+            layoutAskConsent = session != null && session.AskTelemetryConsent;
+            layoutCanSubmitEvidence = session != null && session.CanSubmitEvidence;
             if (AtStart && session.AskTelemetryConsent)
             {
                 settingsIndex = controlsIndex = -1;
@@ -472,6 +484,16 @@ namespace BaGio12.Gameplay
             if (show && !shown) Open();
             if (!show && shown) Close();
             shown = show;
+            // A focus-loss pause can open this menu before the session coroutine is ready.
+            // Refresh its actions when startup/save state arrives, without requiring a reopen.
+            if (show && (layoutSession != Session || layoutAtStart != AtStart || layoutHasSave != (Session != null && Session.HasSave)
+                || layoutAskConsent != (Session != null && Session.AskTelemetryConsent)
+                || layoutCanSubmitEvidence != (Session != null && Session.CanSubmitEvidence)))
+            {
+                selected = 0; inPage = false;
+                Layout();
+            }
+            if (show) ShowNoticeIfNeeded();
             float dt = Time.unscaledDeltaTime;
             group.alpha = Mathf.MoveTowards(group.alpha, show ? 1 : 0, dt * 6);
             if (!show && group.alpha <= 0)
@@ -528,7 +550,13 @@ namespace BaGio12.Gameplay
             lightLevel = 0;
             SwitchLights(true);
             StartCoroutine(CaptureBackdrop());
-            if (!noticeSeen && AtStart && Session.ShowWarning) { noticeUp = true; noticeAt = Time.unscaledTime; notice.alpha = 1; noticeHint.alpha = 0; }
+            ShowNoticeIfNeeded();
+        }
+
+        void ShowNoticeIfNeeded()
+        {
+            if (!noticeSeen && !noticeUp && AtStart && Session.ShowWarning)
+            { noticeUp = true; noticeAt = Time.unscaledTime; notice.alpha = 1; noticeHint.alpha = 0; }
         }
 
         void Close()
