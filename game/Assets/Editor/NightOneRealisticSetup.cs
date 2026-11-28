@@ -561,8 +561,8 @@ public static class NightOneRealisticSetup
         Lamp("Camera red LED", led.center + Vector3.left * .03f, Color.red, .1f, 1);
 
         var hung = Watch("Chú Hùng", new Vector3(2.6f, .05f, -2.4f), 270, 20, 5, 5, story); hung.flashlight = true;
-        var stool = Box("Dishwasher_Stool", new Vector3(-1.45f, 0, -10.5f), new Vector3(-1.15f, .35f, -10.2f));
-        Watch("Người phụ nữ", new Vector3(stool.center.x, 0, stool.center.z), 90, 13, 3, 3, story).irregularLook = true;
+        var dishwasher = Watch("Người phụ nữ", new Vector3(-1.3f, .11f, -10.35f), 90, 13, 3, 3, story);
+        dishwasher.irregularLook = true;
         var kids = new Vector3(1.4f, 0, -15);
         Watch("Đứa nhỏ 1", kids, 270, 12, 4, 6, story, true).patrol = true;
         Watch("Đứa nhỏ 2", kids + new Vector3(0, 0, -1.5f), 270, 12, 4, 8, story, true).patrol = true;
@@ -729,7 +729,10 @@ public static class NightOneRealisticSetup
         bool corridor = NavMesh.SamplePosition(new Vector3(top.center.x + .2f, room.min.y, -41), out var landing, .8f, NavMesh.AllAreas);
         if (!corridor || !NavMesh.CalculatePath(story.parkingSpawn.position, landing.position, NavMesh.AllAreas, stairs) || stairs.status != NavMeshPathStatus.PathComplete)
             missing.Add("navmesh path parking->room7 corridor");
-        CharacterSetup.DressObservers(watchers);
+        CharacterSetup.DressObservers(watchers, hung, dishwasher, lienWatch);
+        var storyData = new SerializedObject(story);
+        storyData.FindProperty("lienAnimator").objectReferenceValue = lienWatch.GetComponent<ObserverAnimator>().animator;
+        storyData.ApplyModifiedPropertiesWithoutUndo();
         EditorSceneManager.SaveScene(scene); AssetDatabase.SaveAssets();
         Debug.Log($"NIGHT_ONE_REALISTIC_CREATED missing=[{string.Join(",", missing)}]");
     }
