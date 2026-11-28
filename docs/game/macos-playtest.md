@@ -59,3 +59,25 @@ App giải nén mới trên M2 đã hiện đúng chơi mới, vào hẻm, đổ
 Đo bằng `-playtestStats`: chỉ lấy cửa sổ 10 giây khi app có focus và không tạm dừng, tự bỏ mẫu khi đổi độ phân giải/chất lượng. Chế độ này chỉ ghi log; không tắt NPC, di chuyển người chơi hay đổi chất lượng. Kết quả 1280×720, Metal, PC Low: 17 cửa sổ, trung vị 87.6 FPS, khoảng 67.2–182.6 FPS. [Số liệu từng cửa sổ](qa/macos-2026-11-26/fps.csv). Mẫu gồm đi lại, đứng tại chỗ và chuỗi bị phát hiện, không phải benchmark tuyến cố định và không chứng minh hiệu năng toàn game.
 
 **Vẫn chưa đạt:** hoàn tất đặt máy rồi quay ra đầu hẻm; chơi liền Đêm 1→2→3; kiểm download từ release đúng commit. Chưa tạo video demo đạt yêu cầu. Chưa phát hành hoặc đánh dấu #127 xong. Ảnh và CSV là từ app native mới, không phải Editor.
+
+
+## Đồng bộ menu với main — 28/11/2026
+
+Gộp `main@7999a25` (đã có #130, #149, #153) vào nhánh #131. Giữ màn hỏi đồng ý thống kê, mục gửi bằng chứng, trang giới thiệu và chặn mở cài đặt khi chưa trả lời; đồng thời cập nhật danh sách khi phiên lưu gắn muộn hoặc trạng thái đồng ý/quyền gửi bằng chứng thay đổi. Cảnh báo nội dung vẫn xuất hiện nếu phiên tới sau khi menu mở. Ảnh nền làm mờ bỏ canvas menu/cảnh báo khỏi khung chụp, tránh chữ cảnh báo lưu lại phía sau menu.
+
+Máy kiểm: Apple M2 / 8 GB / macOS 15.7.4, Unity 6000.3.26f1. Các thư mục `THREEGIO12_DATA_ROOT` riêng, không dùng bản lưu người chơi.
+
+| Bài kiểm | Nguồn | Kết quả |
+|---|---|---|
+| `SaveProgressRegression.Write`, `Read` — hai tiến trình, cùng dữ liệu | `5ed3937` | `SAVE_WRITE_PROCESS_PASSED`, `SAVE_READ_PROCESS_PASSED`, exit 0 |
+| `OnlineServicesRegression.Run` | `5ed3937` | `ONLINE_LOGIC_CASES_PASSED`, `ONLINE_PLATFORM_GUARD_PASSED`, `ONLINE_SERVICES_REGRESSION_PASSED`, exit 0 |
+| `PauseMenuSessionRegression.Run` | `a6ca144` | `PAUSE_MENU_SESSION_REGRESSION_PASSED`, exit 0 |
+| `SaveProgressRegression.Menu` — Editor có đồ họa | `a6ca144` | `SAVE_MENU_CAPTURE_PASSED`, exit 0; đã xem ảnh warning/menu/settings |
+
+Bài lưu/nạp hiện dùng NightOneGraybox để kiểm trạng thái/lưu trữ; bài menu gắn phiên muộn dùng NightOneRealistic. Không suy ra đã chơi xuyên ba đêm từ các bài này. Log Editor có lỗi lập chỉ mục `UnityEditor.Search.SearchDatabase` lúc khởi động như main.
+
+Telemetry chỉ hỗ trợ Windows: Mac phải không hỏi/không xếp hàng/không gửi, kể cả gọi `SetConsent(true)` bằng mã. Bản sửa bổ sung chặn này ở API; không bật telemetry trên Mac để làm bài kiểm đạt. Vẫn kiểm HTTP loopback gửi **hash** bằng chứng, phản hồi từ chối/chấp nhận/lỗi máy chủ và lưu unlock khi từ chối thống kê. Nhánh kiểm transport/batches/revocation Windows giữ nguyên nhưng cần chạy trên Windows, chưa được xác nhận bởi lượt Mac này.
+
+Đây là cập nhật mã để duyệt #131; zip native và số FPS ngày 26/11 vẫn từ `dd481ed`, không phải bản dựng của các sửa 28/11. Chưa đóng #127 hoặc phát hành Mac.
+
+Ảnh Game View mới (không phải app native): [cảnh báo](qa/macos-menu-2026-11-28/warning.png), [menu sau xác nhận](qa/macos-menu-2026-11-28/menu.png), [cài đặt](qa/macos-menu-2026-11-28/settings.png). Bài chụp dùng bàn phím Input System riêng, đợi đủ thời gian tối thiểu rồi xác nhận cảnh báo; kiểm ảnh tồn tại trước khi báo đạt.
