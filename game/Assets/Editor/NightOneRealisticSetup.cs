@@ -139,9 +139,11 @@ public static class NightOneRealisticSetup
         var target = cart.GetComponentsInChildren<Renderer>(true);
         for (int i = 0; i < target.Length; i++) target[i].sharedMaterials = source[i].sharedMaterials;
         ApplyPbrMaterials(cart);
+        foreach (var c in cart.GetComponents<BoxCollider>()) Object.DestroyImmediate(c);
+        AddBoundsCollider(cart);
         if (!EditorSceneManager.SaveScene(scene))
             throw new System.IO.IOException("Could not save " + ScenePath);
-        Debug.Log("BREAD_CART_UPDATED " + string.Join(",", target.SelectMany(r => r.sharedMaterials).Select(m => m == null ? "null" : m.name)));
+        Debug.Log("BREAD_CART_UPDATED " + cart.GetComponent<BoxCollider>().size + " " + string.Join(",", target.SelectMany(r => r.sharedMaterials).Select(m => m == null ? "null" : m.name)));
     }
 
     static void FoldingGrille(Transform root, float x, float z0, float z1, float height)
