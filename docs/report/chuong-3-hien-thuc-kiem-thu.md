@@ -160,7 +160,46 @@ Tệp ghi âm được đặt trong `StreamingAssets` để Unity giữ nguyên 
 
 <!-- Người viết: Thắng. Gồm: bộ test case 33 mục ở docs/test-case.md (bản nháp ở pull request của Quang), kết quả chạy từng test case (ngày, phiên bản, người chạy), tổng hợp lỗi tìm được và đã sửa, kết quả chơi thử kín. Chỉ ghi kết quả đã chạy thật. -->
 
-Phần này đang được soạn.
+<!-- Bản nháp 28/11 của Thắng: đã có phương pháp và tổng hợp lỗi. Kết quả từng test case và kết quả chơi thử kín điền sau khi có bản Windows #140. -->
+
+### Phương pháp kiểm thử
+
+Nhóm kiểm thử ở ba mức. Mức thứ nhất là bài kiểm tự động trong Unity: mỗi tính năng chính của game có một bài kiểm chạy bằng Unity ở chế độ không giao diện (`-batchmode`), tự mở cảnh, mô phỏng thao tác của người chơi rồi thoát với mã 0 khi đạt. Các bài kiểm lưu tiến độ chạy thành cặp hai tiến trình, tiến trình đầu ghi và tiến trình sau đọc lại, để chắc dữ liệu còn nguyên sau khi tắt game. Mỗi bài kiểm dùng thư mục dữ liệu riêng để không đè bản lưu thật. Mức thứ hai là kiểm thử tích hợp của máy chủ chạy trên PostgreSQL thật trong container, cùng kiểm thử của trang quản trị bằng Vitest; hai bộ này chạy tự động trong GitHub Actions ở mỗi pull request. Mức thứ ba là kiểm tay trên bản dựng Windows và buổi chơi thử kín với người ngoài nhóm.
+
+Bộ test case gồm 33 mục cho 14 yêu cầu chức năng, ghi ở `docs/test-case.md`. Mỗi yêu cầu có ít nhất một test case; test case nào đã có bài kiểm tự động thì ghi tên bài, phần còn lại kiểm tay theo các bước ghi sẵn. Chỉ ghi “Đạt” cho test case đã chạy thật, kèm ngày, phiên bản và người chạy.
+
+### Kết quả chạy test case
+
+Phần này đang được soạn: điền sau khi có bản Windows Đêm 1-3 của task #140.
+
+### Lỗi tìm được và đã sửa
+
+Lỗi được ghi thành issue theo mẫu báo lỗi (các bước tái hiện, kết quả mong đợi, kết quả thực tế, phiên bản), kèm tọa độ trên bảng F3 của bản chơi thử khi lỗi gắn với một vị trí trong cảnh. Tới ngày 28/11/2026, nhóm ghi nhận 24 lỗi, đã sửa 19 và còn mở 5. Bảng 3.3 chia số lỗi theo nhóm.
+
+| Nhóm lỗi | Số lỗi | Đã sửa | Ví dụ |
+|---|---|---|---|
+| Hình ảnh và model 3D | 12 | 11 | Xé hình (z-fighting) ở tường và biển số nhà; vật xuyên vào nhau hoặc lơ lửng; decal chiếu đè lên song sắt; bánh xe Cub bị phẳng |
+| Lối chơi và kịch bản | 5 | 4 | Rơi khỏi bản đồ ở khe giữa hai tiệm; vật cản vô hình ở nhà xe; tin nhắn của “Mẹ” tự gửi khi người chơi chưa chọn; chỉ dẫn ghi sai loại xe |
+| Âm thanh | 1 | 1 | Tiếng ù kéo dài khi nhấn Esc |
+| Hiệu năng | 1 | 0 | FPS thấp trong cảnh tả thực |
+| Bản dựng trên nền tảng khác | 1 | 0 | Model hiện thành khối hồng trên Linux |
+| Bài kiểm tự động | 2 | 2 | Bài đi bộ Đêm 1 phụ thuộc tốc độ khung hình; Esc không thoát tạm dừng trong bài kiểm |
+| Thống kê ẩn danh | 1 | 0 | Sự kiện bắt đầu Đêm 1 không tới máy chủ |
+| Công cụ báo lỗi | 1 | 1 | Phím F3 không hiện tọa độ trong bản dựng |
+
+: Lỗi tìm được theo nhóm, tới ngày 28/11/2026
+
+Mười một lỗi (phần lớn là lỗi hình ảnh) được ghi trong lượt rà cảnh ngày 21/11 và đã sửa xong trong ngày 23 và 24/11, trước bản chơi thử ngày 24/11. Năm lỗi còn mở gồm:
+
+- Bộ gõ tiếng Việt làm kẹt phím di chuyển: đã có bản sửa và bài kiểm tự động, chờ xác nhận trên bản dựng.
+- Khung sắt, dây điện và xe máy ngoài đường lớn: đã sửa trong cảnh, chờ kiểm bằng mắt trên bản dựng.
+- FPS thấp trong cảnh tả thực: chờ số đo trên bản Windows #140.
+- Model hiện khối hồng trên Linux: bản Linux nằm ngoài cam kết của thuyết minh thiết kế (chỉ Windows là bắt buộc).
+- Sự kiện bắt đầu Đêm 1 không tới máy chủ: đã có bản sửa, đã kiểm với máy chủ chạy trong Docker, chờ gộp.
+
+### Kết quả chơi thử kín
+
+Phần này đang được soạn: điền sau buổi chơi thử kín (task #31).
 
 ## 6. Triển khai
 
