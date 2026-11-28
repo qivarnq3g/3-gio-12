@@ -251,7 +251,7 @@ namespace BaGio12.Story
             for (int i = 0; i < count; i++)
             {
                 SplitMessage(lines[i], out _, out string body);
-                heights[i] = 30 + HudKit.TextHeight(body, 25, area.width - 20) + 26; total += heights[i];
+                heights[i] = 30 + HudKit.TextHeight(body, 25, area.width - 40) + 26; total += heights[i];
             }
             if (count != shownMessageCount) { shownMessageCount = count; scroll.y = float.MaxValue; }
             scroll = HudKit.BeginScroll(area, scroll, area.width - 20, total);
