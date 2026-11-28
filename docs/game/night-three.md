@@ -118,3 +118,12 @@ Tất cả 8 lượt sau chạy trên `45752cd`, Unity 6000.3.26f1/M2/macOS 15.7
 Morning/Evening đều bật cờ bắt buộc model thật và ghi marker `NO_FIXTURES`; bài Đêm 3 bắt buộc quầy FBX thật. NightThree.Write chạy Editor có GPU, đã xem ảnh Game View cùng hai PNG camera; các bài còn lại nographics. SaveProgress trên nhánh này mở NightOneRealistic và seed điều kiện đã tới nhà/giúp cô Liên để kiểm riêng lưu trữ. Log vẫn có SearchDatabase/indexing khởi động như main. Các float vật liệu Editor tự làm tròn không đưa vào PR.
 
 #83 đã gộp, #85 sẵn sàng chờ Thắng duyệt. #90 giữ đích #85 cho tới khi #85 gộp, sau đó mới đổi sang main. Chưa có video/chơi tay toàn tuyến; chưa đóng #22 hoặc khẳng định đủ điều kiện phát hành.
+
+
+## Giao diện #161 và bản Mac tích hợp — tiếp 28/11
+
+Đã duyệt/chạy thử và gộp #161 vào nhánh #90 (`860dab7`) theo yêu cầu Quang. Giữ giao diện HudChoices mới; sửa thêm bề rộng đo chat đúng với chỗ vẽ chữ và phụ đề không đè footer. [Ảnh so sánh N1/N2/N3, phím Enter/D và kết quả](qa/phone-ui-2026-11-28/README.md). Các ảnh dùng seed trạng thái, không thay cho chơi tay.
+
+Dựng bản tích hợp cục bộ `59a6358` (mã #90 sau #161 + #131 `2996564`, chưa gộp các PR này vào main). `PlaytestBuild.NightOneRealMac`: `PLAYTEST_PREVIEW_RESULT StandaloneOSX Succeeded 0`, exit 0, Unity 6000.3.26f1. Zip `3gio12-macos-59a6358.zip`, SHA-256 `9813118f33babae0fa7c48006db422ceba21b07b32ce2979b76db1757a8edf11`; giải nén riêng giữ executable, `lipo` xác nhận x86_64/arm64.
+
+App giải nén đã mở tới cảnh báo và đoạn mở đầu N1 trên M2/Metal, với DATA_ROOT kiểm thử riêng. Log có cảnh báo NavMesh/PanelSettings như các bản trước. Chưa xác nhận hết N1 hoặc xuyên ba đêm; chưa có video toàn tuyến. Đây là binary nội bộ để kiểm, không phải release đã duyệt; không đính vào release Windows khác commit, không đóng #22/#127.
