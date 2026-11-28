@@ -14,7 +14,9 @@ using UnityEngine.InputSystem.LowLevel;
 public static class NightPhoneUiRegression
 {
     const string Flag = "NightPhoneUiReview";
-    static Keyboard keyboard;
+    static Keyboard keyboard, competingKeyboard;
+    static bool ownsKeyboard;
+    static KeyboardState heldState;
     static double next, deadline;
     static int step;
     static NightOneDirector story;
@@ -22,7 +24,17 @@ public static class NightPhoneUiRegression
     static readonly string[] captures = { "n1-phone", "n2-alarm", "n2-ngan", "n2-own", "n3-alarm", "n3-stranger", "n3-profile" };
     static NightPhoneUiRegression()
     { if (SessionState.GetBool(Flag, false)) EditorApplication.playModeStateChanged += Changed; }
+    public static void RunWithCompetingKeyboard()
+    {
+        SessionState.SetBool(Flag + "Competing", true);
+        StartReview();
+    }
     public static void Run()
+    {
+        SessionState.SetBool(Flag + "Competing", false);
+        StartReview();
+    }
+    static void StartReview()
     {
         if (Application.isBatchMode) throw new Exception("UI review requires a graphical Editor.");
         string root = Environment.GetEnvironmentVariable("THREEGIO12_DATA_ROOT");
@@ -42,15 +54,41 @@ public static class NightPhoneUiRegression
         Application.runInBackground = true;
         InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
         InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
-        keyboard = InputSystem.AddDevice<Keyboard>();
+        if (SessionState.GetBool(Flag + "Competing", false))
+        {
+#if UNITY_EDITOR_WIN
+            // Windows already supplies a real current owner. A second MakeCurrent
+            // callback would compete with that owner, rather than emulate it.
+            Debug.Log("PHONE_UI_COMPETING_FIXTURE_NOT_ADDED: using the existing Windows physical hook");
+#else
+            competingKeyboard = InputSystem.AddDevice<Keyboard>("ReviewCurrentKeyboardOwner");
+            InputSystem.onAfterUpdate += KeepCompetingKeyboardCurrent;
+#endif
+        }
+        // Windows' physical hook owns Keyboard.current after every input update.
+        // Feed the HUD's active input device, rather than an unrelated synthetic one.
+        keyboard = competingKeyboard;
+#if UNITY_EDITOR_WIN
+        if (keyboard == null) keyboard = PhysicalKeyboardHook.Device;
+#endif
+        ownsKeyboard = keyboard == null;
+        if (ownsKeyboard) keyboard = InputSystem.AddDevice<Keyboard>("PhoneUiReviewKeyboard");
+        heldState = new KeyboardState();
+        InputSystem.onBeforeUpdate += QueueHeldState;
+        Debug.Log("PHONE_UI_REVIEW_INPUT_DEVICE " + keyboard.name + " owned=" + ownsKeyboard);
         var view = EditorWindow.GetWindow(typeof(EditorWindow).Assembly.GetType("UnityEditor.GameView"));
         view.position = new Rect(50, 50, 1280, 800); view.Show(); view.Focus();
         step = 0; next = EditorApplication.timeSinceStartup + 2; deadline = next + 100;
         EditorApplication.update += Tick;
     }
+    static void KeepCompetingKeyboardCurrent() => competingKeyboard?.MakeCurrent();
     static void Check(bool ok, string message) { if (!ok) throw new Exception("PHONE UI: " + message); }
     static void Capture(string name) => ScreenCapture.CaptureScreenshot(Path.Combine(NightPersistence.DataRoot, name + ".png"));
-    static void Key(bool down) => InputSystem.QueueStateEvent(keyboard, down ? new KeyboardState(UnityEngine.InputSystem.Key.Enter) : new KeyboardState());
+    // Registered after the hook's Push callback so a physical state refresh cannot
+    // overwrite the review's held key before the same input update reaches the HUD.
+    static void QueueHeldState()
+    { if (keyboard != null && keyboard.added) InputSystem.QueueStateEvent(keyboard, heldState); }
+    static void Key(bool down) => heldState = down ? new KeyboardState(UnityEngine.InputSystem.Key.Enter) : new KeyboardState();
     static void Tick()
     {
         EditorApplication.QueuePlayerLoopUpdate();
@@ -92,9 +130,9 @@ public static class NightPhoneUiRegression
                 case 14: Key(true); break;
                 case 15:
                     Key(false); Check(story.State.number_choice != "blocked", "Enter did not activate unblock action");
-                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(UnityEngine.InputSystem.Key.D)); break;
+                    heldState = new KeyboardState(UnityEngine.InputSystem.Key.D); break;
                 case 16:
-                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    heldState = new KeyboardState();
                     var tab = typeof(NightTwoMorning).GetField("threeTab", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
                     Check((string)tab.GetValue(night) == "profile", "D did not switch to profile tab"); break;
                 case 17: Capture("n3-profile"); break;
@@ -109,7 +147,11 @@ public static class NightPhoneUiRegression
     }
     static void Finish(int code)
     {
-        if (keyboard != null) InputSystem.RemoveDevice(keyboard);
+        InputSystem.onBeforeUpdate -= QueueHeldState;
+        if (keyboard != null && keyboard.added) InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+        InputSystem.onAfterUpdate -= KeepCompetingKeyboardCurrent;
+        if (competingKeyboard != null) InputSystem.RemoveDevice(competingKeyboard);
+        if (ownsKeyboard && keyboard != null) InputSystem.RemoveDevice(keyboard);
         SessionState.SetBool(Flag, false); EditorApplication.update -= Tick; EditorApplication.Exit(code);
     }
 }
