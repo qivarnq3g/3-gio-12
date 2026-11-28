@@ -109,10 +109,17 @@ namespace BaGio12.Gameplay
         {
             backdrop.color = new Color(1, 1, 1, 0);
             if (Application.isBatchMode) yield break;
-            yield return new WaitForEndOfFrame();
+            // Capture the world without baking our own notice/menu into its blurred background.
+            var canvas = group.GetComponent<Canvas>();
             Texture2D shot = null;
-            try { shot = ScreenCapture.CaptureScreenshotAsTexture(); }
-            catch (Exception) { shot = null; }
+            canvas.enabled = false;
+            try
+            {
+                yield return new WaitForEndOfFrame();
+                try { shot = ScreenCapture.CaptureScreenshotAsTexture(); }
+                catch (Exception) { shot = null; }
+            }
+            finally { if (canvas != null) canvas.enabled = true; }
             if (shot == null) yield break;
             int w = Mathf.Max(8, shot.width / 16), h = Mathf.Max(8, shot.height / 16);
             if (blurred == null || blurred.width != w || blurred.height != h)
