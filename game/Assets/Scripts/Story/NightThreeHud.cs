@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using BaGio12.Gameplay;
@@ -9,6 +10,11 @@ namespace BaGio12.Story
 {
     public sealed partial class NightTwoMorning
     {
+        static readonly string[] ThreeNganTabs = { "messages", "stranger", "profile", "fake", "devices", "calculator", "vault" };
+        static readonly string[] ThreeNganLabels = { "Tin nhắn", "Dãy số", "Trang cá nhân", "Mẹ", "Nimbo", "Máy tính", "Két ngoài" };
+        static readonly string[] ThreeOwnTabs = { "contacts", "camera", "photos", "clock" };
+        static readonly string[] ThreeOwnLabels = { "Liên lạc", "Camera", "Thư viện ảnh", "Đồng hồ" };
+
         string ThreeObjective
         {
             get
@@ -19,178 +25,234 @@ namespace BaGio12.Story
                     case NightThreeStage.ToGas:return "Xuống nhà xe, bật máy. Đèn báo xăng nháy đỏ.";
                     case NightThreeStage.GasStation:return "Nhờ nhân viên đổ xăng, nắp phía trước.";
                     case NightThreeStage.GasReturn:return "Bật máy, về nhà trọ.";
-                    case NightThreeStage.MorningRoom:return "Đặt báo thức 13:00 trên máy mình (2), rồi nằm nghỉ.";
-                    case NightThreeStage.Evening:return Third.policeIntent && MissingThreeAssets!="" ? MissingThreeAssets : "Máy Ngân (1): tin thoại, lịch sử chat và trang cá nhân. Máy mình (2): camera, thư viện và liên lạc.";
-                    case NightThreeStage.LateNight:return "23:30 — Tới nệm, chọn đi ngủ hay thức canh.";
-                    case NightThreeStage.DawnWaiting:return "23:47 — Xem tin thoại nếu có, rồi trở lại nệm chờ sáng.";
+                    case NightThreeStage.MorningRoom:return "Đặt báo thức 13:00 trên máy của bạn (2), rồi nằm nghỉ.";
+                    case NightThreeStage.Evening:return Third.policeIntent && MissingThreeAssets!="" ? MissingThreeAssets : "Máy Ngân (1): tin thoại, lịch sử chat và trang cá nhân. Máy của bạn (2): camera, thư viện và liên lạc.";
+                    case NightThreeStage.LateNight:return "23:30. Tới nệm, chọn đi ngủ hay thức canh.";
+                    case NightThreeStage.DawnWaiting:return "23:47. Xem tin thoại nếu có, rồi trở lại nệm chờ sáng.";
                     default:return "Hết Đêm 3.";
                 }
             }
         }
+
+        string ThreeScreenId()
+        {
+            if (ThreeEnded) return "three:ended";
+            if (page != "") return "three:page:" + page;
+            if (story.player.ActivePhone != 0) return "three:phone" + story.player.ActivePhone + ":" + threeTab;
+            return "";
+        }
+
         void DrawThree()
         {
-            if(Transitioning)
+            if (Transitioning)
             {
-                if(threeBlackout)Background(new Rect(0,0,1280,720),Color.black);
-                else Label(new Rect(100,550,1080,120),story.Subtitle,textStyle);
+                if (threeBlackout) HudKit.Fill(new Rect(0, 0, HudKit.Width, HudKit.Height), Color.black);
+                else if (story.Subtitle != "") HudKit.Subtitle(story.Subtitle);
                 return;
             }
-            if(ThreeEnded)
+            string id = ThreeScreenId();
+            TrackScreen(id);
+            if (id == "three:ended")
             {
-                Background(new Rect(0,0,1280,720),Color.black);
-                Label(new Rect(160,220,1050,80),Third.stage==NightThreeStage.Scapegoat?"KẺ GÁNH TỘI":"HẾT ĐÊM 3",titleStyle);
-                Label(new Rect(160,320,1050,100),Third.stage==NightThreeStage.Scapegoat?"Cán bộ nhận máy, bảo bạn ngồi chờ ghi lời khai.":"Sáng 27/11. Kết thúc ba đêm.",textStyle);
-                if(Button(new Rect(160,470,420,55),"Chơi mới Đêm 1"))story.GetComponent<NightPersistence>().StartNewGame();return;
+                bool scapegoat = Third.stage == NightThreeStage.Scapegoat;
+                DrawEndedScreen(scapegoat ? "Kẻ gánh tội" : "Hết Đêm 3", scapegoat ? "Cán bộ nhận máy, bảo bạn ngồi chờ ghi lời khai." : "Sáng 27/11. Kết thúc ba đêm.",
+                    new List<(string, Action, bool)> { ("Chơi mới Đêm 1", () => story.GetComponent<NightPersistence>().StartNewGame(), true) });
+                return;
             }
-            if(page!="")
+            if (id == "")
             {
-                Background(new Rect(0,0,1280,720),new Color(.025f,.04f,.055f));
-                if(page=="alarm3")
-                {
-                    Label(new Rect(80,80,1080,140),"06:30 — Bống ơi, dậy đi con, muộn rồi.\nBay sang Nhật: còn 7 ngày.",titleStyle);
-                    if(Choice(0,"Tắt báo thức (Esc)"))StopThreeAlarm();return;
-                }
-                if(Button(new Rect(1090,20,150,45),"Đóng (Esc)"))CloseThreePage();
-                if(page=="notebook"){DrawThreeLog(story.State.notebook);return;}
-                if(page=="tea3")
-                {
-                    Label(new Rect(80,100,1080,120),"Ít đường. Trân châu trắng. Cảm ơn cháu. Mẹ Ngân.",titleStyle);
-                    if(Choice(0,"Uống"))DecideThreeTea(true);if(Choice(1,"Để đó"))DecideThreeTea(false);return;
-                }
-                Label(new Rect(80,100,1080,100),ThreeObjective,titleStyle);
-                if(Third.stage==NightThreeStage.Evening){if(Choice(0,"Chờ tới 23:30")) {if(WaitThreeLate())page="bed3";}}
-                if(Third.stage==NightThreeStage.LateNight)
-                {if(Choice(1,"Đi ngủ"))ChooseThreeNight(true);if(Choice(2,"Thức canh"))ChooseThreeNight(false);}
-                if(Third.stage==NightThreeStage.DawnWaiting && Choice(1,"Chờ sáng"))FinishThreeDawn();
-                Label(new Rect(80,580,1080,80),story.Subtitle,textStyle);return;
+                bool atStop = Third.riding && Third.routeMetres >= FixedRouteRide.Length && Third.speed <= .05f;
+                DrawPlayHud("Đêm 3   ·   Thứ Năm, 26/11", ThreeObjective, Third.riding, Third.speed, "", atStop, false);
+                return;
             }
-            if(story.player.ActivePhone!=0){DrawThreePhone();return;}
-            Background(new Rect(20,18,1150,130),new Color(.02f,.03f,.05f,.9f));
-            Label(new Rect(38,25,1100,40),story.State.clock+" — Đêm 3 · Thứ Năm, 26/11/2026",titleStyle);
-            Label(new Rect(38,75,1100,65),ThreeObjective,textStyle);
-            Label(new Rect(30,660,1220,55),Third.riding?"W tăng tốc · S/Space phanh · E xuống xe khi tới nơi · Esc tạm dừng":"WASD đi · E tương tác · 1 máy Ngân · 2 máy mình · N Sổ tay · Esc tạm dừng",textStyle);
-            if(Third.riding)Label(new Rect(60,200,1000,60),"Tốc độ: "+(Third.speed*3.6f).ToString("0")+" km/h"+(Third.routeMetres>=80?" · E xuống xe":""),textStyle);
+            float age = Now - screenAt, rise = HudKit.Reveal(age, .04f, .26f);
+            HudKit.Backdrop(.97f * HudKit.OutCubic(Mathf.Clamp01(age / .2f)));
+            HudKit.Push(rise, 0, 14 * (1 - rise));
+            if (page != "") DrawThreePage();
+            else DrawThreePhone();
+            HudKit.Pop();
+            if (story.Subtitle != "") HudKit.Subtitle(story.Subtitle);
+        }
+
+        void DrawThreePage()
+        {
+            float left = HudKit.Margin;
+            if (page == "alarm3")
+            {
+                HudKit.Heading(left, 70, "06:30", "Báo thức");
+                HudKit.Label(new Rect(left, 220, 1400, 60), "Bống ơi, dậy đi con, muộn rồi.", 40, HudKit.Fade(HudKit.Alarm, .72f + .28f * Mathf.Sin(Now * 5.5f)), true);
+                HudKit.Label(new Rect(left, 290, 1400, 40), "Bay sang Nhật: còn 7 ngày.", 26, HudKit.Fade(HudKit.Paper, .75f));
+                Pick(screenChoices, left, 380, new List<(string, Action, bool)> { ("Tắt báo thức", () => StopThreeAlarm(), true) });
+                HudKit.Footer("W S", "Chọn", "Enter", "Xác nhận");
+                return;
+            }
+            if (page == "notebook") { DrawNotebook(left); return; }
+            CloseAction("Đóng");
+            HudKit.Heading(left, 70, story.State.clock, "");
+            var items = new List<(string label, Action run, bool enabled)>();
+            float y0 = 250;
+            if (page == "tea3")
+            {
+                HudKit.Label(new Rect(left, 104, 1400, 70), "Ly trà sữa trên bàn cô Liên", 40, HudKit.Paper, true);
+                HudKit.Label(new Rect(left, 190, 1400, 40), "Ít đường. Trân châu trắng. Cảm ơn cháu. Mẹ Ngân.", 26, HudKit.Fade(HudKit.Paper, .8f));
+                items.Add(("Uống", () => DecideThreeTea(true), true));
+                items.Add(("Để đó", () => DecideThreeTea(false), true));
+                y0 = 280;
+            }
             else
             {
-                HudKit.Label(new Rect(HudKit.Width/2-8,HudKit.Height/2-16,24,32),"+",24,HudKit.Paper);
-                if(Physics.Raycast(story.player.eyes.transform.position,story.player.eyes.transform.forward,out var hit,story.player.reach,PlayerGeometry.WorldMask,QueryTriggerInteraction.Ignore))
-                {var node=hit.collider.GetComponentInParent<MorningInteraction>();if(node!=null)HudKit.Prompt("E",node.Prompt);}
+                float h = Mathf.Max(60, HudKit.TextHeight(ThreeObjective, 36, 1400, true));
+                HudKit.Label(new Rect(left, 104, 1400, h + 10), ThreeObjective, 36, HudKit.Paper, true);
+                y0 = 130 + h;
+                if (Third.stage == NightThreeStage.Evening) items.Add(("Chờ tới 23:30", () => { if (WaitThreeLate()) page = "bed3"; }, true));
+                if (Third.stage == NightThreeStage.LateNight)
+                {
+                    items.Add(("Đi ngủ", () => ChooseThreeNight(true), true));
+                    items.Add(("Thức canh", () => ChooseThreeNight(false), true));
+                }
+                if (Third.stage == NightThreeStage.DawnWaiting) items.Add(("Chờ sáng", () => FinishThreeDawn(), true));
             }
-            Label(new Rect(100,560,1080,85),story.Subtitle,textStyle);
+            if (items.Count == 0) { HudKit.Footer("Esc", "Đóng"); return; }
+            Pick(screenChoices, left, y0, items);
+            HudKit.Footer("W S", "Chọn", "Enter", "Xác nhận", "Esc", "Đóng");
         }
-        void DrawThreeLog(System.Collections.Generic.List<string> lines)
-        {
-            float width = HudRect(new Rect(0,0,1100,0)).width;
-            float height=lines.Sum(x=>HudKit.TextHeight(x,30,width)+27);
-            scroll=HudKit.BeginScroll(HudRect(new Rect(65,150,1120,345)),scroll,width,Mathf.Max(510,height));
-            float y=0;
-            foreach(string line in lines)
-            { float h=HudKit.TextHeight(line,30,width); HudKit.Label(new Rect(0,y,width,h),line,30,HudKit.Paper); y+=h+27; }
-            HudKit.EndScroll();
-        }
+
         public bool OpenThreePhoneTab(string id)
         {
             if(!ThreeReady || story.player.ActivePhone==0)return false;
             bool ngan=story.player.ActivePhone==1;
-            string[] allowed=ngan?new[]{"messages","stranger","profile","fake","devices","calculator","vault"}:new[]{"contacts","camera","photos","clock"};
+            string[] allowed=ngan?ThreeNganTabs:ThreeOwnTabs;
             if(Array.IndexOf(allowed,id)<0 || (ngan && Third.stage<NightThreeStage.Evening && id!="messages"))return false;
             if(threeTab==id)return true;threeTab=id;scroll=Vector2.zero;
             if(ngan){PhoneOperation();Checkpoint();}return true;
         }
+
         void DrawThreePhone()
         {
-            bool ngan=story.player.ActivePhone==1;
-            Background(new Rect(0,0,1280,720),new Color(.025f,.04f,.055f));
-            Label(new Rect(65,25,1000,50),(ngan?"Máy Ngân · "+Third.battery+"%":"Máy Sinh viên")+" · "+story.State.clock,titleStyle);
-            if(Button(new Rect(1090,20,150,45),"Cất máy"))story.player.SetPhone(0);
-            string[] tabs=ngan?new[]{"messages","stranger","profile","fake","devices","calculator","vault"}:new[]{"contacts","camera","photos","clock"};
-            string[] labels=ngan?new[]{"Tin nhắn","Dãy số","Trang cá nhân","Mẹ","Nimbo","Máy tính","Két ngoài"}:new[]{"Liên lạc","Camera","Thư viện ảnh","Đồng hồ"};
-            if(ngan && Third.stage<NightThreeStage.Evening){tabs=new[]{"messages"};labels=new[]{"Tin nhắn"};threeTab="messages";}
-            for(int i=0;i<tabs.Length;i++)if(Button(new Rect(65+i*158,85,150,45),labels[i]))OpenThreePhoneTab(tabs[i]);
-            if(!ngan)
+            bool ngan = story.player.ActivePhone == 1;
+            PhoneLayout(out float left, out float listWidth, out float choiceX, out float choiceWidth);
+            HudKit.Heading(left, 70, story.State.clock + (ngan ? "   ·   Pin " + Third.battery + "%" : ""), ngan ? "Máy Ngân" : "Máy của bạn", listWidth);
+            CloseAction("Cất máy");
+            string[] tabs = ngan ? ThreeNganTabs : ThreeOwnTabs, labels = ngan ? ThreeNganLabels : ThreeOwnLabels;
+            if (ngan && Third.stage < NightThreeStage.Evening) { tabs = new[] { "messages" }; labels = new[] { "Tin nhắn" }; threeTab = "messages"; }
+            if (!ngan && Array.IndexOf(ThreeOwnTabs, threeTab) < 0) threeTab = "contacts";
+            string shownTab = threeTab == "history" ? "stranger" : threeTab;
+            DrawTabStrip(tabs, labels, shownTab, tab => OpenThreePhoneTab(tab));
+            var body = new Rect(left, 260, listWidth, HudKit.Height - 260 - 180);
+            var items = new List<(string label, Action run, bool enabled)>();
+            bool calculator = false;
+            if (!ngan)
             {
-                switch(threeTab)
+                switch (threeTab)
                 {
-                    case "camera":DrawThreeCamera();break;
-                    case "photos":DrawThreePhotos();break;
+                    case "camera": DrawThreeCamera(body, items); break;
+                    case "photos": DrawThreePhotos(body, items); break;
                     case "clock":
-                        Label(new Rect(80,170,1080,100),Third.alarm1300?"Báo thức 13:00"+(Third.stage>=NightThreeStage.Evening?" · Đã tắt lúc 13:00":""):"Chưa đặt báo thức chiều.",titleStyle);
-                        if(Third.stage==NightThreeStage.MorningRoom && Choice(0,"Đặt báo thức 13:00"))SetThreeNapAlarm();break;
+                        HudKit.Label(new Rect(body.x, body.y, body.width, 40), Third.alarm1300 ? "Báo thức 13:00" + (Third.stage >= NightThreeStage.Evening ? "   ·   Đã tắt lúc 13:00" : "") : "Chưa đặt báo thức chiều.", 30, HudKit.Paper);
+                        if (Third.stage == NightThreeStage.MorningRoom) items.Add(("Đặt báo thức 13:00", () => SetThreeNapAlarm(), true));
+                        break;
                     default:
-                        if(!Third.doorLocked){Label(new Rect(80,180,1080,120),"Chưa có liên lạc mới.",textStyle);break;}
-                        if(Third.contactMode=="none" && Choice(0,"Nhắn cô Hòa bằng máy mình"))ContactHoaThree("own_phone");
-                        if(Choice(1,"Gọi cô Hòa"))story.Say("Không biết nói gì với người mẹ đang khóc. Thôi, nhắn trước.");
-                        if(Third.sentCasePhoto&&!Third.answeredCall && Choice(2,"Cô Hòa đang gọi — Nghe"))AnswerThreeCall();
-                        if(Third.answeredCall&&State.sawStorage&&!Third.gotVaultCode && Choice(3,"Hỏi về cái app Máy tính 3,9 GB"))AskThreeCode();break;
+                        if (!Third.doorLocked) { HudKit.Label(new Rect(body.x, body.y, body.width, 40), "Chưa có liên lạc mới.", 26, HudKit.Fade(HudKit.Paper, .6f)); break; }
+                        HudKit.Label(new Rect(body.x, body.y, body.width, 40), "Cô Hòa", 30, HudKit.Paper, true);
+                        if (Third.contactMode == "none") items.Add(("Nhắn cô Hòa bằng máy của bạn", () => ContactHoaThree("own_phone"), true));
+                        items.Add(("Gọi cô Hòa", () => story.Say("Không biết nói gì với người mẹ đang khóc. Thôi, nhắn trước."), true));
+                        if (Third.sentCasePhoto && !Third.answeredCall) items.Add(("Cô Hòa đang gọi. Nghe máy", () => AnswerThreeCall(), true));
+                        if (Third.answeredCall && State.sawStorage && !Third.gotVaultCode) items.Add(("Hỏi về ứng dụng Máy tính 3,9 GB", () => AskThreeCode(), true));
+                        break;
                 }
             }
-            else switch(threeTab)
+            else
             {
-                case "stranger":case "history":
-                    Label(new Rect(65,150,1100,110),Third.v1Delivered?"Tin thoại 0:19 · Tiếng máy quét mã vạch, loa siêu thị...":"Chưa có tin thoại mới.",textStyle);
-                    if(story.State.number_choice=="blocked" && Button(new Rect(65,260,500,45),"Bỏ chặn dãy số"))UnblockThreeNumber();
-                    if(Third.v1Delivered && Button(new Rect(65,260,500,45),"Nghe tin thoại 0:19"))HearThreeVoice(false);
-                    if(Button(new Rect(585,260,580,45),"Cuộn xem lịch sử chat và miếng vải")){threeTab="history";OpenThreeHistory();}
-                    if(Third.sawHistory)Label(new Rect(65,325,1100,210),NightThreeContent.History,textStyle);
-                    if(Third.doorLocked && Third.contactMode=="none" && Button(new Rect(65,555,1100,45),"Nhắn cô Hòa từ máy Ngân"))ContactHoaThree("ngan_phone");break;
-                case "profile":
-                    Label(new Rect(65,155,1100,210),NightThreeContent.HoaProfile,textStyle);
-                    if(!Third.openedHoaProfile && Button(new Rect(65,390,1100,45),"Xem bài đăng tìm con"))OpenHoaProfile();break;
-                case "fake":Label(new Rect(65,160,1100,150),"Mẹ\nTrang trống · Tham gia tháng 11/2026\nSố liên hệ khác số của Hòa Nguyễn.",textStyle);break;
-                case "devices":Label(new Rect(65,160,1100,150),"Nimbo > Thiết bị\nRino 9 · Đã đăng xuất · 23/11",textStyle);break;
-                case "calculator":
-                    Label(new Rect(65,150,700,65), vaultEntry == "" ? "0" : vaultEntry, titleStyle);
-                    for (int i=0;i<CalculatorKeys.Length;i++)
-                        if (Button(new Rect(65+(i%3)*150,230+(i/3)*80,140,70),CalculatorKeys[i]))
+                switch (threeTab)
+                {
+                    case "stranger":
+                    case "history":
+                        string voice = Third.v1Delivered ? "Tin thoại 0:19   ·   Tiếng máy quét mã vạch, loa siêu thị..." : "Chưa có tin thoại mới.";
+                        TextBlock(body, Third.sawHistory ? voice + "\n\n" + NightThreeContent.History : voice);
+                        if (story.State.number_choice == "blocked") items.Add(("Bỏ chặn dãy số", () => UnblockThreeNumber(), true));
+                        if (Third.v1Delivered) items.Add(("Nghe tin thoại 0:19", () => HearThreeVoice(false), true));
+                        items.Add(("Cuộn xem lịch sử chat và miếng vải", () => { threeTab = "history"; OpenThreeHistory(); }, true));
+                        if (Third.doorLocked && Third.contactMode == "none") items.Add(("Nhắn cô Hòa từ máy Ngân", () => ContactHoaThree("ngan_phone"), true));
+                        break;
+                    case "profile":
+                        TextBlock(body, NightThreeContent.HoaProfile);
+                        if (!Third.openedHoaProfile) items.Add(("Xem bài đăng tìm con", () => OpenHoaProfile(), true));
+                        break;
+                    case "fake": TextBlock(body, "Mẹ\nTrang trống   ·   Tham gia tháng 11/2026\nSố liên hệ khác số của Hòa Nguyễn."); break;
+                    case "devices": TextBlock(body, "Nimbo   ·   Thiết bị\nRino 9   ·   Đã đăng xuất   ·   23/11"); break;
+                    case "calculator":
+                        calculator = true;
+                        DrawCalculatorPad(body, vaultEntry == "" ? "0" : vaultEntry, key =>
                         {
-                            string key=CalculatorKeys[i];
-                            if(key=="C")vaultEntry="";
-                            else if(key=="=")EnterThreeVault(vaultEntry);
-                            else if(vaultEntry.Length<12)vaultEntry+=key;
+                            if (key == "C") vaultEntry = "";
+                            else if (key == "=") EnterThreeVault(vaultEntry);
+                            else if (vaultEntry.Length < 12) vaultEntry += key;
+                        });
+                        break;
+                    case "vault":
+                        if (!Third.openedVault) { TextBlock(body, "Máy tính vẫn là máy tính bình thường."); break; }
+                        TextBlock(body, NightThreeContent.VaultText(vaultItem));
+                        for (int i = 0; i < NightThreeContent.VaultIds.Length; i++)
+                        {
+                            string item = NightThreeContent.VaultIds[i];
+                            if (item == "intruder" && State.vaultWrongAttempts == 0) continue;
+                            items.Add((NightThreeContent.VaultNames[i], () => ViewThreeVault(item), true));
                         }
-                    break;
-                case "vault":
-                    if(!Third.openedVault){Label(new Rect(65,170,1100,80),"Máy tính vẫn là máy tính bình thường.",textStyle);break;}
-                    for(int i=0;i<NightThreeContent.VaultIds.Length;i++)
-                    {
-                        string id=NightThreeContent.VaultIds[i];if(id=="intruder" && State.vaultWrongAttempts==0)continue;
-                        if(Button(new Rect(65,150+i*48,270,43),NightThreeContent.VaultNames[i]))ViewThreeVault(id);
-                    }
-                    Label(new Rect(370,155,800,370),NightThreeContent.VaultText(vaultItem),textStyle);break;
-                default:DrawThreeLog(story.State.messages);break;
+                        break;
+                    default: DrawMessageList(body); break;
+                }
+                if (Third.sentCasePhoto && !Third.answeredCall) items.Add(("Cô Hòa đang gọi. Nghe máy", () => AnswerThreeCall(), true));
+                if (Third.answeredCall && State.sawStorage && !Third.gotVaultCode) items.Add(("Hỏi về ứng dụng Máy tính 3,9 GB", () => AskThreeCode(), true));
             }
-            if(ngan && Third.sentCasePhoto&&!Third.answeredCall && Button(new Rect(65,610,520,40),"Cô Hòa đang gọi — Nghe"))AnswerThreeCall();
-            if(ngan && Third.answeredCall&&State.sawStorage&&!Third.gotVaultCode && Button(new Rect(600,610,560,40),"Hỏi về app Máy tính 3,9 GB"))AskThreeCode();
-            if(Third.openedVault && (threeTab=="messages" || threeTab=="contacts"))
+            if (Third.openedVault && (threeTab == "messages" || threeTab == "contacts"))
             {
-                if(Button(new Rect(65,510,530,45),"Giữ máy, giải thích với cô Hòa"))DecideThreePhone(true);
-                if(Button(new Rect(615,510,550,45),"Mang máy tới công an phường"))DecideThreePhone(false);
-                if(Third.keptPhone)
-                    for(int i=0;i<3;i++)if(Button(new Rect(65+i*365,565,350,40),new[]{"R1: Giữ kín chuyện cháu","R2: Chỉ nhắn máy cháu","R3: Có người đang đọc"}[i]))AdviseHoaThree("R"+(i+1));
+                items.Add(("Giữ máy, giải thích với cô Hòa", () => DecideThreePhone(true), true));
+                items.Add(("Mang máy tới công an phường", () => DecideThreePhone(false), true));
+                if (Third.keptPhone)
+                {
+                    items.Add(("Dặn cô Hòa: giữ kín chuyện cháu", () => AdviseHoaThree("R1"), true));
+                    items.Add(("Dặn cô Hòa: chỉ nhắn vào máy cháu", () => AdviseHoaThree("R2"), true));
+                    items.Add(("Dặn cô Hòa: có người đang đọc tin nhắn", () => AdviseHoaThree("R3"), true));
+                }
             }
-            if(Third.v2Delivered && Button(new Rect(65,660,520,40),"Tin thoại 23:47 — Nghe"))HearThreeVoice(true);
-            Label(new Rect(610,660,560,40),story.Subtitle,textStyle);
+            if (Third.v2Delivered) items.Add(("Nghe tin thoại 23:47", () => HearThreeVoice(true), true));
+            if (calculator) return;
+            if (items.Count == 0) { TabFooter(false); return; }
+            HudKit.Label(new Rect(choiceX, 246, choiceWidth, 30), "Làm gì", 20, HudKit.Fade(HudKit.Paper, .45f));
+            float row = Mathf.Min(62, (HudKit.Height - 290 - 200) / Mathf.Max(1, items.Count));
+            Pick(screenChoices, choiceX, 284, items, Mathf.Min(26, row * .44f), row, choiceWidth);
+            TabFooter(true);
         }
-        void DrawThreeCamera()
+
+        void DrawThreeCamera(Rect area, List<(string label, Action run, bool enabled)> items)
         {
             EnsureThreeCamera();var active=RenderTexture.active;
             if(Event.current.type==EventType.Repaint){try{RenderThreeCamera();}finally{RenderTexture.active=active;}}
-            HudKit.Image(HudRect(new Rect(65,155,768,432)),threeCamera);
-            if(Button(new Rect(870,200,290,50),"Chụp ảnh"))CaptureThreePhoto();
-            if(Button(new Rect(870,280,130,45),"←"))story.player.transform.Rotate(0,-5,0);
-            if(Button(new Rect(1020,280,130,45),"→"))story.player.transform.Rotate(0,5,0);
-            if(Button(new Rect(870,340,130,45),"↑"))story.player.RestoreView(story.player.ViewPitch-5,story.player.IsCrouched);
-            if(Button(new Rect(1020,340,130,45),"↓"))story.player.RestoreView(story.player.ViewPitch+5,story.player.IsCrouched);
+            float w = Mathf.Min(area.width, area.height * 16 / 9f);
+            HudKit.Image(new Rect(area.x, area.y, w, w * 9 / 16f), threeCamera);
+            items.Add(("Chụp ảnh", () => CaptureThreePhoto(), true));
+            items.Add(("Quay sang trái", () => story.player.transform.Rotate(0, -5, 0), true));
+            items.Add(("Quay sang phải", () => story.player.transform.Rotate(0, 5, 0), true));
+            items.Add(("Ngẩng lên", () => story.player.RestoreView(story.player.ViewPitch - 5, story.player.IsCrouched), true));
+            items.Add(("Cúi xuống", () => story.player.RestoreView(story.player.ViewPitch + 5, story.player.IsCrouched), true));
         }
-        void DrawThreePhotos()
+
+        void DrawThreePhotos(Rect area, List<(string label, Action run, bool enabled)> items)
         {
-            float height=Mathf.Max(320,Third.photos.Count*55);
-            scroll=HudKit.BeginScroll(HudRect(new Rect(65,150,350,350)),scroll,290,height*1.5f);
-            for(int i=0;i<Third.photos.Count;i++)if(HudKit.Action(0,i*82,"·","Ảnh "+(i+1)))SelectThreePhoto(Third.photos[i].id);
-            HudKit.EndScroll();
-            if(threePhotoPreview!=null)HudKit.Image(HudRect(new Rect(450,155,710,330)),threePhotoPreview);
-            if(selectedPhoto!="" && Button(new Rect(450,510,710,50),"Gửi ảnh đã chọn cho cô Hòa"))SendThreePhoto(selectedPhoto);
+            if (Third.photos.Count == 0) HudKit.Label(new Rect(area.x, area.y, area.width, 40), "Chưa có ảnh nào.", 26, HudKit.Fade(HudKit.Paper, .6f));
+            if (threePhotoPreview != null)
+            {
+                float w = Mathf.Min(area.width, area.height * threePhotoPreview.width / Mathf.Max(1f, threePhotoPreview.height));
+                HudKit.Image(new Rect(area.x, area.y, w, w * threePhotoPreview.height / Mathf.Max(1f, threePhotoPreview.width)), threePhotoPreview);
+            }
+            for (int i = 0; i < Third.photos.Count; i++)
+            {
+                string photo = Third.photos[i].id;
+                items.Add(("Ảnh " + (i + 1) + (selectedPhoto == photo ? "   ·   đang xem" : ""), () => SelectThreePhoto(photo), true));
+            }
+            if (selectedPhoto != "") items.Add(("Gửi ảnh đã chọn cho cô Hòa", () => SendThreePhoto(selectedPhoto), true));
         }
+
         void SelectThreePhoto(string id)
         {
             if(!Third.photos.Any(p=>p.id==id))return;selectedPhoto=id;
