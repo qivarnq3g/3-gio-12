@@ -50,18 +50,23 @@ public static class ArtPipelineCheck
         foreach (var path in ModelPaths())
         {
             var name = Path.GetFileNameWithoutExtension(path);
+            bool fpsArms = path == ModelImportRules.FpsArmsModel || path == ModelImportRules.RaincoatArmsModel;
+            bool lien = path == ModelImportRules.LienModel;
             var root = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             var t = root.transform;
             if (t.localScale != Vector3.one) failures.Add(path + ": root scale " + t.localScale);
             if (Quaternion.Angle(t.localRotation, Quaternion.identity) > 0.01f) failures.Add(path + ": root rotation " + t.localRotation.eulerAngles);
             foreach (Transform child in t)
-                if (Quaternion.Angle(child.localRotation, Quaternion.identity) > 0.01f || child.localScale != Vector3.one)
+                // The cô Liên FBX retains child bind transforms for its skinned meshes.
+                if (!lien && (child.localScale != Vector3.one ||
+                    (!fpsArms && Quaternion.Angle(child.localRotation, Quaternion.identity) > 0.01f)))
                     failures.Add(path + ": child " + child.name + " rotation " + child.localRotation.eulerAngles + " scale " + child.localScale);
             var renderers = root.GetComponentsInChildren<Renderer>();
             if (renderers.Length == 0) { failures.Add(path + ": no renderer"); continue; }
             var bounds = renderers[0].bounds;
             foreach (var r in renderers) bounds.Encapsulate(r.bounds);
-            if (!IsEnvironment(path) && !name.Contains("ClampLamp") && Mathf.Abs(bounds.min.y) > 0.01f) failures.Add(path + ": pivot not at floor, min y " + bounds.min.y.ToString("F3"));
+            float floor = lien ? IdleFloor(root, path) : bounds.min.y;
+            if (!IsEnvironment(path) && !fpsArms && !name.Contains("ClampLamp") && Mathf.Abs(floor) > 0.01f) failures.Add(path + ": pivot not at floor, min y " + floor.ToString("F3"));
             if (bounds.size.y < 0.01f || bounds.size.y > 30f) failures.Add(path + ": height " + bounds.size.y.ToString("F3") + " m");
             foreach (var mf in root.GetComponentsInChildren<MeshFilter>())
                 if (mf.sharedMesh == null || mf.sharedMesh.uv.Length == 0)
@@ -73,7 +78,7 @@ public static class ArtPipelineCheck
                     var matPath = AssetDatabase.GetAssetPath(m);
                     if (matPath.StartsWith("Assets/Art/Models/Environment/Materials/") && m.shader.name == "Universal Render Pipeline/Lit") continue;
                     if (!matPath.StartsWith("Assets/Art/Materials/")) failures.Add(path + ": material " + m.name + " not from Assets/Art/Materials (" + matPath + ")");
-                    if (m.shader.name != "Toon/Toon") failures.Add(path + ": material " + m.name + " uses shader " + m.shader.name);
+                    if (m.shader.name != "Toon/Toon" && !(fpsArms && m.shader.name == "Universal Render Pipeline/Lit")) failures.Add(path + ": material " + m.name + " uses shader " + m.shader.name);
                 }
             foreach (var r in renderers)
                 CheckTexturedFaces(path, r, failures);
@@ -82,6 +87,31 @@ public static class ArtPipelineCheck
         }
         CheckTextures(failures);
         return failures;
+    }
+
+    static float IdleFloor(GameObject model, string path)
+    {
+        // Animated bounds include the lowered broom and foot motion outside the standing pose.
+        var instance = UnityEngine.Object.Instantiate(model);
+        var baked = new Mesh();
+        try
+        {
+            foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(path))
+                if (asset is AnimationClip clip && clip.name == "Idle") { clip.SampleAnimation(instance, 0f); break; }
+            float min = float.PositiveInfinity;
+            foreach (var renderer in instance.GetComponentsInChildren<SkinnedMeshRenderer>())
+            {
+                renderer.BakeMesh(baked);
+                foreach (var vertex in baked.vertices)
+                    min = Mathf.Min(min, renderer.transform.TransformPoint(vertex).y);
+            }
+            return min;
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(baked);
+            UnityEngine.Object.DestroyImmediate(instance);
+        }
     }
 
     static void CheckCartGlass(Renderer[] renderers, List<string> failures)

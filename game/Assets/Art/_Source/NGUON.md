@@ -66,6 +66,25 @@ Từ 18/10 (sau): ảnh trong thư mục này chỉ là **ảnh tham chiếu** c
 | `Characters/char_person_*.fbx`, `Textures/T_Person*` | Dựng bằng MPFB 2 (MakeHuman cho Blender) trong Blender 5.2 qua `assets/env/build_people.py`: thân người, da, tóc, quần áo, giày lấy từ thư viện tài sản chuẩn của MakeHuman, nhóm tô lại màu áo quần | CC0 1.0 (tài sản và người xuất ra từ MakeHuman) | 17/11/2026 |
 | `Characters/Animations/UAL1_Standard.fbx` | Universal Animation Library (Standard) của Quaternius (quaternius.com), giữ nguyên tệp; dùng các đoạn Idle, Walk, Jog, Sprint | CC0 1.0 | 17/11/2026 |
 
+## Tay FPS Đêm 1 (#16)
+
+| Asset | Nguồn | Giấy phép | Ngày |
+|---|---|---|---|
+| `Models/Characters/char_fps_arms.fbx` | Nhóm dựng tay, băng và rig trong Blender 5.2, có các clip `Idle`, `Walk`, `Run`, `HoldPhone`, `PickUp`. Điện thoại là biến thể mô hình máy Ngân do nhóm dựng. | Của nhóm | 19/11/2026 |
+| `Textures/T_Fps*.png` | Màu da, băng và bản đồ vật liệu điện thoại do nhóm tạo. Kích thước tối đa 1024; bản đồ metallic/smoothness là dữ liệu tuyến tính. | Của nhóm | 19/11/2026 |
+| `Models/Characters/char_landlady_lien.fbx`, `Textures/T_Lien*.png` | Mô hình cô Liên và texture do nhóm tự dựng trong Blender. | Của nhóm | 28/11/2026 |
+| `Models/Characters/char_fps_raincoat.fbx`, `Textures/T_TileFpsRaincoat*.png` | Xuất tay áo mưa và găng từ bản dựng Blender 5.2 của nhóm, dùng cùng rig tay FPS. Blender: `_Source/Blender~/char_fps_raincoat.blend`. Texture bake từ vật liệu áo mưa và găng trong bản dựng. | Của nhóm | 20/11/2026 |
+| `Models/Characters/Hung/char_hung_final.fbx`, `Textures/T_Hung_*.png` | Xuất từ bản dựng Blender `Chu_Hung_Final`, gồm rig, quần áo, đèn pin và các clip của chú Hùng. Chưa xác định được nguồn của mesh thân dùng trong bản dựng. | Chưa xác minh giấy phép mesh thân | 28/11/2026 |
+| `Models/Characters/WomanDishwasher/Woman.fbx`, `Textures/T_Woman*.png` | Xuất từ bản dựng Blender `Woman-01`. Chưa xác định được nguồn của mesh thân dùng trong bản dựng. | Chưa xác minh giấy phép mesh thân | 28/11/2026 |
+| `Models/Characters/WomanDishwasher/DishwashingProps.fbx`, `Textures/T_DishwashingStool.png` | Xuất từ bản dựng Blender `Rua_Chen_Trong_Thau`. Ghế nhựa và texture chuyển từ `Stool_Dishwasher` đã ghi ở trên. | Ghế và texture ghế CC BY, Saigon Sidewalk Assets. Chưa xác minh giấy phép phần còn lại. | 28/11/2026 |
+| `Animations/Dishwashing.fbx` | Xuất clip rửa chén từ bản dựng Blender `Rua_Chen_Trong_Thau`. | Chưa xác minh giấy phép clip nguồn | 28/11/2026 |
+| `Animations/Idle_Loop.fbx` | Xuất clip đứng yên từ bản dựng Blender `Woman-01`. | Chưa xác minh giấy phép clip nguồn | 28/11/2026 |
+| `Animations/Walk_Loop.fbx` | Xuất clip đi bộ từ bản dựng Blender `Woman-01`. | Chưa xác minh giấy phép clip nguồn | 28/11/2026 |
+| `Animations/Jog_Fwd_Loop.fbx` | Xuất clip chạy chậm từ bản dựng Blender `Woman-01`. | Chưa xác minh giấy phép clip nguồn | 28/11/2026 |
+| `Animations/Sprint_Loop.fbx` | Xuất clip chạy nhanh từ bản dựng Blender `Woman-01`. | Chưa xác minh giấy phép clip nguồn | 28/11/2026 |
+
+Tay FPS dùng URP Lit và camera tham chiếu trong FBX để lấy chuyển động cúi khi nhặt vật.
+
 # Model dựng lại cho issue #96
 
 Ngày dựng: 18/11/2026. Nhóm tự dựng lưới bằng script Python `tools/generate_issue96_props.py` trong Blender 5.2.3 LTS; không dùng model tải sẵn. Đơn vị mét, vật đứng tại gốc giữa đáy, trục Y hướng lên sau khi xuất FBX. Giấy phép lưới: của nhóm. Kích thước dưới đây là kích thước thiết kế; số đo bao toàn bộ phụ kiện và thống kê lưới sau khi nhập lại FBX do script in ra và ghi trong mô tả PR #102.
@@ -105,6 +124,13 @@ Dựng lại model và xuất ảnh Solid bốn góc bằng Blender 5.2.
 blender --background --python-exit-code 1 --python tools/generate_issue135_police.py -- --render game/Logs/issue135-solid
 ```
 
+## Cửa phòng 7 (issue #24)
+
+| Tệp | Nguồn và cách dựng | Giấy phép |
+|---|---|---|
+| `Models/Props/prop_room7_door.fbx` | Dựng trong Blender từ hình khối cơ bản theo mô tả cửa phòng 7 trong kịch bản. Khung thép và ô thoáng tách khỏi cánh cửa, tâm xoay cánh đặt tại bản lề. | Asset nội bộ dự án. |
+| `MeshesPBR/Room7_Walls_NewDoor.asset` | Chỉnh từ mesh phòng 7 có sẵn trong Unity, bỏ khung và song sắt cũ. Mesh dùng cho cả hiển thị và va chạm của tường. | Theo asset phòng 7 của dự án. |
+
 # Phông chữ
 
 | Tệp | Nguồn | Giấy phép | Ngày |
@@ -118,3 +144,6 @@ blender --background --python-exit-code 1 --python tools/generate_issue135_polic
 | Tệp | Nguồn | Giấy phép | Ngày |
 |---|---|---|---|
 | `Resources/Audio/Footsteps/footstep_concrete_000.ogg` đến `_004.ogg` | Gói Impact Sounds của Kenney (kenney.nl/assets/impact-sounds), giữ nguyên tệp | CC0 1.0, không cần ghi tên | 03/11/2026 |
+
+| Ba lô phòng 7 và đồ bên trong (#24): prop_backpack_room7_closed.fbx, prop_backpack_room7_open.fbx, prop_charging_cable.fbx, prop_face_mask.fbx, prop_medication_blister.fbx, prop_power_bank.fbx, prop_rain_poncho.fbx, prop_rain_poncho_torn.fbx, prop_sun_glove_left.fbx, prop_sun_glove_right.fbx, prop_water_bottle.fbx | Ba lô chỉnh từ mesh Blender do thành viên nhóm cung cấp. Đồ bên trong và biến thể dựng theo kịch bản đêm 1–3. | Asset nội bộ dự án. | 21/11/2026 |
+| T_TileBackpackWeave.png, T_TileBackpackWeave_Normal.png, T_MedicationBlisterLabel.png | Vân vải tạo bằng thuật toán, nhãn vỉ thuốc vẽ theo kịch bản bằng phông Be Vietnam Pro đã có trong repo. | Texture của dự án. Phông SIL OFL 1.1. | 21/11/2026 |
