@@ -97,6 +97,30 @@ Phạm vi bản nộp chỉ gồm ba đêm đầu, trong khi đường truyện 
 
 Phần này đang được soạn.
 
+### Môi trường ba đêm
+
+<!-- Người viết: Thắng. Bản nháp 28/11; Tiên ghép với phần quy trình và danh sách model ở trên. -->
+
+Toàn bộ không gian chơi nằm trong một cảnh tả thực, gồm một con hẻm ở Sài Gòn và đoạn đường lớn đầu hẻm. Ba đêm dùng lại cùng cảnh và chỉ mở thêm khu vực theo diễn biến, để người chơi nhận ra những chỗ quen khi trở lại. Bảng 3.2 liệt kê các khu vực và đêm sử dụng.
+
+| Khu vực | Model chính | Đêm | Ghi chú |
+|---|---|---|---|
+| Hẻm | `env_alley`, `env_street_details` | 1, 2, 3 | Mặt tiền nhà ống, khám thờ Ông Địa, cột điện có công tơ, cửa xếp, kệ dép, quảng cáo sơn tường |
+| Nhà trọ và nhà xe | `env_boarding_house`, `env_garage` | 1, 2, 3 | Sảnh tầng trệt, hành lang ba tầng; nhà xe có tôn, xà gồ, bảng tiêu lệnh chữa cháy |
+| Phòng 7 | `env_room7`, nệm trải sàn, kệ nhựa, đèn kẹp | 1, 2, 3 | Phòng của Linh ở tầng 3, cửa là đối tượng riêng để mở, đóng |
+| Đường lớn | `env_main_road`, `env_street_fronts`, `env_street_tree` | 1, 2, 3 | Vỉa hè gạch terrazzo, dốc dắt xe bê tông và cao su, cây đường phố |
+| Tiệm gia dụng, quán cơm | `env_homeware_shop`, `env_rice_shop` | 2 | Hộp kệ nhựa ở tiệm gia dụng; bếp ga, nồi cơm và chồng đĩa sau quầy quán cơm |
+| Cây xăng | `env_gas_station` | 3 | Một điểm trên đường đi của Đêm 3 |
+| Công an phường | `env_police_station`, quầy tiếp nhận | 3 | Cổng sắt, tường vàng, bảng nền đỏ; tên phường hư cấu |
+
+: Khu vực trong cảnh và đêm sử dụng
+
+Nhà, phòng và đồ vật đặc trưng của Việt Nam (nhà trọ, nhà xe, phòng 7, cột điện, cửa xếp, dốc vỉa hè, xe bánh mì, kệ nhựa, quán cơm, công an phường) do nhóm tự dựng bằng script Python trong Blender, theo kích thước thật tính bằng mét. Với cột điện, nhóm lấy chiều dài và đường kính theo bảng thông số cột bê tông ly tâm của nhà sản xuất trong nước (cột 8,5 m và 10,5 m). Đồ vật phổ biến dùng model quét của Poly Haven (thùng các-tông, máy lạnh, ống máng, chai nhựa, ghế nhựa, chậu cây, ổ điện, giấy tờ trên quầy công an) theo giấy phép CC0, và một số model trên Sketchfab theo giấy phép CC BY (khám thờ, tượng, cột điện hẻm, ghế đỏ, các xe máy). Model tải về được đưa về kích thước thật, giảm số tam giác, xóa chữ, logo và biển số thật. Nguồn và giấy phép của từng tệp ghi ở `game/Assets/Art/_Source/NGUON.md`.
+
+Bề mặt dùng vật liệu PBR của URP gồm ảnh màu, ảnh pháp tuyến và ảnh mặt nạ (kim loại, che khuất, độ bóng). Ảnh vân tường, nền, tôn chủ yếu lấy từ ảnh quét CC0 của Poly Haven và ambientCG; vết ố, vết nứt, áp phích và biển số nhà là decal dán lên. Biển hiệu cửa hàng do nhóm vẽ bằng script theo bố cục biển thật, với tên tiệm và số điện thoại hư cấu.
+
+Nhóm đặt quy định không để khối thô (hình hộp ghép tạm) trong bản chơi được. Mỗi khối thô của giai đoạn dựng màn phải được thay bằng model tả thực trước khi gộp vào nhánh chính. Hai bài kiểm tự động trong Unity giữ chất lượng cảnh: `ArtPipelineCheck` kiểm thiết lập nhập texture và model, `PropContactRegression` đo đồ vật trong cảnh để phát hiện vật xuyên vào nhau hoặc lơ lửng.
+
 ## 4. Hiện thực máy chủ, trang quản trị và website câu đố
 
 <!-- Người viết: Quang và Thắng. Đã viết phần máy chủ; Thắng bổ sung trang quản trị (React) và website câu đố nếu cần chi tiết hơn. -->
@@ -112,11 +136,70 @@ Nhóm áp dụng một số quy tắc thiết kế khi hiện thực:
 
 Phần máy chủ có 10 lớp kiểm thử tích hợp với 66 phương thức kiểm thử chạy trên PostgreSQL thật trong container; trang quản trị có kiểm thử riêng bằng Vitest. Hai bộ này chạy tự động trong GitHub Actions.
 
+### Trang quản trị
+
+<!-- Người viết: Thắng. Bản nháp 28/11. -->
+
+Trang quản trị là ứng dụng một trang viết bằng React và TypeScript, dựng bằng Vite, được proxy ngược phục vụ ở đường dẫn `/admin/`. Trang có năm màn hình: đăng nhập, bảng điều khiển, quản lý câu đố (danh sách và chi tiết từng câu đố), quản lý tài khoản và hồ sơ của người đang đăng nhập. Mọi màn hình trừ đăng nhập nằm sau lớp kiểm tra phiên; khi máy chủ trả mã `401` vì phiên hết hạn hoặc tài khoản bị khóa, trang tự quay về màn hình đăng nhập.
+
+Bảng điều khiển tổng hợp thống kê ẩn danh trong khoảng ngày người quản trị chọn: tổng người chơi, tổng phiên, tổng và trung bình thời gian chơi; số người bắt đầu, hoàn thành, rời bỏ từng đêm (không tính chơi lại); các khu vực người chơi hay bị bắt hoặc thoát game theo từng đêm; các lựa chọn và tỷ lệ các kết thúc. Bảng cho tải hai tệp CSV mã UTF-8 có BOM để mở thẳng bằng Excel: số liệu tổng hợp và toàn bộ sự kiện thô. Màn hình câu đố cho sửa cấu hình, thêm hoặc xóa mã băm đáp án và xem các lần gửi bằng chứng kèm kết quả. Màn hình tài khoản cho thêm tài khoản, đổi tên hiển thị, khóa hoặc mở lại, đặt lại mật khẩu và xóa tài khoản; màn hình hồ sơ cho người đang đăng nhập đổi mật khẩu của mình.
+
+Kiểu dữ liệu TypeScript của trang được sinh tự động từ tệp OpenAPI của hợp đồng mỗi lần chạy, kiểm thử hay build. Vì vậy khi hợp đồng API đổi mà trang chưa sửa theo, bước build báo lỗi ngay thay vì để lỗi lọt ra lúc chạy. Bộ kiểm thử Vitest của trang có 25 trường hợp, kiểm luồng đăng nhập và tạm chặn khi sai nhiều lần, cùng các thao tác chính của từng màn hình (đổi mật khẩu, quản lý tài khoản, bảng điều khiển khi lỗi hoặc chưa có dữ liệu, thêm và xóa mã băm đáp án).
+
+### Website câu đố
+
+<!-- Người viết: Thắng. Bản nháp 28/11. -->
+
+Website câu đố là trang HTML tĩnh, đóng vai blog cá nhân “Góc nhỏ của Bống” của nhân vật Ngân, gồm trang chủ, trang giới thiệu, bốn bài viết từ 28/9 đến 2/11/2026 và trang lưu trữ tệp `/drop/`. Nội dung bài viết khớp kịch bản: lời hẹn ngày 3/12 với Linh, chuyện bé Na, buổi hoàng hôn bên sông Sài Gòn và những ngày đếm ngược. Ảnh minh họa và ảnh bằng chứng đều do nhóm tạo, không dùng ảnh thật của người khác.
+
+Câu đố nối game với website theo bốn bước. Người chơi mở phần trong của két trên điện thoại Ngân trong game để lấy tệp ghi âm và chìa giải mã. Tệp ghi âm nghe như một lần thử micro, nhưng phổ âm của nó chứa chữ `/drop` ở dải 7 đến 14 kHz, chỉ thấy khi mở bằng phần mềm xem phổ như Audacity. Trang `/drop/` có một ảnh hoàng hôn, thực chất là ảnh ghép với tệp ZIP mã hóa AES-256; giải nén bằng chìa trong két sẽ được ảnh bằng chứng dép chỉ đỏ và tờ tìm trẻ. Cuối cùng, người chơi gửi ảnh bằng chứng qua game; game chỉ gửi mã băm SHA-256, máy chủ so với mã băm đã cấu hình và trả về mã mở kết thúc khi khớp.
+
+Tệp ghi âm được đặt trong `StreamingAssets` để Unity giữ nguyên từng byte, vì khi Unity nén âm thanh, chữ ở tần số cao có thể mất. Gói bằng chứng được dựng lại bằng script từ các tệp nguồn cố định, nên mã băm của ảnh bằng chứng không đổi giữa các lần dựng và khớp với cấu hình trên máy chủ.
+
 ## 5. Kiểm thử
 
 <!-- Người viết: Thắng. Gồm: bộ test case 33 mục ở docs/test-case.md (bản nháp ở pull request của Quang), kết quả chạy từng test case (ngày, phiên bản, người chạy), tổng hợp lỗi tìm được và đã sửa, kết quả chơi thử kín. Chỉ ghi kết quả đã chạy thật. -->
 
-Phần này đang được soạn.
+<!-- Bản nháp 28/11 của Thắng: đã có phương pháp và tổng hợp lỗi. Kết quả từng test case và kết quả chơi thử kín điền sau khi có bản Windows #140. -->
+
+### Phương pháp kiểm thử
+
+Nhóm kiểm thử ở ba mức. Mức thứ nhất là bài kiểm tự động trong Unity: mỗi tính năng chính của game có một bài kiểm chạy bằng Unity ở chế độ không giao diện (`-batchmode`), tự mở cảnh, mô phỏng thao tác của người chơi rồi thoát với mã 0 khi đạt. Các bài kiểm lưu tiến độ chạy thành cặp hai tiến trình, tiến trình đầu ghi và tiến trình sau đọc lại, để chắc dữ liệu còn nguyên sau khi tắt game. Mỗi bài kiểm dùng thư mục dữ liệu riêng để không đè bản lưu thật. Mức thứ hai là kiểm thử tích hợp của máy chủ chạy trên PostgreSQL thật trong container, cùng kiểm thử của trang quản trị bằng Vitest; hai bộ này chạy tự động trong GitHub Actions ở mỗi pull request. Mức thứ ba là kiểm tay trên bản dựng Windows và buổi chơi thử kín với người ngoài nhóm.
+
+Bộ test case gồm 33 mục cho 14 yêu cầu chức năng, ghi ở `docs/test-case.md`. Mỗi yêu cầu có ít nhất một test case; test case nào đã có bài kiểm tự động thì ghi tên bài, phần còn lại kiểm tay theo các bước ghi sẵn. Chỉ ghi “Đạt” cho test case đã chạy thật, kèm ngày, phiên bản và người chạy.
+
+### Kết quả chạy test case
+
+Phần này đang được soạn: điền sau khi có bản Windows Đêm 1-3 của task #140.
+
+### Lỗi tìm được và đã sửa
+
+Lỗi được ghi thành issue theo mẫu báo lỗi (các bước tái hiện, kết quả mong đợi, kết quả thực tế, phiên bản), kèm tọa độ trên bảng F3 của bản chơi thử khi lỗi gắn với một vị trí trong cảnh. Tới ngày 28/11/2026, nhóm ghi nhận 24 lỗi, đã sửa 19 và còn mở 5. Bảng 3.3 chia số lỗi theo nhóm.
+
+| Nhóm lỗi | Số lỗi | Đã sửa | Ví dụ |
+|---|---|---|---|
+| Hình ảnh và model 3D | 12 | 11 | Xé hình (z-fighting) ở tường và biển số nhà; vật xuyên vào nhau hoặc lơ lửng; decal chiếu đè lên song sắt; bánh xe Cub bị phẳng |
+| Lối chơi và kịch bản | 5 | 4 | Rơi khỏi bản đồ ở khe giữa hai tiệm; vật cản vô hình ở nhà xe; tin nhắn của “Mẹ” tự gửi khi người chơi chưa chọn; chỉ dẫn ghi sai loại xe |
+| Âm thanh | 1 | 1 | Tiếng ù kéo dài khi nhấn Esc |
+| Hiệu năng | 1 | 0 | FPS thấp trong cảnh tả thực |
+| Bản dựng trên nền tảng khác | 1 | 0 | Model hiện thành khối hồng trên Linux |
+| Bài kiểm tự động | 2 | 2 | Bài đi bộ Đêm 1 phụ thuộc tốc độ khung hình; Esc không thoát tạm dừng trong bài kiểm |
+| Thống kê ẩn danh | 1 | 0 | Sự kiện bắt đầu Đêm 1 không tới máy chủ |
+| Công cụ báo lỗi | 1 | 1 | Phím F3 không hiện tọa độ trong bản dựng |
+
+: Lỗi tìm được theo nhóm, tới ngày 28/11/2026
+
+Mười một lỗi (phần lớn là lỗi hình ảnh) được ghi trong lượt rà cảnh ngày 21/11 và đã sửa xong trong ngày 23 và 24/11, trước bản chơi thử ngày 24/11. Năm lỗi còn mở gồm:
+
+- Bộ gõ tiếng Việt làm kẹt phím di chuyển: đã có bản sửa và bài kiểm tự động, chờ xác nhận trên bản dựng.
+- Khung sắt, dây điện và xe máy ngoài đường lớn: đã sửa trong cảnh, chờ kiểm bằng mắt trên bản dựng.
+- FPS thấp trong cảnh tả thực: chờ số đo trên bản Windows #140.
+- Model hiện khối hồng trên Linux: bản Linux nằm ngoài cam kết của thuyết minh thiết kế (chỉ Windows là bắt buộc).
+- Sự kiện bắt đầu Đêm 1 không tới máy chủ: đã có bản sửa, đã kiểm với máy chủ chạy trong Docker, chờ gộp.
+
+### Kết quả chơi thử kín
+
+Phần này đang được soạn: điền sau buổi chơi thử kín (task #31).
 
 ## 6. Triển khai
 
