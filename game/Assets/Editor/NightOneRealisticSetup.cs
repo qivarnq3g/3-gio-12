@@ -52,7 +52,8 @@ public static class NightOneRealisticSetup
         PlacePoliceModel(desk, exterior.transform, new Vector3(0, .09f, 2.22f));
         var reception = new GameObject("Police reception light").AddComponent<Light>();
         reception.transform.SetParent(exterior.transform, false);
-        reception.transform.localPosition = new Vector3(0, 2.80f, 2.05f);
+        // In front of the counter so the sign and red band facing the visitor are lit; the desk sits at z 2.22.
+        reception.transform.localPosition = new Vector3(0, 2.80f, 1.25f);
         reception.type = LightType.Point;
         reception.color = new Color(1f, .91f, .76f);
         reception.range = 5f;
