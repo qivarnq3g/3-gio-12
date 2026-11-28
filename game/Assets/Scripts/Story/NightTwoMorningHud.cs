@@ -90,7 +90,7 @@ namespace BaGio12.Story
             else if (story.player.ActivePhone == 1) DrawNganMorning();
             else DrawOwnPhone();
             HudKit.Pop();
-            if (story.Subtitle != "") HudKit.Subtitle(story.Subtitle, 70);
+            if (story.Subtitle != "") HudKit.Subtitle(story.Subtitle);
         }
 
         void DrawPlay()

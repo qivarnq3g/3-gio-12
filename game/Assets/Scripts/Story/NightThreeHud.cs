@@ -71,7 +71,7 @@ namespace BaGio12.Story
             if (page != "") DrawThreePage();
             else DrawThreePhone();
             HudKit.Pop();
-            if (story.Subtitle != "") HudKit.Subtitle(story.Subtitle, 70);
+            if (story.Subtitle != "") HudKit.Subtitle(story.Subtitle);
         }
 
         void DrawThreePage()
