@@ -63,7 +63,7 @@ public static class NightPhoneUiRegression
         // Feed the HUD's active input device, rather than an unrelated synthetic one.
         keyboard = competingKeyboard;
 #if UNITY_EDITOR_WIN
-        keyboard = PhysicalKeyboardHook.Device ?? keyboard;
+        if (keyboard == null) keyboard = PhysicalKeyboardHook.Device;
 #endif
         ownsKeyboard = keyboard == null;
         if (ownsKeyboard) keyboard = InputSystem.AddDevice<Keyboard>("PhoneUiReviewKeyboard");
