@@ -1,0 +1,16 @@
+# Ảnh `caddy` của bản triển khai: dựng trang quản trị rồi đóng cùng website câu đố.
+# Ngữ cảnh dựng là thư mục gốc repo (xem docker-compose.prod.yml).
+FROM node:22-alpine AS admin
+WORKDIR /repo
+# `npm run build` sinh kiểu TypeScript từ hợp đồng API nên cần openapi.yaml ở đúng chỗ tương đối.
+COPY docs/api/openapi.yaml docs/api/openapi.yaml
+WORKDIR /repo/admin
+COPY admin/package.json admin/package-lock.json ./
+RUN npm ci
+COPY admin/ ./
+RUN npm run build
+
+FROM caddy:2-alpine
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=admin /repo/admin/dist /srv/admin
+COPY arg-site /srv/site

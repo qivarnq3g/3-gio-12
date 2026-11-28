@@ -37,6 +37,7 @@ art-source/
 .env
 .env.*
 !.env.example
+!.env.production.example
 
 # OS and editor
 .DS_Store
@@ -45,6 +46,8 @@ desktop.ini
 
 # Design document build output
 docs/thiet-ke/build/
+docs/report/build/
+docs/slide/build/
 docs/thiet-ke/thanh-vien.local.txt
 __pycache__/
 /Build/

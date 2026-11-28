@@ -26,6 +26,7 @@ namespace BaGio12.Story
 
         void Update()
         {
+            if (story.InNightTwo) return;
             Transition();
             var keys=Keyboard.current;
             if(keys==null || story.player.IsPaused || story.player.PauseChangedThisFrame)return;
@@ -73,6 +74,11 @@ namespace BaGio12.Story
 
         void OnGUI()
         {
+            if (story.InNightTwo)
+            {
+                if (!story.player.IsPaused) story.Morning.Draw();
+                return;
+            }
             if(story.player.IsPaused){playFade.Snap(false);return;}
             var state=story.State;
             bool overlay=IsHudOverlay(current);
@@ -131,10 +137,14 @@ namespace BaGio12.Story
             HudKit.Push(sub);
             HudKit.Label(new Rect(HudKit.Margin,y+90,1100,80),state.ending=="bystander"?"Bạn giao chiếc máy cho người khác. Câu chuyện của bạn dừng lại ở đây.":"Buổi sáng 25/11 thuộc đêm 2.",26,HudKit.Fade(HudKit.Paper,.75f));
             HudKit.Pop();
+            bool followupReady = state.ending=="night1_completed" && story.Morning.ValidateSceneAssets();
+            if (state.ending=="night1_completed" && !followupReady)
+                HudKit.Label(new Rect(HudKit.Margin,y+160,HudKit.Width-2*HudKit.Margin,50),story.Morning.MissingSceneAssets,20,HudKit.Warm);
             bool ready=endChoices.Age>=0;
             HudKit.Push(ready?1:0,0,0,!ready);
             Pick(endChoices,HudKit.Margin,y+210,new List<(string,Action,bool)>
             {
+                ("Sáng 25/11 — Bắt đầu Đêm 2",()=>story.Morning.Begin(),followupReady),
                 ("Chơi lại từ điểm lưu",story.RestoreCheckpoint,true),
                 ("Chơi lại đêm 1",()=>story.GetComponent<BaGio12.Persistence.NightPersistence>().StartNewGame(),true),
             });

@@ -55,8 +55,16 @@ public static class PauseMenuSessionRegression
             {
                 player.SetPaused(true); player.Session = null; Invoke(menu, "Update"); Invoke(menu, "Layout");
                 Check(Has(menu, "Tiếp tục"), "Missing early-pause fixture");
-                var session = new Session(); player.Session = session; Invoke(menu, "Update");
+                var session = new Session { ask = true }; player.Session = session; Invoke(menu, "Update");
+                Check(Has(menu, "Gửi thống kê ẩn danh") && !Has(menu, "Chơi mới Đêm 1"), "Consent gate lost after late session attachment");
+                menu.ShowSettings();
+                Check(!(bool)typeof(PauseMenu).GetField("inPage", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(menu), "Settings bypassed consent gate");
+                session.AnswerTelemetryConsent(false); Invoke(menu, "Update");
                 Check(Has(menu, "Chơi mới Đêm 1") && !Has(menu, "Tiếp tục"), "Startup actions stayed stale after session attachment");
+                session.evidence = true; Invoke(menu, "Update");
+                Check(Has(menu, "Gửi bằng chứng cho công an"), "Evidence entry did not refresh");
+                session.evidence = false; Invoke(menu, "Update");
+                Check(!Has(menu, "Gửi bằng chứng cho công an"), "Evidence entry remained after permission removed");
                 session.saved = true; Invoke(menu, "Update");
                 Check(Has(menu, "Tiếp tục bản đã lưu") && Has(menu, "Xóa tiến độ"), "Save availability did not refresh");
                 session.start = false; Invoke(menu, "Update");
@@ -73,7 +81,7 @@ public static class PauseMenuSessionRegression
     }
     sealed class Session : IGameSession
     {
-        public bool start = true, saved;
+        public bool start = true, saved, ask, evidence;
         public bool AtStart => start;
         public bool HasSave => saved;
         public string Status => "";
@@ -86,5 +94,10 @@ public static class PauseMenuSessionRegression
         public bool PrepareQuit() => false;
         public void ImportSettings(GameSettings settings) { }
         public bool SaveSettings(GameSettings settings) => false;
+        public bool AskTelemetryConsent => ask;
+        public bool TelemetryConsent { get; set; }
+        public void AnswerTelemetryConsent(bool granted) { TelemetryConsent = granted; ask = false; }
+        public bool CanSubmitEvidence => evidence;
+        public void SubmitEvidence() { }
     }
 }

@@ -158,6 +158,12 @@ namespace BaGio12.Prototype
 
         void OnPlayerPhoneChanged(int previous, int next)
         {
+            var director = FindAnyObjectByType<NightOneDirector>();
+            if (director != null && director.InNightTwo)
+            {
+                SetPhoneOpen(false);
+                return;
+            }
             if (next == 1)
             {
                 SetPhoneOpen(true);
