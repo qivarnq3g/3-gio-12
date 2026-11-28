@@ -55,8 +55,10 @@ public static class PauseMenuSessionRegression
             {
                 player.SetPaused(true); player.Session = null; Invoke(menu, "Update"); Invoke(menu, "Layout");
                 Check(Has(menu, "Tiếp tục"), "Missing early-pause fixture");
-                var session = new Session { ask = true }; player.Session = session; Invoke(menu, "Update");
+                typeof(PauseMenu).GetField("noticeSeen", BindingFlags.Static | BindingFlags.NonPublic).SetValue(null, false);
+                var session = new Session { ask = true, ShowWarning = true }; player.Session = session; Invoke(menu, "Update");
                 Check(Has(menu, "Gửi thống kê ẩn danh") && !Has(menu, "Chơi mới Đêm 1"), "Consent gate lost after late session attachment");
+                Check(menu.NoticeVisible, "Content warning lost after late session attachment");
                 menu.ShowSettings();
                 Check(!(bool)typeof(PauseMenu).GetField("inPage", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(menu), "Settings bypassed consent gate");
                 session.AnswerTelemetryConsent(false); Invoke(menu, "Update");

@@ -486,6 +486,7 @@ namespace BaGio12.Gameplay
                 selected = 0; inPage = false;
                 Layout();
             }
+            if (show) ShowNoticeIfNeeded();
             float dt = Time.unscaledDeltaTime;
             group.alpha = Mathf.MoveTowards(group.alpha, show ? 1 : 0, dt * 6);
             if (!show && group.alpha <= 0)
@@ -542,7 +543,13 @@ namespace BaGio12.Gameplay
             lightLevel = 0;
             SwitchLights(true);
             StartCoroutine(CaptureBackdrop());
-            if (!noticeSeen && AtStart && Session.ShowWarning) { noticeUp = true; noticeAt = Time.unscaledTime; notice.alpha = 1; noticeHint.alpha = 0; }
+            ShowNoticeIfNeeded();
+        }
+
+        void ShowNoticeIfNeeded()
+        {
+            if (!noticeSeen && !noticeUp && AtStart && Session.ShowWarning)
+            { noticeUp = true; noticeAt = Time.unscaledTime; notice.alpha = 1; noticeHint.alpha = 0; }
         }
 
         void Close()

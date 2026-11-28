@@ -9,6 +9,8 @@ using BaGio12.Stealth;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 
 // Run Write and Read in separate Unity processes with the same isolated DATA_ROOT.
 [InitializeOnLoad]
@@ -17,13 +19,14 @@ public static class SaveProgressRegression
     static double deadline, next;
     static bool reading, menuOnly;
     static int step;
+    static Keyboard captureKeyboard;
     static NightOneDirector story;
     static NightPersistence persistence;
     static SaveProgressRegression()
     { if (SessionState.GetBool("SaveProgressReview", false)) EditorApplication.playModeStateChanged += Changed; }
     static void Check(bool pass, string message) { if (!pass) throw new Exception("SAVE REGRESSION: " + message); }
     public static void Write() { SessionState.SetBool("SaveProgressMenu", false); Run(false); }
-    public static void Menu() { SessionState.SetBool("SaveProgressMenu", true); Run(false); }
+    public static void Menu() { if (Application.isBatchMode) throw new Exception("Menu capture requires a graphical Editor."); SessionState.SetBool("SaveProgressMenu", true); Run(false); }
     public static void Read() { SessionState.SetBool("SaveProgressMenu", false); Run(true); }
     static void Run(bool read)
     {
@@ -64,6 +67,15 @@ public static class SaveProgressRegression
         reading = SessionState.GetBool("SaveProgressRead", false); menuOnly = SessionState.GetBool("SaveProgressMenu", false); step = 0;
         deadline = EditorApplication.timeSinceStartup + 90; next = EditorApplication.timeSinceStartup + 2;
         Application.runInBackground = true;
+        if (menuOnly)
+        {
+            var gameView = EditorWindow.GetWindow(typeof(EditorWindow).Assembly.GetType("UnityEditor.GameView"));
+            gameView.position = new Rect(50, 50, 1280, 800); gameView.Show(); gameView.Focus();
+            captureKeyboard = InputSystem.AddDevice<Keyboard>();
+            Directory.CreateDirectory(NightPersistence.DataRoot);
+            foreach (var name in new[] { "warning.png", "menu.png", "settings.png" })
+                File.Delete(Path.Combine(NightPersistence.DataRoot, name));
+        }
         EditorApplication.update += Tick;
     }
     static void Tick()
@@ -81,10 +93,24 @@ public static class SaveProgressRegression
                 Directory.CreateDirectory(NightPersistence.DataRoot);
                 switch (step++)
                 {
-                    case 0: ScreenCapture.CaptureScreenshot(Path.Combine(NightPersistence.DataRoot, "menu.png")); break;
-                    case 1: persistence.OpenSettings(); break;
-                    case 2: ScreenCapture.CaptureScreenshot(Path.Combine(NightPersistence.DataRoot, "settings.png")); break;
-                    default: Debug.Log("SAVE_MENU_CAPTURE_PASSED"); Finish(0); return;
+                    case 0:
+                        Check(story.player.GetComponent<PauseMenu>().NoticeVisible, "content warning missing from fresh startup");
+                        ScreenCapture.CaptureScreenshot(Path.Combine(NightPersistence.DataRoot, "warning.png"));
+                        next = EditorApplication.timeSinceStartup + 3; return;
+                    case 1:
+                        InputSystem.QueueStateEvent(captureKeyboard, new KeyboardState(Key.Space)); break;
+                    case 2:
+                        InputSystem.QueueStateEvent(captureKeyboard, new KeyboardState());
+                        Check(!story.player.GetComponent<PauseMenu>().NoticeVisible, "content warning did not acknowledge input");
+                        if (persistence.AskTelemetryConsent) persistence.AnswerTelemetryConsent(false);
+                        break;
+                    case 3: ScreenCapture.CaptureScreenshot(Path.Combine(NightPersistence.DataRoot, "menu.png")); break;
+                    case 4: persistence.OpenSettings(); break;
+                    case 5: ScreenCapture.CaptureScreenshot(Path.Combine(NightPersistence.DataRoot, "settings.png")); break;
+                    default:
+                        foreach (var name in new[] { "warning.png", "menu.png", "settings.png" })
+                            Check(File.Exists(Path.Combine(NightPersistence.DataRoot, name)) && new FileInfo(Path.Combine(NightPersistence.DataRoot, name)).Length > 0, "capture missing: " + name);
+                        Debug.Log("SAVE_MENU_CAPTURE_PASSED"); Finish(0); return;
                 }
                 next = EditorApplication.timeSinceStartup + 1; return;
             }
@@ -154,7 +180,11 @@ public static class SaveProgressRegression
             replayEmitted.Clear();
             persistence.AnswerTelemetryConsent(true);
             story.FinishNight();
-            Check(persistence.StartNewGame() && persistence.Online.QueuedEvents >= 3, "night_started was not queued after consent");
+            Check(persistence.StartNewGame(), "replay after consent failed");
+            if (BaGio12.Online.OnlineServices.TelemetrySupported)
+                Check(persistence.Online.QueuedEvents >= 3, "night_started was not queued after consent");
+            else
+                Check(persistence.Online.QueuedEvents == 0 && !persistence.Online.ConsentGranted, "unsupported platform queued telemetry");
             Check(replayEmitted.OfType<NightStartedTelemetry>().Any(x => x.isReplay), "StartNewGame after FinishNight did not emit replay night_started");
             story.TelemetryProduced -= replayEmitted.Add;
             Check(Mathf.Abs(story.player.sensitivity - .13f) < .001f, "replay reset preferences");
@@ -164,6 +194,7 @@ public static class SaveProgressRegression
     }
     static void Finish(int code)
     {
+        if (captureKeyboard != null) InputSystem.RemoveDevice(captureKeyboard);
         EditorApplication.update -= Tick; SessionState.SetBool("SaveProgressReview", false);
         EditorApplication.Exit(code);
     }

@@ -209,7 +209,25 @@ public static class OnlineServicesRegression
             if (EditorApplication.timeSinceStartup > deadline) throw new Exception("ONLINE REGRESSION: timed out at step " + step);
             switch (step)
             {
+                case -1:
+                    if (EditorApplication.timeSinceStartup < quietUntil) return;
+                    Check(received.IsEmpty && online.QueuedEvents == 0 && !online.ConsentGranted,
+                        "unsupported platform sent or queued telemetry");
+                    UnityEngine.Object.DestroyImmediate(host); Spawn();
+                    Check(online.CanSubmitEvidence, "home ending flag not persisted on unsupported platform");
+                    online.SetConsent(false);
+                    Debug.Log("ONLINE_PLATFORM_GUARD_PASSED: Windows telemetry transport not exercised on this platform");
+                    BeginEvidence(); step = 5; break;
                 case 0:
+                    if (!OnlineServices.TelemetrySupported)
+                    {
+                        Check(!online.AskConsent && online.QueuedEvents == 0, "unsupported platform asked for telemetry");
+                        online.SetConsent(true);
+                        online.Record(new ChoiceTelemetry("3"));
+                        online.Record(new EndingTelemetry(PlayerProfile.HomeEnding));
+                        Check(online.CanSubmitEvidence, "home ending did not enable evidence without telemetry");
+                        quietUntil = EditorApplication.timeSinceStartup + 2; step = -1; break;
+                    }
                     Check(online.AskConsent && online.QueuedEvents == 0, "unanswered consent queued events");
                     online.Record(new ChoiceTelemetry("3"));
                     Check(online.QueuedEvents == 0, "event queued without consent");
@@ -269,9 +287,7 @@ public static class OnlineServicesRegression
                     Check(deletes.Count == 2 && deletes[0].EndsWith(revoked, StringComparison.Ordinal) && deletes[1].EndsWith(regranted, StringComparison.Ordinal), "revocations sent: " + string.Join(", ", deletes));
                     var onDisk = new LocalJsonStore<PlayerProfile>(Path.Combine(root, "profile.json"), PlayerProfile.Valid);
                     Check(onDisk.TryLoad(out var cleared, out _) && cleared.pendingRevocations.Count == 0, "revocations not cleared on disk");
-                    string file = Path.Combine(root, "evidence.jpg"); File.WriteAllText(file, "abc");
-                    replies["/api/v1/puzzles/"] = new Reply { status = 200, body = "{\"result\":\"rejected\",\"attemptsRemaining\":4,\"windowResetsAt\":\"2026-11-25T13:00:00Z\"}" };
-                    reports.Clear(); online.StartCoroutine(online.Submit(file, reports.Add));
+                    BeginEvidence();
                     step++; break;
                 case 5:
                     if (online.Submitting || !Await("POST", "/api/v1/puzzles/red-thread-sandal/submissions")) return;
@@ -298,6 +314,13 @@ public static class OnlineServicesRegression
             }
         }
         catch (Exception error) { Debug.LogException(error); Finish(1); }
+    }
+
+    static void BeginEvidence()
+    {
+        string file = Path.Combine(root, "evidence.jpg"); File.WriteAllText(file, "abc");
+        replies["/api/v1/puzzles/"] = new Reply { status = 200, body = "{\"result\":\"rejected\",\"attemptsRemaining\":4,\"windowResetsAt\":\"2026-11-25T13:00:00Z\"}" };
+        reports.Clear(); online.StartCoroutine(online.Submit(file, reports.Add));
     }
 
     static void Finish(int code)
