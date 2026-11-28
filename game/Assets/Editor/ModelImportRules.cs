@@ -4,13 +4,21 @@ public class ModelImportRules : AssetPostprocessor
 {
     public const string ModelsRoot = "Assets/Art/Models/";
     public const string TexturesRoot = "Assets/Art/Textures/";
+    public const string TexturesPBRRoot = "Assets/Art/TexturesPBR/";
 
     public static bool IsTiling(string path) => System.IO.Path.GetFileName(path).StartsWith("T_Tile");
 
     void OnPreprocessTexture()
     {
-        if (!assetPath.StartsWith(TexturesRoot)) return;
+        if (!assetPath.StartsWith(TexturesRoot) && !assetPath.StartsWith(TexturesPBRRoot)) return;
         var importer = (TextureImporter)assetImporter;
+        var name = System.IO.Path.GetFileNameWithoutExtension(assetPath);
+        if (assetPath.StartsWith(TexturesPBRRoot))
+        {
+            if (name.EndsWith("_normal")) { importer.textureType = TextureImporterType.NormalMap; importer.sRGBTexture = false; }
+            if (name.EndsWith("_mask")) importer.sRGBTexture = false;
+            return;
+        }
         importer.textureType = TextureImporterType.Default;
         importer.sRGBTexture = true;
         importer.mipmapEnabled = true;
@@ -20,7 +28,6 @@ public class ModelImportRules : AssetPostprocessor
         importer.npotScale = TextureImporterNPOTScale.None;
         importer.maxTextureSize = 1024;
         importer.textureCompression = TextureImporterCompression.CompressedHQ;
-        var name = System.IO.Path.GetFileNameWithoutExtension(assetPath);
         if (name.EndsWith("_Normal")) { importer.textureType = TextureImporterType.NormalMap; importer.sRGBTexture = false; }
         if (name.EndsWith("Leaves")) { importer.alphaIsTransparency = true; importer.mipMapsPreserveCoverage = true; importer.alphaTestReferenceValue = .4f; }
     }
