@@ -81,3 +81,22 @@ Telemetry chỉ hỗ trợ Windows: Mac phải không hỏi/không xếp hàng/k
 Đây là cập nhật mã để duyệt #131; zip native và số FPS ngày 26/11 vẫn từ `dd481ed`, không phải bản dựng của các sửa 28/11. Chưa đóng #127 hoặc phát hành Mac.
 
 Ảnh Game View mới (không phải app native): [cảnh báo](qa/macos-menu-2026-11-28/warning.png), [menu sau xác nhận](qa/macos-menu-2026-11-28/menu.png), [cài đặt](qa/macos-menu-2026-11-28/settings.png). Bài chụp dùng bàn phím Input System riêng, đợi đủ thời gian tối thiểu rồi xác nhận cảnh báo; kiểm ảnh tồn tại trước khi báo đạt.
+
+## Đồng bộ sau khi #85/#90/#152 gộp vào main
+
+Gộp `main@8c5348a` vào #131 ở `b36fadf`. Mã lưu/nạp trên nhánh mới dùng NightOneRealistic (các kết quả Graybox ngày trước chỉ áp dụng nguồn cũ). Trên M2/macOS 15.7.4/Unity 6000.3.26f1, dữ liệu cách ly:
+
+| Bài | Kết quả trên b36fadf |
+|---|---|
+| PauseMenuSessionRegression.Run | PASS / exit 0 |
+| SaveProgressRegression.Write / Read — hai tiến trình | PASS / exit 0 |
+| OnlineServicesRegression.Run | PASS logic/chặn telemetry Mac/gửi hash bằng chứng qua HTTP loopback / exit 0 |
+| SaveProgressRegression.Menu — có đồ họa | PASS / exit 0 |
+
+Nhánh transport/revocation Windows vẫn cần Thắng kiểm; không dùng lượt Mac thay cho nhánh này. Như trước, log có SearchDatabase lúc khởi động.
+
+Sửa tiếp `27a10e9` cho công cụ chụp menu: trên Windows mượn thiết bị PhysicalKeyboardHook đang sở hữu Keyboard.current, xếp phím Space theo onBeforeUpdate sau callback của hook; không tắt hook hoặc xóa thiết bị mượn. Lý do tương tự lỗi công cụ kiểm điện thoại trong #162; đây không phải thay đổi gameplay. Cần người duyệt chạy lại Menu trên Windows với DATA_ROOT mới.
+
+#85/#90 đã gộp. Quang đã chuyển phần chơi xuyên N1→N2→N3 và quay video sang Thắng/#140 trên Windows; #22 còn mở. Việc đó không tự xác nhận tiêu chí app Mac đã chơi hết mở đầu, bản Intel, hay tải zip từ release. #131 vẫn cần duyệt/gộp; binary Mac nội bộ đã dựng trước đó không được coi là binary của mã đồng bộ mới hoặc đính vào release khác commit.
+
+Lượt Menu cuối trên `27a10e9` đạt `SAVE_MENU_REVIEW_INPUT_DEVICE SaveMenuReviewKeyboard owned=True`, `SAVE_MENU_CAPTURE_PASSED`, exit 0. Đã xem ảnh menu và cài đặt trên cảnh tả thực: không dính chữ cảnh báo ở nền. Ba ảnh warning/menu/settings trong thư mục QA đã thay bằng lượt này. Chưa chạy bản sửa nhập phím này trên Windows.
