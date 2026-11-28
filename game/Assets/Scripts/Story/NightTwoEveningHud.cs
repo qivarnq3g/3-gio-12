@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using BaGio12.Persistence;
 using BaGio12.Gameplay;
 using UnityEngine;
@@ -34,7 +35,7 @@ namespace BaGio12.Story
             {
                 Background(new Rect(0, 0, 1280, 720), Color.black);
                 Label(new Rect(280, 260, 750, 100), "HẾT ĐÊM 2", titleStyle);
-                Label(new Rect(280, 330, 750, 70), State.vigilDozed ? "Bạn ngủ gật lúc nào không hay. Trời đã sáng." : "Sáng 26/11/2026.", textStyle);
+                Label(new Rect(280, 330, 750, 70), State.vigilDozed ? "Bạn ngủ gật lúc nào không hay. Trời đã sáng." : "Sáng 26/11.", textStyle);
                 if (Button(new Rect(280, 420, 300, 50), "Chơi lại đêm 1")) story.GetComponent<NightPersistence>().StartNewGame();
                 if (Button(new Rect(610,420,500,50),"Sáng 26/11 — Đêm 3")) BeginThree();
                 return true;
@@ -83,14 +84,21 @@ namespace BaGio12.Story
                 case "lock": DrawLock(); break;
                 default: DrawEveningMessages(); break;
             }
-            Label(new Rect(65, 660, 1080, 40), "Giao diện tạm cho bản thô, chờ ghép điện thoại #17.", textStyle);
         }
 
         void DrawEveningMessages()
         {
             var lines = story.State.messages;
-            scroll = HudKit.BeginScroll(HudRect(new Rect(65, 145, 1120, 300)), scroll, 954, Mathf.Max(450, lines.Count * 98));
-            for (int i = 0; i < lines.Count; i++) HudKit.Label(new Rect(0, i * 98, 900, 98), lines[i], 30, HudKit.Paper);
+            float width = HudRect(new Rect(0, 0, 1100, 0)).width;
+            float height = lines.Sum(line => HudKit.TextHeight(line, 30, width) + 27);
+            scroll = HudKit.BeginScroll(HudRect(new Rect(65, 145, 1120, 300)), scroll, width, Mathf.Max(450, height));
+            float y = 0;
+            foreach (string line in lines)
+            {
+                float rowHeight = HudKit.TextHeight(line, 30, width);
+                HudKit.Label(new Rect(0, y, width, rowHeight), line, 30, HudKit.Paper);
+                y += rowHeight + 27;
+            }
             HudKit.EndScroll();
             var options = new List<string>();
             foreach (string id in NightTwoEvening.QuestionIds) if (CanSend(id)) options.Add(id);

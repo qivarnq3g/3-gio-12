@@ -1,0 +1,12 @@
+#cloud-config
+# Chuẩn bị máy ảo Ubuntu 24.04 cho docker-compose.prod.yml (xem docs/deploy-azure.md).
+package_update: true
+packages:
+  - docker.io
+  - docker-compose-v2
+  - git
+runcmd:
+  # 2 GB swap: máy B1ms chỉ có 2 GB RAM, dựng ảnh .NET và Node cần thêm bộ nhớ.
+  - [ bash, -c, "fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && echo '/swapfile none swap sw 0 0' >> /etc/fstab" ]
+  - [ systemctl, enable, --now, docker ]
+  - [ usermod, -aG, docker, azureuser ]
