@@ -7,6 +7,7 @@ namespace BaGio12.Story
     {
         static readonly string Session = Guid.NewGuid().ToString();
         static int nextSequence;
+        public static string CurrentSession => Session;
         public string eventId = Guid.NewGuid().ToString();
         public string sessionId = Session;
         public int sequence = nextSequence++;
@@ -27,6 +28,14 @@ namespace BaGio12.Story
     }
     [Serializable] public sealed class ChoiceTelemetry : NightTelemetry
     { public string choiceId; public ChoiceTelemetry(string id) {if(!System.Text.RegularExpressions.Regex.IsMatch(id??"",@"^[0-9]{1,2}[a-z]?$"))throw new ArgumentException("Invalid canonical choiceId",nameof(id));type="choice_made";choiceId=id;} }
+    [Serializable] public sealed class SessionStartedTelemetry : NightTelemetry
+    { public SessionStartedTelemetry(int currentNight) { type="session_started"; night=currentNight; } }
+    [Serializable] public sealed class SessionEndedTelemetry : NightTelemetry
+    {
+        public string reason;
+        public int durationSeconds;
+        public SessionEndedTelemetry(string endReason,int seconds,int currentNight) {type="session_ended";reason=endReason;durationSeconds=Math.Max(0,seconds);night=currentNight;}
+    }
     [Serializable] public sealed class EndingTelemetry : NightTelemetry
     { public string endingId; public EndingTelemetry(string id) {type="ending_reached";endingId=id;} }
 }

@@ -1,0 +1,25 @@
+# Cấu hình Caddy cho bản nộp và chơi thử. Đọc biến môi trường DOMAIN (tên miền đầy đủ,
+# ví dụ ba-gio-muoi-hai.southeastasia.cloudapp.azure.com). Caddy tự xin và gia hạn chứng chỉ HTTPS.
+{$DOMAIN} {
+	encode zstd gzip
+
+	# API cho game và trang quản trị. `api` chỉ mở trong mạng Docker, không mở ra ngoài.
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	# Trang quản trị (React, build với base "/admin/"): bỏ tiền tố /admin rồi trả tệp tĩnh,
+	# đường dẫn không có tệp thì trả index.html để bộ định tuyến phía trình duyệt xử lý.
+	redir /admin /admin/ permanent
+	handle_path /admin/* {
+		root * /srv/admin
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Website câu đố ngoài game.
+	handle {
+		root * /srv/site
+		file_server
+	}
+}

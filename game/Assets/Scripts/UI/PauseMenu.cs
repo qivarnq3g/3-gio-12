@@ -12,7 +12,7 @@ namespace BaGio12.Gameplay
     [RequireComponent(typeof(FirstPersonPlayer))]
     public sealed class PauseMenu : MonoBehaviour
     {
-        const int EntryCount = 6;
+        const int EntryCount = 7;
         const float IdleSeconds = 40, TrackWidth = 220;
         const string Regular = "Fonts/BeVietnamPro-Regular", Medium = "Fonts/BeVietnamPro-Medium";
         static readonly Color Warm = new Color(1, .8f, .52f);
@@ -72,6 +72,14 @@ namespace BaGio12.Gameplay
         AudioSource clicks, hum;
         int selected, row, dragging = -1, leftPageFrame = -1;
         bool shown, inPage, dirty, lightsOn;
+        const float NoticeMinSeconds = 2.5f;
+        const string NoticeTitle = "Cảnh báo: Xem kỹ trước khi chơi trò chơi";
+        const string NoticeBody = "Có một số ít người bị động kinh đột ngột khi xem một số hình ảnh trực quan, bao gồm đèn flash hoặc đồ họa xuất hiện trong các trò chơi điện tử. Khi chơi trò chơi điện tử, những người này có thể có triệu chứng động kinh. Ngay cả những người không có tiền sử động kinh cũng có thể gặp các triệu chứng giống như động kinh khi chơi trò chơi điện tử. Nếu bạn hoặc gia đình bạn có tiền sử bệnh động kinh, vui lòng tham khảo ý kiến bác sĩ trước khi chơi trò chơi.\n\nNếu bạn gặp các triệu chứng dưới đây khi chơi trò chơi, bao gồm đau mắt, bất thường về thị giác, đau nửa đầu, chuột rút hoặc bất tỉnh (như hôn mê), vui lòng dừng trò chơi ngay lập tức và tham khảo ý kiến bác sĩ trước khi chơi lại trò chơi này.";
+        static bool noticeSeen;
+        CanvasGroup notice, noticeHint;
+        float noticeAt = -10;
+        bool noticeUp;
+        public bool NoticeVisible => noticeUp;
         float quitUntil, grainAt, repeatAt, lastInput, flickerAt = -10, lightLevel;
 
         void Awake() { player = GetComponent<FirstPersonPlayer>(); }
@@ -215,12 +223,15 @@ namespace BaGio12.Gameplay
                     v => { if (Session != null) Session.Quality = order[v]; else QualitySettings.SetQualityLevel(order[v], true); }));
                 rows.Add(Toggle("Cảnh báo nội dung", "Hiện cảnh báo nội dung ở màn hình đầu khi mở game.",
                     () => Session == null || Session.ShowWarning ? 1 : 0, v => { if (Session != null) Session.ShowWarning = v > .5f; }));
+                if (BaGio12.Online.OnlineServices.TelemetrySupported)
+                    rows.Add(Toggle("Gửi thống kê ẩn danh", "Gửi số liệu chơi không kèm tên. Khi tắt, game xóa số liệu chưa gửi và nhờ máy chủ xóa số liệu đã gửi.",
+                        () => Session != null && Session.TelemetryConsent ? 1 : 0, v => { if (Session != null) Session.TelemetryConsent = v > .5f; }));
             }
             rows.Add(new Setting { name = "Khôi phục mặc định", hint = "Đưa mọi cài đặt ở trên về như lúc đầu.", kind = Kind.Action, run = ResetDefaults });
             for (int i = 0; i < rows.Count; i++) MakeRow(rows[i], i);
             hint = Words(settingsPage.transform, "Hint", "", 22, new Color(Paper.r, Paper.g, Paper.b, .6f));
             hint.textWrappingMode = TextWrappingModes.Normal; hint.alignment = TextAlignmentOptions.TopLeft;
-            GameUi.Place(hint.rectTransform, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(940, 186 - rows.Count * 64), new Vector2(800, 80));
+            GameUi.Place(hint.rectTransform, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(940, 122 - (rows.Count - 1) * RowStep), new Vector2(800, 80));
             RefreshRows();
 
             controlsPage = Page(lightRect, "Điều khiển");
@@ -252,8 +263,32 @@ namespace BaGio12.Gameplay
             GameUi.Place(darkHint.rectTransform, new Vector2(.5f, .5f), new Vector2(.5f, .5f), Vector2.zero, new Vector2(900, 40));
             darkHint.alpha = 0;
 
+            BuildNotice(root);
             grain = GameUi.Raw(root, "Grain", GameUi.Noise(), new Color(1, 1, 1, .025f)); GameUi.Fill(grain.rectTransform);
             canvas.gameObject.SetActive(false);
+        }
+
+        void BuildNotice(Transform root)
+        {
+            var rect = GameUi.Fill(GameUi.Box(root, "Seizure notice", Night));
+            notice = rect.gameObject.AddComponent<CanvasGroup>(); notice.alpha = 0; notice.blocksRaycasts = false;
+            var head = Words(rect, "Notice title", NoticeTitle, 40, new Color(Warm.r, Warm.g, Warm.b, .95f), true, TextAlignmentOptions.TopLeft);
+            GameUi.Place(head.rectTransform, new Vector2(.5f, .5f), new Vector2(.5f, 0), new Vector2(0, 250), new Vector2(1240, 60));
+            GameUi.Place(GameUi.Box(rect, "Notice rule", new Color(Warm.r, Warm.g, Warm.b, .55f)), new Vector2(.5f, .5f), new Vector2(.5f, .5f), new Vector2(0, 232), new Vector2(1240, 1));
+            var body = Words(rect, "Notice body", NoticeBody, 26, new Color(Paper.r, Paper.g, Paper.b, .88f), false, TextAlignmentOptions.TopLeft);
+            body.textWrappingMode = TextWrappingModes.Normal; body.lineSpacing = 18;
+            GameUi.Place(body.rectTransform, new Vector2(.5f, .5f), new Vector2(.5f, 1), new Vector2(0, 205), new Vector2(1240, 560));
+            var hintText = Words(rect, "Notice hint", "Nhấn phím bất kỳ hoặc bấm chuột để tiếp tục.", 22, new Color(Paper.r, Paper.g, Paper.b, .55f), false, TextAlignmentOptions.TopLeft);
+            GameUi.Place(hintText.rectTransform, new Vector2(.5f, .5f), new Vector2(.5f, 1), new Vector2(0, -390), new Vector2(1240, 34));
+            noticeHint = hintText.gameObject.AddComponent<CanvasGroup>(); noticeHint.alpha = 0;
+        }
+
+        static bool PressedThisFrame()
+        {
+            var keys = Keyboard.current;
+            var mouse = Mouse.current;
+            return (keys != null && keys.anyKey.wasPressedThisFrame) ||
+                   (mouse != null && (mouse.leftButton.wasPressedThisFrame || mouse.rightButton.wasPressedThisFrame));
         }
 
         static string Number(float value, int decimals) =>
@@ -306,9 +341,11 @@ namespace BaGio12.Gameplay
                 get = () => get(), set = v => set(Mathf.Clamp(Mathf.RoundToInt(v), 0, options.Length - 1)),
                 format = v => options[Mathf.Clamp(Mathf.RoundToInt(v), 0, options.Length - 1)] };
 
+        float RowStep => Mathf.Min(64f, 576f / Mathf.Max(1, rows.Count - 1));
+
         void MakeRow(Setting s, int index)
         {
-            float y = 230 - index * 64;
+            float y = 230 - index * RowStep;
             s.stripe = StripeImage(settingsPage.transform, "Light " + s.name, new Vector2(880, y), new Vector2(900, 92));
             s.rect = GameUi.Place(GameUi.Box(settingsPage.transform, "Row " + s.name, Color.clear), new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(920, y), new Vector2(840, 56));
             s.text = Words(s.rect, "Label", s.name, 26, Paper);
@@ -357,11 +394,22 @@ namespace BaGio12.Gameplay
         {
             items.Clear();
             var session = Session;
+            if (AtStart && session.AskTelemetryConsent)
+            {
+                settingsIndex = controlsIndex = -1;
+                Add("Gửi thống kê ẩn danh", () => session.AnswerTelemetryConsent(true), null,
+                    "Game gửi số liệu chơi không kèm tên, như chỗ bạn bị bắt, để nhóm chỉnh độ khó.");
+                Add("Không gửi thống kê", () => session.AnswerTelemetryConsent(false), null,
+                    "Game không gửi số liệu nào lên máy chủ. Bạn đổi ý được trong Cài đặt.");
+                ShowItems();
+                return;
+            }
             if (AtStart)
             {
                 if (session.HasSave) Add("Tiếp tục bản đã lưu", () => session.ContinueSaved(), null, session.SaveSummary ?? "Bạn quay lại đúng chỗ của bản lưu gần nhất.");
                 Add("Chơi mới Đêm 1", () => session.StartNewGame(), session.HasSave ? "Nhấn lần nữa để chơi lại từ đầu" : null,
                     session.HasSave ? "Bạn bắt đầu lại Đêm 1 từ lúc 20:56, và bản lưu cũ sẽ bị xóa." : "Bạn bắt đầu Đêm 1 từ lúc 20:56 trong con hẻm.");
+                if (session.CanSubmitEvidence) Add("Gửi bằng chứng cho công an", session.SubmitEvidence, null, BaGio12.Online.Evidence.Instructions);
             }
             else
             {
@@ -373,6 +421,11 @@ namespace BaGio12.Gameplay
             if (AtStart && session.HasSave) Add("Xóa tiến độ", () => session.DeleteProgress(), "Nhấn lần nữa để xóa tiến độ", "Bản lưu của game sẽ bị xóa và không lấy lại được.");
             if (session != null && !AtStart) Add("Lưu và thoát", QuitGame, "Nhấn lần nữa để thoát", "Game lưu tiến độ hiện tại rồi đóng lại.");
             else Add("Thoát game", QuitGame, "Nhấn lần nữa để thoát", "Game đóng lại, tiến độ đã lưu vẫn được giữ.");
+            ShowItems();
+        }
+
+        void ShowItems()
+        {
             for (int i = 0; i < entries.Length; i++)
             {
                 bool used = i < items.Count;
@@ -381,6 +434,8 @@ namespace BaGio12.Gameplay
             }
             selected = Mathf.Clamp(selected, 0, items.Count - 1);
             confirmIndex = -1;
+            // Danh sách mục vừa đổi (ví dụ sau khi trả lời hỏi đồng ý): bỏ dòng mô tả của danh sách cũ để Animate nạp lại.
+            aboutIndex = -1;
         }
 
         static bool HasSessionInScene()
@@ -400,7 +455,10 @@ namespace BaGio12.Gameplay
         public void ShowSettings()
         {
             if (group == null) Build();
-            Layout(); selected = settingsIndex; inPage = true; row = 0;
+            Layout();
+            // Lúc đang hỏi đồng ý gửi thống kê, Layout không dựng mục Cài đặt (settingsIndex = -1): không mở trang cài đặt.
+            if (settingsIndex < 0) return;
+            selected = settingsIndex; inPage = true; row = 0;
         }
 
         void Update()
@@ -421,7 +479,17 @@ namespace BaGio12.Gameplay
                 if (group.gameObject.activeSelf) group.gameObject.SetActive(false);
                 return;
             }
-            if (show && !player.PauseChangedThisFrame)
+            if (noticeUp && (!show || !AtStart)) { noticeUp = false; noticeSeen = true; }
+            if (noticeUp)
+            {
+                if (Time.unscaledTime - noticeAt >= NoticeMinSeconds && PressedThisFrame())
+                {
+                    noticeUp = false; noticeSeen = true;
+                    lastInput = Time.unscaledTime; openedAt = Time.unscaledTime;
+                    clicks.PlayOneShot(MenuSounds.Relay, .8f);
+                }
+            }
+            else if (show && !player.PauseChangedThisFrame)
             {
                 if (AnyInput())
                 {
@@ -460,6 +528,7 @@ namespace BaGio12.Gameplay
             lightLevel = 0;
             SwitchLights(true);
             StartCoroutine(CaptureBackdrop());
+            if (!noticeSeen && AtStart && Session.ShowWarning) { noticeUp = true; noticeAt = Time.unscaledTime; notice.alpha = 1; noticeHint.alpha = 0; }
         }
 
         void Close()
@@ -673,6 +742,8 @@ namespace BaGio12.Gameplay
         void Animate(float dt)
         {
             float now = Time.unscaledTime, since = now - openedAt;
+            notice.alpha = Mathf.MoveTowards(notice.alpha, noticeUp ? 1 : 0, dt * 3);
+            noticeHint.alpha = Mathf.MoveTowards(noticeHint.alpha, noticeUp && now - noticeAt >= NoticeMinSeconds ? 1 : 0, dt * 3);
             lightLevel = Mathf.MoveTowards(lightLevel, lightsOn ? 1 : 0, dt * (lightsOn ? 12 : 2.5f));
             bool peek = inPage && selected == settingsIndex && rows[row].peek;
             light.alpha = lightLevel * (lightsOn ? Flicker() : 1);
