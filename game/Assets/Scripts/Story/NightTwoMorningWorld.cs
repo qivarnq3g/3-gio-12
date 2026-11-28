@@ -34,8 +34,8 @@ namespace BaGio12.Story
             if (Time.unscaledTime - assetsCheckedAt < 1) return MissingSceneAssets == "";
             assetsCheckedAt = Time.unscaledTime;
             propsRoot = SceneObject("Night2 props");
-            breadCart = VisibleModel("Night2_BreadCart", "BanhMi_Cart");
-            rack = VisibleModel("Night2_Shelf", "BH_F3_Room7_Rack");
+            breadCart = VisibleModel("Night2_BreadCart");
+            rack = VisibleModel("Night2_Shelf");
             clampLamp = VisibleModel("Night2_ClampLamp");
             var missing = new System.Collections.Generic.List<string>();
             if (breadCart == null) missing.Add("xe bánh mì đầu hẻm");

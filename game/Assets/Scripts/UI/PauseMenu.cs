@@ -72,6 +72,14 @@ namespace BaGio12.Gameplay
         AudioSource clicks, hum;
         int selected, row, dragging = -1, leftPageFrame = -1;
         bool shown, inPage, dirty, lightsOn;
+        const float NoticeMinSeconds = 2.5f;
+        const string NoticeTitle = "Cảnh báo: Xem kỹ trước khi chơi trò chơi";
+        const string NoticeBody = "Có một số ít người bị động kinh đột ngột khi xem một số hình ảnh trực quan, bao gồm đèn flash hoặc đồ họa xuất hiện trong các trò chơi điện tử. Khi chơi trò chơi điện tử, những người này có thể có triệu chứng động kinh. Ngay cả những người không có tiền sử động kinh cũng có thể gặp các triệu chứng giống như động kinh khi chơi trò chơi điện tử. Nếu bạn hoặc gia đình bạn có tiền sử bệnh động kinh, vui lòng tham khảo ý kiến bác sĩ trước khi chơi trò chơi.\n\nNếu bạn gặp các triệu chứng dưới đây khi chơi trò chơi, bao gồm đau mắt, bất thường về thị giác, đau nửa đầu, chuột rút hoặc bất tỉnh (như hôn mê), vui lòng dừng trò chơi ngay lập tức và tham khảo ý kiến bác sĩ trước khi chơi lại trò chơi này.";
+        static bool noticeSeen;
+        CanvasGroup notice, noticeHint;
+        float noticeAt = -10;
+        bool noticeUp;
+        public bool NoticeVisible => noticeUp;
         float quitUntil, grainAt, repeatAt, lastInput, flickerAt = -10, lightLevel;
 
         void Awake() { player = GetComponent<FirstPersonPlayer>(); }
@@ -255,8 +263,32 @@ namespace BaGio12.Gameplay
             GameUi.Place(darkHint.rectTransform, new Vector2(.5f, .5f), new Vector2(.5f, .5f), Vector2.zero, new Vector2(900, 40));
             darkHint.alpha = 0;
 
+            BuildNotice(root);
             grain = GameUi.Raw(root, "Grain", GameUi.Noise(), new Color(1, 1, 1, .025f)); GameUi.Fill(grain.rectTransform);
             canvas.gameObject.SetActive(false);
+        }
+
+        void BuildNotice(Transform root)
+        {
+            var rect = GameUi.Fill(GameUi.Box(root, "Seizure notice", Night));
+            notice = rect.gameObject.AddComponent<CanvasGroup>(); notice.alpha = 0; notice.blocksRaycasts = false;
+            var head = Words(rect, "Notice title", NoticeTitle, 40, new Color(Warm.r, Warm.g, Warm.b, .95f), true, TextAlignmentOptions.TopLeft);
+            GameUi.Place(head.rectTransform, new Vector2(.5f, .5f), new Vector2(.5f, 0), new Vector2(0, 250), new Vector2(1240, 60));
+            GameUi.Place(GameUi.Box(rect, "Notice rule", new Color(Warm.r, Warm.g, Warm.b, .55f)), new Vector2(.5f, .5f), new Vector2(.5f, .5f), new Vector2(0, 232), new Vector2(1240, 1));
+            var body = Words(rect, "Notice body", NoticeBody, 26, new Color(Paper.r, Paper.g, Paper.b, .88f), false, TextAlignmentOptions.TopLeft);
+            body.textWrappingMode = TextWrappingModes.Normal; body.lineSpacing = 18;
+            GameUi.Place(body.rectTransform, new Vector2(.5f, .5f), new Vector2(.5f, 1), new Vector2(0, 205), new Vector2(1240, 560));
+            var hintText = Words(rect, "Notice hint", "Nhấn phím bất kỳ hoặc bấm chuột để tiếp tục.", 22, new Color(Paper.r, Paper.g, Paper.b, .55f), false, TextAlignmentOptions.TopLeft);
+            GameUi.Place(hintText.rectTransform, new Vector2(.5f, .5f), new Vector2(.5f, 1), new Vector2(0, -390), new Vector2(1240, 34));
+            noticeHint = hintText.gameObject.AddComponent<CanvasGroup>(); noticeHint.alpha = 0;
+        }
+
+        static bool PressedThisFrame()
+        {
+            var keys = Keyboard.current;
+            var mouse = Mouse.current;
+            return (keys != null && keys.anyKey.wasPressedThisFrame) ||
+                   (mouse != null && (mouse.leftButton.wasPressedThisFrame || mouse.rightButton.wasPressedThisFrame));
         }
 
         static string Number(float value, int decimals) =>
@@ -447,7 +479,17 @@ namespace BaGio12.Gameplay
                 if (group.gameObject.activeSelf) group.gameObject.SetActive(false);
                 return;
             }
-            if (show && !player.PauseChangedThisFrame)
+            if (noticeUp && (!show || !AtStart)) { noticeUp = false; noticeSeen = true; }
+            if (noticeUp)
+            {
+                if (Time.unscaledTime - noticeAt >= NoticeMinSeconds && PressedThisFrame())
+                {
+                    noticeUp = false; noticeSeen = true;
+                    lastInput = Time.unscaledTime; openedAt = Time.unscaledTime;
+                    clicks.PlayOneShot(MenuSounds.Relay, .8f);
+                }
+            }
+            else if (show && !player.PauseChangedThisFrame)
             {
                 if (AnyInput())
                 {
@@ -486,6 +528,7 @@ namespace BaGio12.Gameplay
             lightLevel = 0;
             SwitchLights(true);
             StartCoroutine(CaptureBackdrop());
+            if (!noticeSeen && AtStart && Session.ShowWarning) { noticeUp = true; noticeAt = Time.unscaledTime; notice.alpha = 1; noticeHint.alpha = 0; }
         }
 
         void Close()
@@ -699,6 +742,8 @@ namespace BaGio12.Gameplay
         void Animate(float dt)
         {
             float now = Time.unscaledTime, since = now - openedAt;
+            notice.alpha = Mathf.MoveTowards(notice.alpha, noticeUp ? 1 : 0, dt * 3);
+            noticeHint.alpha = Mathf.MoveTowards(noticeHint.alpha, noticeUp && now - noticeAt >= NoticeMinSeconds ? 1 : 0, dt * 3);
             lightLevel = Mathf.MoveTowards(lightLevel, lightsOn ? 1 : 0, dt * (lightsOn ? 12 : 2.5f));
             bool peek = inPage && selected == settingsIndex && rows[row].peek;
             light.alpha = lightLevel * (lightsOn ? Flicker() : 1);

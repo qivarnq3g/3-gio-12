@@ -1,6 +1,6 @@
 # Đêm 3 trong cảnh tả thực (#22, đang làm)
 
-Nhánh nối #83 → #85 → #90, đã cập nhật `main@4f7c4dd` (gồm #121/#133/#130/#138), trên Unity `6000.3.26f1`. Mở duy nhất `Assets/Scenes/Night01/NightOneRealistic.unity`. World/HUD Đêm 3 không dựng nền, đường, cửa, điện thoại hoặc NPC bằng primitive. Tương tác thêm lúc chạy nên không bị mất khi `NightOneRealisticSetup` dựng lại cảnh. Chưa đóng #22, chưa xác nhận bản phát hành chơi xuyên ba đêm.
+Nhánh nối #83 → #85 → #90, đã cập nhật `main@7999a25` qua #85 (gồm #121/#133/#130/#138/#149/#153), trên Unity `6000.3.26f1`. Mở duy nhất `Assets/Scenes/Night01/NightOneRealistic.unity`. World/HUD Đêm 3 không dựng nền, đường, cửa, điện thoại hoặc NPC bằng primitive. Tương tác thêm lúc chạy nên không bị mất khi `NightOneRealisticSetup` dựng lại cảnh. Chưa đóng #22, chưa xác nhận bản phát hành chơi xuyên ba đêm.
 
 ## Đã chuyển
 
@@ -23,7 +23,7 @@ Chọn liên lạc từ máy mình hoặc máy Ngân; ảnh bằng chứng luôn
 
 - Model buổi sáng #121, buổi tối #133 (giải quyết #129), quầy #138 và online #130 đã vào main. Không còn dùng các PR này làm blocker asset/API. Vẫn cần chơi tay/build liền ba đêm; kiểm logic không thay cho việc đó.
 - Điểm nộp máy chỉ gắn `Night3_PoliceDesk` thật, không dùng cả tòa nhà hoặc marker rỗng làm quầy. Nộp máy gọi móc kết thúc chung, phát `EndingTelemetry("scapegoat")` với `night=3`. Thao tác lại hoặc nạp lại không tự phát trùng sự kiện. Bài kiểm quầy không còn tạo cube thay thế, phải có mesh nguồn `Night3_PoliceDesk.fbx`.
-- Móc `NightOneDirector.End("home")` phát sự kiện và mở quyền gửi bằng chứng qua OnlineServices, kể cả từ chối thống kê. `End("red_thread_sandal")` đọc `NightPersistence.Online.Profile.HasUnlock(PlayerProfile.SandalUnlock)` và từ chối khi chưa có cờ. Chỉ nhận bảy endingId theo hợp đồng máy chủ, chặn gọi lặp cùng kết thúc. Đây là móc chung, chưa phải lối chơi đầy đủ tới 6.6/6.7: kịch bản Đêm 3 chỉ kết thúc đêm, giữ máy thì đi tiếp Đêm 4. Không đổi “Hết Đêm 3” thành “Về nhà” để mở bằng chứng sớm. Phạm vi bản nộp/lối trình diễn ARG được mô tả ở `docs/thiet-ke/thuyet-minh.md`; lối trình diễn chưa được triển khai trong PR này.
+- Móc `NightOneDirector.End("home")` phát sự kiện và mở quyền gửi bằng chứng qua OnlineServices, kể cả từ chối thống kê. `End("red_thread_sandal")` đọc `NightPersistence.Online.Profile.HasUnlock(PlayerProfile.SandalUnlock)` và từ chối khi chưa có cờ. Chỉ nhận bảy endingId theo hợp đồng máy chủ, chặn gọi lặp cùng kết thúc. Theo chốt phạm vi của Quang trên #90 ngày 28/11, PR này giữ hai kết quả hiện có: hết đêm hoặc Kẻ gánh tội; không bổ sung nhánh Về nhà/6.7. Móc chung SandalUnlock vẫn giữ để phần sau dùng. Không đổi “Hết Đêm 3” thành “Về nhà” để mở bằng chứng sớm.
 - Tin thoại, ảnh album/nhật ký, animation lật máy/khóa cửa và các nội dung được duyệt còn cần hoàn thiện. Một số màn hiện bản chữ mô tả.
 - Chưa chơi tay, kiểm HUD các tỉ lệ, kiểm tuyến đi bộ bằng input hoặc build/chơi xuyên ba đêm. Không coi test có fixture là xác nhận asset thật.
 
@@ -94,3 +94,27 @@ Như vậy lượt này đã kiểm camera trên nhánh tích hợp hiện tại
 ## Kiểm buổi tối không fixture — bổ sung 27/11
 
 Đã ghép sửa bài kiểm từ #85 vào nhánh Đêm 3, mã kiểm `d9479e6`. Chạy `NightTwoEveningRegression.Run` với `THREEGIO12_REQUIRE_EVENING_MODELS=1`, dữ liệu cách ly, Unity 6000.3.26f1/M2/macOS 15.7.4/nographics: `NIGHT_TWO_EVENING_REAL_MODELS_CONFIRMED_NO_FIXTURES`, `NIGHT_TWO_EVENING_PASSED`, exit 0. Đây là lượt kiểm riêng buổi tối với model FBX thật trên nhánh tích hợp Đêm 3; không dùng kết quả để nhận đã chơi tay toàn tuyến. Chi tiết ba nhánh và sửa điều kiện nhóm cha đang tắt ở `night-two-evening.md`.
+
+
+## Đồng bộ và kiểm lại 28/11/2026
+
+Gộp #85 `96c8581` (đã chứa main `7999a25`) vào #90; giữ các điều kiện đầu vào của cảnh tả thực và kiểm `night_started` mới của #149. Mang theo sửa tin nhắn dài/chữ UI tạm, bỏ fallback kệ/xe bánh mì thô và ảnh morning cũ. Mã kiểm mới: `45752cd`. Bổ sung chặn gọi đồng ý telemetry bằng mã trên Mac như #131, không thay đổi chính sách Windows-only.
+
+Quang đã chốt trên #90 ngày 28/11: chỉ giữ hết đêm/Kẻ gánh tội, không thêm nhánh Về nhà hay 6.7 trong PR này. Móc SandalUnlock giữ nguyên.
+
+[Ảnh thư viện Đêm 3 mới](screenshots/night-three.png) là Game View từ `NightThreeRegression.Write`, dùng model thật. Bài kiểm đặt vị trí/góc ngắm; ảnh và kết quả tự động không thay cho lượt chơi bằng tay/video xuyên N1→N2→N3.
+
+
+Tất cả 8 lượt sau chạy trên `45752cd`, Unity 6000.3.26f1/M2/macOS 15.7.4, dữ liệu cách ly, đều **exit 0**:
+
+| Bài kiểm | Marker |
+|---|---|
+| Morning.Write / Read, hai tiến trình | `NIGHT_TWO_WRITE_PASSED`, `NIGHT_TWO_READ_PASSED` |
+| Evening.Run | `NIGHT_TWO_EVENING_PASSED` |
+| NightThreeEnding.Run | `NIGHT_THREE_REAL_DESK_INTERACTION_PASSED`, `NIGHT_THREE_ENDING_REGRESSION_PASSED` |
+| NightThree.Write / Read, hai tiến trình | `NIGHT_THREE_WRITE_PASSED`, `NIGHT_THREE_READ_PASSED` |
+| SaveProgress.Write / Read, hai tiến trình | `SAVE_WRITE_PROCESS_PASSED`, `SAVE_READ_PROCESS_PASSED` |
+
+Morning/Evening đều bật cờ bắt buộc model thật và ghi marker `NO_FIXTURES`; bài Đêm 3 bắt buộc quầy FBX thật. NightThree.Write chạy Editor có GPU, đã xem ảnh Game View cùng hai PNG camera; các bài còn lại nographics. SaveProgress trên nhánh này mở NightOneRealistic và seed điều kiện đã tới nhà/giúp cô Liên để kiểm riêng lưu trữ. Log vẫn có SearchDatabase/indexing khởi động như main. Các float vật liệu Editor tự làm tròn không đưa vào PR.
+
+#83 đã gộp, #85 sẵn sàng chờ Thắng duyệt. #90 giữ đích #85 cho tới khi #85 gộp, sau đó mới đổi sang main. Chưa có video/chơi tay toàn tuyến; chưa đóng #22 hoặc khẳng định đủ điều kiện phát hành.

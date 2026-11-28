@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using BaGio12.Gameplay;
 using BaGio12.Persistence;
 using BaGio12.Story;
@@ -91,7 +93,11 @@ public static class SaveProgressRegression
                 Check(story.player.IsPaused && Time.timeScale == 0, "startup menu did not pause world");
                 if (!reading)
                 {
+                    var emitted = new List<NightTelemetry>();
+                    story.TelemetryProduced += emitted.Add;
                     Check(persistence.StartNewGame(), "new game failed");
+                    story.TelemetryProduced -= emitted.Add;
+                    Check(emitted.OfType<NightStartedTelemetry>().Any(x => !x.isReplay), "StartNewGame did not emit night_started");
                     // Seed completed arrival/help prerequisites; this suite tests persistence, not the prologue.
                     story.State.bikeArrived = true; story.State.helpedLien = true;
                     story.State.stage = NightStage.Parking; story.State.phonePlaced = true; story.Clock.Set("21:00");
@@ -139,10 +145,24 @@ public static class SaveProgressRegression
             Check(!persistence.HasSave && !File.Exists(Path.Combine(NightPersistence.DataRoot, "night-one.json.bak")), "deleted slot was recreated by autosave");
             Check(File.Exists(Path.Combine(NightPersistence.DataRoot, "preferences.json")), "deletion removed settings");
             // A failed first save must keep the menu/error visible, rather than silently entering gameplay.
+            var replayEmitted = new List<NightTelemetry>();
+            story.TelemetryProduced += replayEmitted.Add;
             string blockedTemp = Path.Combine(NightPersistence.DataRoot, "night-one.json.tmp"); Directory.CreateDirectory(blockedTemp);
             Check(!persistence.StartNewGame() && story.player.IsPaused && story.player.PauseMenuLocked && persistence.Status != "", "failed new-game write hid the error");
+            Check(!replayEmitted.OfType<NightStartedTelemetry>().Any(), "failed StartNewGame emitted night_started");
             Directory.Delete(blockedTemp);
             Check(persistence.StartNewGame() && story.State.stage == NightStage.Prologue && story.State.messages.Count == 0 && story.State.prologue_beaten == 0, "replay did not reset progress");
+            Check(replayEmitted.OfType<NightStartedTelemetry>().Any(x => !x.isReplay), "StartNewGame after DeleteProgress did not emit fresh night_started");
+            replayEmitted.Clear();
+            persistence.AnswerTelemetryConsent(true);
+            story.FinishNight();
+            Check(persistence.StartNewGame(), "replay after consent failed");
+            if (BaGio12.Online.OnlineServices.TelemetrySupported)
+                Check(persistence.Online.QueuedEvents >= 3, "night_started was not queued after consent");
+            else
+                Check(persistence.Online.QueuedEvents == 0 && !persistence.Online.ConsentGranted, "unsupported platform queued telemetry");
+            Check(replayEmitted.OfType<NightStartedTelemetry>().Any(x => x.isReplay), "StartNewGame after FinishNight did not emit replay night_started");
+            story.TelemetryProduced -= replayEmitted.Add;
             Check(Mathf.Abs(story.player.sensitivity - .13f) < .001f, "replay reset preferences");
             Debug.Log("SAVE_READ_PROCESS_PASSED"); Finish(0);
         }

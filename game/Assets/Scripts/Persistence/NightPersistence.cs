@@ -81,7 +81,7 @@ namespace BaGio12.Persistence
             Preferences = loaded; Preferences.Apply(story.player); Status = warning;
             Online = gameObject.AddComponent<OnlineServices>(); Online.Initialize(DataRoot); story.TelemetryProduced += Online.Record;
             initial = story.CaptureSave(); Ready = true; story.player.Session = this;
-            if (System.Environment.GetEnvironmentVariable("THREEGIO12_SKIP_START_MENU") == "1") { playing = true; yield break; }
+            if (System.Environment.GetEnvironmentVariable("THREEGIO12_SKIP_START_MENU") == "1") { playing = true; story.StartNightTelemetry(); yield break; }
             startup = true; story.player.SetPaused(true); story.player.PauseMenuLocked = true;
         }
         void LateUpdate()
@@ -145,13 +145,14 @@ namespace BaGio12.Persistence
             if (!story.ApplySave(initial)) { Status = "Chưa thể bắt đầu lại màn chơi."; return false; }
             lastStable = null; playing = true;
             if (!Flush()) { startup = true; story.player.SetPaused(true); story.player.PauseMenuLocked = true; return false; }
-            CloseMenu(); story.Say("Trong hẻm vẫn còn người ngồi trước cửa nhà, và bạn không được để bất kỳ ai nhìn thấy mình trên đường vào nhà xe.", 9); return true;
+            CloseMenu(); story.StartNightTelemetry(); story.Say("Trong hẻm vẫn còn người ngồi trước cửa nhà, và bạn không được để bất kỳ ai nhìn thấy mình trên đường vào nhà xe.", 9); return true;
         }
         public bool DeleteProgress()
         {
             if (!Ready) return false;
             Settle(); written = savedMilestone = null;
             if (!saves.Delete(out var message)) { Status = message; return false; }
+            story.ClearSessionCompletion();
             Online?.ResetProfile();
             // A paused current session must not silently re-create the deleted slot.
             playing = false; lastStable = null; startup = true;

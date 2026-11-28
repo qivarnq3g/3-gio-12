@@ -14,14 +14,20 @@ public static class NightTwoEveningRegression
     static NightOneDirector story;
     static NightTwoMorning night;
     static NightPersistence persistence;
-    static int step;
+    static int step, captureStep, captureFrame;
+    static bool capturing;
+    static EditorWindow captureView;
     static double deadline;
 
     static NightTwoEveningRegression()
     { if (SessionState.GetBool(Flag, false)) EditorApplication.playModeStateChanged += Changed; }
 
-    public static void Run()
+    public static void Run() => Start(false);
+    public static void Capture() => Start(true);
+    static void Start(bool capture)
     {
+        if (capture && Application.isBatchMode) throw new Exception("Capture requires an Editor Game View, not batchmode.");
+        SessionState.SetBool(Flag + "Capture", capture);
         if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THREEGIO12_DATA_ROOT")))
             Environment.SetEnvironmentVariable("THREEGIO12_DATA_ROOT", Path.GetFullPath(Path.Combine("Library", Flag, Guid.NewGuid().ToString("N"))));
         Environment.SetEnvironmentVariable("THREEGIO12_SKIP_START_MENU", "1");
@@ -38,6 +44,12 @@ public static class NightTwoEveningRegression
         {
             Application.runInBackground = true;
             AddFixtures();
+            capturing = SessionState.GetBool(Flag + "Capture", false); captureStep = 0;
+            if (capturing)
+            {
+                captureView = EditorWindow.GetWindow(Type.GetType("UnityEditor.GameView, UnityEditor"));
+                captureView.position = new Rect(40, 40, 1280, 800); captureView.Show(); captureView.Focus();
+            }
             step = 0; deadline = EditorApplication.timeSinceStartup + 90; EditorApplication.update += Tick;
         }
         catch (Exception error) { Debug.LogException(error); Finish(null); }
@@ -128,6 +140,22 @@ public static class NightTwoEveningRegression
             if (story == null || (persistence = story.GetComponent<NightPersistence>())?.Ready != true || story.Morning == null) return;
             night = story.Morning; story.player.ResumeControl();
             if (step % 2 == 1 && night.Transitioning) return;
+            if (capturing && step == 1)
+            {
+                captureView.Repaint();
+                string image = Path.Combine(NightPersistence.DataRoot, "evening-review.png");
+                if (captureStep == 0)
+                {
+                    if (File.Exists(image)) File.Delete(image);
+                    story.player.SetPhone(1); night.OpenNganTab("messages");
+                    typeof(NightTwoMorning).GetField("scroll", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(night, Vector2.zero);
+                    captureFrame = Time.frameCount; captureStep = 1;
+                }
+                else if (captureStep == 1 && Time.frameCount > captureFrame + 4)
+                { ScreenCapture.CaptureScreenshot(image); captureStep = 2; }
+                else if (captureStep == 2 && File.Exists(image)) Finish("NIGHT_TWO_EVENING_CAPTURE_SAVED");
+                return;
+            }
             switch (step)
             {
                 case 0: PlayMorning(true, "given", "ignored"); step = 1; return;
