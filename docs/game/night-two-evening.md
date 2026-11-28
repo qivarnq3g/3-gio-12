@@ -65,3 +65,11 @@ Bài kiểm chạy cả ba nhánh nêu trên bằng model thật. Sửa cách nh
 Đây là kiểm logic/hành động API và save/continue với model thật; có đặt vị trí nhân vật và seed lựa chọn Đêm 1. Không thay cho chơi tay từ đầu, raycast ở mọi đồ vật, ảnh/HUD đa tỉ lệ hoặc bản Windows phát hành. Log còn lỗi SearchDatabase/indexing có sẵn, không lỗi biên dịch.
 
 Theo lịch #147, giữ #85 nháp và đích hiện tại cho tới khi #83 được gộp; sau đó mới đổi đích sang main và đưa đi duyệt. Không đóng #22 từ kết quả này.
+
+## Sửa theo lượt duyệt 28/11
+
+Đã gộp main `7999a25` (gồm #83). Bỏ tên kệ thô `BH_F3_Room7_Rack` khỏi ánh xạ runtime; xe bánh mì cũng chỉ nhận model thật `Night2_BreadCart`, không nhận khối cũ `BanhMi_Cart`. Thiếu model thì báo thiếu như đèn. Bỏ dòng “Giao diện tạm cho bản thô” và thông báo nội bộ về issue khỏi màn kết thúc buổi tối.
+
+Tin nhắn tính chiều cao theo nội dung xuống dòng thay vì mỗi dòng cố định 98 đơn vị, tránh chồng chữ ở các tin dài. Đã thay ảnh buổi tối bằng ảnh Game View chụp từ cảnh hiện tại trên mã `1f1657e`; ảnh cũ `night-two-morning.png` là khối thô nên đã xóa, không dùng làm bằng chứng model thật.
+
+Ảnh buổi tối được tạo bằng `NightTwoEveningRegression.Capture` trong Editor **không batchmode**, dữ liệu cách ly và `THREEGIO12_REQUIRE_EVENING_MODELS=1`. Công cụ chạy chuỗi hành động buổi sáng, mở máy Ngân lúc 21:00 và đặt cuộn lên đầu để kiểm bố cục. Đây là ảnh UI hiện tại, không phải bằng chứng chơi tay toàn tuyến. Công cụ yêu cầu Game View, không đợi ScreenCapture trong batchmode.
