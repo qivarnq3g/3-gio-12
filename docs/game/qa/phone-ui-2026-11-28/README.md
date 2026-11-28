@@ -31,3 +31,10 @@ Bản sửa chỉ ở Editor: trên Windows mượn `PhysicalKeyboardHook.Device
 Trên mã `79983cf`, M2/Unity 6000.3.26f1, lượt cạnh tranh đạt `PHONE_UI_REVIEW_INPUT_DEVICE ReviewCurrentKeyboardOwner owned=False`, `NIGHT_PHONE_UI_KEYBOARD_CAPTURE_PASSED`, exit 0. Thay đổi tiếp `4e6daec` chỉ sửa chọn fixture trong nhánh biên dịch Windows, không đổi đường chạy Mac. Cần Thắng/Quang chạy lại cả hai entrypoint trên Windows, có đồ họa và hai DATA_ROOT riêng; chưa xác nhận đường bàn phím vật lý/IME Windows bằng lượt M2 này.
 
 Lượt `NightPhoneUiRegression.Run` thông thường trên `79983cf` cũng PASS/exit 0 (`PhoneUiReviewKeyboard owned=True`). Hai lượt dùng thư mục dữ liệu mới riêng biệt. Các kiểm trước sửa không bị sửa kết quả hoặc đổi thành PASS; log FAIL được giữ riêng để đối chiếu.
+
+
+### Phản hồi Windows và giới hạn chế độ cạnh tranh
+
+Quang chạy head `b40971b` trên Windows: `.Run` PASS với `PhysicalKeyboard owned=False`; `.RunWithCompetingKeyboard` một lượt PASS, một lượt FAIL ở bước bỏ chặn. Chưa coi lỗi không ổn định này đã được giải quyết chỉ từ kết quả M2.
+
+Bản chỉnh tiếp không thêm fixture/callback `MakeCurrent` thứ hai trên Windows. Cả hai entrypoint ở Windows dùng hook thật đang sở hữu current; chế độ cạnh tranh ghi rõ `PHONE_UI_COMPETING_FIXTURE_NOT_ADDED`. Mô phỏng một chủ sở hữu bên ngoài chỉ được thêm ngoài Windows (Mac). Giữ cả hai entrypoint để lệnh kiểm cũ dùng được, nhưng không tính lượt Windows cạnh tranh là một mô phỏng độc lập. Không tắt hook hay sửa xử lý phím của game. Nhờ Quang chạy lại ít nhất ba lượt mỗi entrypoint trên Windows, DATA_ROOT mới từng lượt, rồi quyết định duyệt.

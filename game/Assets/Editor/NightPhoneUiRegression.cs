@@ -56,8 +56,14 @@ public static class NightPhoneUiRegression
         InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
         if (SessionState.GetBool(Flag + "Competing", false))
         {
+#if UNITY_EDITOR_WIN
+            // Windows already supplies a real current owner. A second MakeCurrent
+            // callback would compete with that owner, rather than emulate it.
+            Debug.Log("PHONE_UI_COMPETING_FIXTURE_NOT_ADDED: using the existing Windows physical hook");
+#else
             competingKeyboard = InputSystem.AddDevice<Keyboard>("ReviewCurrentKeyboardOwner");
             InputSystem.onAfterUpdate += KeepCompetingKeyboardCurrent;
+#endif
         }
         // Windows' physical hook owns Keyboard.current after every input update.
         // Feed the HUD's active input device, rather than an unrelated synthetic one.
