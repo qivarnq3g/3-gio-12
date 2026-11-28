@@ -33,6 +33,9 @@ public class ModelImportRules : AssetPostprocessor
     {
         if (!assetPath.StartsWith(ModelsRoot)) return;
         var importer = (ModelImporter)assetImporter;
+        bool hasCharacterRemaps = assetPath == ModelsRoot + "Characters/Hung/char_hung_final.fbx" ||
+            assetPath == ModelsRoot + "Characters/WomanDishwasher/Woman.fbx" ||
+            assetPath == ModelsRoot + "Characters/WomanDishwasher/DishwashingProps.fbx";
         importer.globalScale = 1f;
         importer.useFileScale = true;
         importer.bakeAxisConversion = false;
@@ -42,7 +45,7 @@ public class ModelImportRules : AssetPostprocessor
         importer.importVisibility = false;
         importer.materialImportMode = ModelImporterMaterialImportMode.ImportStandard;
         // Preserve explicit material remaps on these animated rigs.
-        if (assetPath == FpsArmsModel || assetPath == RaincoatArmsModel || assetPath == LienModel) return;
+        if (assetPath == FpsArmsModel || assetPath == RaincoatArmsModel || assetPath == LienModel || hasCharacterRemaps) return;
         importer.materialLocation = ModelImporterMaterialLocation.External;
         importer.materialName = ModelImporterMaterialName.BasedOnMaterialName;
         importer.materialSearch = ModelImporterMaterialSearch.Everywhere;

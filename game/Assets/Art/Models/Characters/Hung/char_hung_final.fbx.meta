@@ -3,12 +3,52 @@ guid: 161c520bb0ce2494e86c7ca08ef14fe4
 ModelImporter:
   serializedVersion: 24300
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Hung Flashlight _ Amber switch
+    second: {fileID: 2100000, guid: 53d84c85d48223d42b9d3735a3a9f373, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Hung Flashlight _ Faded olive ABS
+    second: {fileID: 2100000, guid: 96466bb6082fa974b9f8e32e580cd7d9, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Hung Flashlight _ Graphite rubber
+    second: {fileID: 2100000, guid: f111d7181c2193b40a077da131e7e41a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Hung Flashlight _ LED emitter
+    second: {fileID: 2100000, guid: 4296b3bf24930e946bfd5412fa478f8a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Hung Flashlight _ Spun reflector
+    second: {fileID: 2100000, guid: 8c863e1874b65954b92459c24dc8a9fc, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Hung Flashlight _ Tinted clear lens
+    second: {fileID: 2100000, guid: 5b5bf8d0662e30b4e9b00f1ee9800069, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: "Hung \u2022 Anime Outfit"
+    second: {fileID: 2100000, guid: d13667cac688daa46aad87b2640bccfa, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: "Hung \u2022 Anime Skin, Hair and Eyes"
+    second: {fileID: 2100000, guid: 1a1569593b2037a46b5d119c7e1847ea, type: 2}
   materials:
     materialImportMode: 1
     materialName: 1
     materialSearch: 2
-    materialLocation: 0
+    materialLocation: 1
     searchTexturesGlobally: 0
   animations:
     legacyGenerateAnimations: 4

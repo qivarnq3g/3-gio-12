@@ -7,6 +7,66 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: Bot xa phong
+    second: {fileID: 2100000, guid: b2429f51d555aeb4cbd9e762a20e77dc, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: "D\xE9p \xB7 M\xE9p quai"
+    second: {fileID: 2100000, guid: dcaffc3e7ebada442b88ad7a1a29ba7c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: "D\xE9p \xB7 Quai \u0111en"
+    second: {fileID: 2100000, guid: 4e6e158602161074f88aeb7bbf8c07bf, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: "D\xE9p \xB7 Vi\u1EC1n \u0111\u1EBF"
+    second: {fileID: 2100000, guid: 170fa888c8c6dd04b8a3699b6cf31f59, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: "D\xE9p \xB7 \u0110\u1EBF cao su"
+    second: {fileID: 2100000, guid: a2cc9d5cca272744584550c8be2306b4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Giot nuoc
+    second: {fileID: 2100000, guid: 035217d63b97bb747bdff9d7017344ec, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Mat cha xanh
+    second: {fileID: 2100000, guid: 690209f3c17ce39478ed5b0cce969d5c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Men su
+    second: {fileID: 2100000, guid: 17ac6257f1c3bff4a87fa42d76122c4f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Mut vang
+    second: {fileID: 2100000, guid: 1cf58649d10e3854aa7035335251de5c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Nuoc xa phong
+    second: {fileID: 2100000, guid: 61391ef0329d0e64fb79a4cc24f43edf, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Teal basin
+    second: {fileID: 2100000, guid: c17c1ccc851fb7549aea2ae54a5c133d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Vien men xanh
+    second: {fileID: 2100000, guid: c1bf59adeb55bd7448edb4f66474733b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: WomanEyes
     second: {fileID: 2100000, guid: 6f27a3e4c0de7614197fd11fdbfd0465, type: 2}
   - first:
@@ -43,7 +103,7 @@ ModelImporter:
     materialImportMode: 1
     materialName: 1
     materialSearch: 2
-    materialLocation: 0
+    materialLocation: 1
     searchTexturesGlobally: 0
   animations:
     legacyGenerateAnimations: 4
