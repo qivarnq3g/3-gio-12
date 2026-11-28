@@ -10,8 +10,9 @@ namespace BaGio12.Gameplay
         [SerializeField] Renderer raincoatRightSleeve;
         [SerializeField] Renderer raincoatLeftGlove;
         [SerializeField] Renderer raincoatRightGlove;
-        [SerializeField] Renderer bareLeftArm;
+        [SerializeField] SkinnedMeshRenderer bareLeftArm;
         [SerializeField] Renderer bareRightArm;
+        [SerializeField] Mesh bareLeftForearm;
         [SerializeField] Renderer[] studentBandages;
 
         int outfit = -2;
@@ -27,6 +28,7 @@ namespace BaGio12.Gameplay
         public Transform animatedCamera;
         Animator animator;
         MeshRenderer phone;
+        Mesh bareLeftArmMesh;
         internal NightOneDirector Story { get; set; }
         float pickupDuration;
         float pickupUntil;
@@ -35,6 +37,7 @@ namespace BaGio12.Gameplay
         void Awake()
         {
             animator = GetComponent<Animator>();
+            if (bareLeftArm != null) bareLeftArmMesh = bareLeftArm.sharedMesh;
             phone = System.Array.Find(GetComponentsInChildren<MeshRenderer>(true), r => r.name == "prop_ngan_phone");
             if (phone != null) phone.forceRenderingOff = true;
             if (player == null) player = GetComponentInParent<FirstPersonPlayer>();
@@ -97,7 +100,9 @@ namespace BaGio12.Gameplay
             raincoatRightSleeve.forceRenderingOff = !raincoat;
             raincoatLeftGlove.forceRenderingOff = !raincoat || damage >= 2;
             raincoatRightGlove.forceRenderingOff = !raincoat;
-            bareLeftArm.forceRenderingOff = raincoat && damage < 2;
+            bareLeftArm.forceRenderingOff = damage == 0;
+            if (bareLeftForearm != null)
+                bareLeftArm.sharedMesh = damage == 1 ? bareLeftForearm : bareLeftArmMesh;
             bareRightArm.forceRenderingOff = raincoat;
             foreach (var bandage in studentBandages)
                 bandage.forceRenderingOff = raincoat;

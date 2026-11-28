@@ -352479,6 +352479,7 @@ MonoBehaviour:
   raincoatRightGlove: {fileID: 9100000000000000005}
   bareLeftArm: {fileID: 9100000000000000060}
   bareRightArm: {fileID: 9100000000000000057}
+  bareLeftForearm: {fileID: 4300000, guid: e95799beed381484fafdecdd4dc6057e, type: 2}
   studentBandages:
   - {fileID: 9100000000000000059}
   - {fileID: 9100000000000000058}
