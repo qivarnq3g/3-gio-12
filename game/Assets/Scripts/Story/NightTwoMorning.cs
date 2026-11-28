@@ -61,13 +61,14 @@ namespace BaGio12.Story
         {
             StopAllCoroutines(); Transitioning = false; page = "";
             if (State.stage == MorningStage.Alarm) page = "alarm";
-            story.player.SetOverlay(State.riding || page != "");
+            if (State.stage == MorningStage.Vigil && State.vigilSeconds >= NightTwoEvening.VigilLength) page = "alarm2";
+            story.player.SetOverlay(State.riding || page != "" || State.stage == MorningStage.Ended);
             if (State.riding) SetRidePose();
         }
 
         void Update()
         {
-            if (!story.InNightTwo || story.player.IsPaused || Transitioning) return;
+            if (!story.InNightTwo || story.player.IsPaused || Transitioning || State.stage == MorningStage.Ended) return;
             RefreshWorld();
             var keys = Keyboard.current;
             if (State.riding)
@@ -83,7 +84,7 @@ namespace BaGio12.Story
             if (keys != null && !story.player.PauseChangedThisFrame)
             {
                 if (keys.escapeKey.wasPressedThisFrame && page != "")
-                { if (page == "alarm") StopAlarm(); else ClosePage(); }
+                { if (page == "alarm") StopAlarm(); else if (page == "alarm2") StopNightTwoAlarm(); else ClosePage(); }
                 if (keys.nKey.wasPressedThisFrame) OpenPage("notebook");
             }
             if (State.stage == MorningStage.Gate)
@@ -100,6 +101,7 @@ namespace BaGio12.Story
                 State.restSeconds += Time.deltaTime;
                 if (State.restSeconds >= 60) Rest();
             }
+            EveningUpdate(keys);
             fatiguePulse += Time.deltaTime;
         }
 
@@ -108,7 +110,8 @@ namespace BaGio12.Story
             // Route distance remains save-compatible; interpolate along the actual alley and street.
             float progress = Mathf.Clamp01(State.routeMetres / FixedRouteRide.Length);
             if (State.returning) progress = 1 - progress;
-            Vector3 start = Parking, corner = new Vector3(0,.08f,8), finish = Store;
+            bool evening = State.stage == MorningStage.ToRice || State.stage == MorningStage.RiceReturn;
+            Vector3 start = evening ? EveningBike : Parking, corner = new Vector3(0,.08f,8), finish = evening ? RiceShop : Store;
             float alley = Vector3.Distance(start,corner), road = Vector3.Distance(corner,finish);
             float travelled = progress * (alley + road);
             Vector3 position = travelled < alley ? Vector3.Lerp(start,corner,travelled/alley)
@@ -134,22 +137,44 @@ namespace BaGio12.Story
         public bool Mount()
         {
             if (State.riding || page != "" || story.player.ActivePhone != 0) return false;
-            bool returning = State.stage == MorningStage.ReturnHome;
-            if (State.stage != MorningStage.ToStore && !returning) return false;
-            if (!Nearby(returning ? Store : Parking, 5)) return false;
+            bool returning; Vector3 at; MorningStage next;
+            switch (State.stage)
+            {
+                case MorningStage.ToStore: returning = false; at = Parking; next = MorningStage.ToStore; break;
+                case MorningStage.ReturnHome: returning = true; at = Store; next = MorningStage.ReturnHome; break;
+                case MorningStage.Evening: returning = false; at = EveningBike; next = MorningStage.ToRice; break;
+                case MorningStage.RiceShop: if (!State.hasRice) return false; returning = true; at = RiceShop; next = MorningStage.RiceReturn; break;
+                default: return false;
+            }
+            if (!Nearby(at, 5)) return false;
+            bool evening = next == MorningStage.ToRice || next == MorningStage.RiceReturn;
+            State.stage = next;
             State.riding = true; State.returning = returning;
             State.routeMetres = State.speed = State.stoppedSeconds = 0;
-            State.redLightCleared = returning;
+            State.redLightCleared = returning || evening;
+            if (next == MorningStage.ToRice)
+            {
+                if (!State.sawBikeMoved) { State.sawBikeMoved = true; story.Say("Ủa. ... Chắc cô Liên dọn nhà xe.", 6); }
+                SetEveningClock("21:30");
+            }
+            else if (next == MorningStage.RiceReturn) AddMinutes(4);
             LogEngine(true); story.player.SetOverlay(true); SetRidePose(); Checkpoint(); return true;
         }
         public bool Dismount()
         {
             if (!State.riding || !FixedRouteRide.AtStop(State)) return false;
-            State.riding = false; State.odometer += 1.5f;
-            State.stage = State.returning ? MorningStage.Gate : MorningStage.Store;
-            story.Clock.Set(State.returning ? "09:20" : "08:30", 1);
+            bool evening = State.stage == MorningStage.ToRice || State.stage == MorningStage.RiceReturn;
+            State.riding = false; State.odometer += evening ? .5f : 1.5f;
+            if (State.stage == MorningStage.ToRice) { State.stage = MorningStage.RiceShop; AddMinutes(6); }
+            else if (State.stage == MorningStage.RiceReturn) { State.stage = MorningStage.Home; AddMinutes(5); }
+            else
+            {
+                State.stage = State.returning ? MorningStage.Gate : MorningStage.Store;
+                story.Clock.Set(State.returning ? "09:20" : "08:30", 1);
+            }
             LogEngine(false); story.player.SetOverlay(false);
-            story.player.Teleport((State.returning ? Parking : Store) + Vector3.left * 1.2f, 90);
+            story.player.Teleport((State.returning ? evening ? EveningBike : Parking : evening ? RiceShop : Store) + Vector3.left * 1.2f, 90);
+            if (evening && State.returning) ArriveHomeEvening();
             Checkpoint(); return true;
         }
         void LogEngine(bool on)
@@ -217,11 +242,10 @@ namespace BaGio12.Story
             if (story.State.night1_slept && State.roomReply != "given") State.momSuspicion = 1;
             State.stage = MorningStage.Evening; State.odometer += 11;
             story.Clock.Set("21:00", 1);
-            story.State.messages.Add("Mẹ · 12:20: " + (State.momSuspicion == 1 ? "Cháu còn giữ máy chứ?" : "Con bé sợ sấm lắm, sấm một cái là chui vào chăn."));
-            story.State.messages.Add("Mẹ · 12:20: " + (State.roomReply == "given" ? "Tối cô gửi cháu ly trà sữa cảm ơn nhé." : "Ừ, không sao cháu."));
-            if (!story.State.night1_slept) story.State.messages.Add("Mẹ · 12:20: Nó hay dậy học bài. Cháu ở phòng mấy?");
-            story.State.messages.Add("Mẹ · 20:10: " + (State.momSuspicion == 1 ? "Cháu còn giữ máy chứ?" : "Cháu nhớ ăn tối nhé."));
-            story.player.Teleport(Room); story.player.SetOverlay(false); Transitioning = false; Checkpoint();
+            DeliverDaytimeBatches();
+            story.player.Teleport(Room); story.player.SetOverlay(false); Transitioning = false;
+            story.Say("Chín giờ rồi. Ngủ gì mà ngủ dữ vậy.", 5);
+            Checkpoint();
         }
         void Checkpoint()
         {
