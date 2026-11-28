@@ -2,7 +2,7 @@
 
 ## Phạm vi
 
-Áp dụng cho scene `Assets/Scenes/Night01/NightOneGraybox.unity`, Unity `6000.3.26f1`. Hệ lưu dành cho bản thô Đêm 1 và [lát cắt buổi sáng Đêm 2](night-two-morning.md) đang triển khai trong #22; buổi tối Đêm 2 và Đêm 3 chưa có adapter. Không ghi dữ liệu lên server và không dùng PlayerPrefs cho tiến độ.
+Áp dụng cho scene `Assets/Scenes/Night01/NightOneRealistic.unity`, Unity `6000.3.26f1`. Hệ lưu dành cho cảnh tả thực Đêm 1, [buổi sáng Đêm 2](night-two-morning.md), [buổi tối Đêm 2](night-two-evening.md) và [Đêm 3](night-three.md) đang triển khai trong #22. Không ghi dữ liệu lên server và không dùng PlayerPrefs cho tiến độ.
 
 Khi mở scene, menu đầu game dừng thế giới và âm thanh. Chọn “Tiếp tục bản đã lưu” để khôi phục, hoặc “Chơi mới Đêm 1”. Esc trong khi chơi mở menu tạm dừng; có thể chỉnh cài đặt, tiếp tục, chơi lại, xóa tiến độ, lưu và thoát. Chơi mới/xóa bản lưu đều cần xác nhận. Xóa tiến độ giữ nguyên cài đặt và quay về menu đầu game, không tự tạo lại slot cho phiên đang bị xóa.
 
@@ -25,7 +25,7 @@ Mặc định: `Application.persistentDataPath/local-v1/` (đường dẫn thự
 
 | File | Nội dung |
 |---|---|
-| `night-one.json` | Một slot tiến độ Đêm 1 hoặc buổi sáng Đêm 2 |
+| `night-one.json` | Một slot tiến độ Đêm 1–3 trong cảnh tả thực |
 | `preferences.json` | Âm lượng, độ nhạy, mức chất lượng, tùy chọn hiện cảnh báo nội dung |
 | `*.bak` | Thế hệ hợp lệ trước đó |
 | `*.tmp` | File tạm trong lúc ghi |
@@ -75,7 +75,7 @@ Script kiểm tra round-trip qua hai tiến trình, pose/crouch/camera, điện 
 
 ## Chạy thử bằng tay trước khi duyệt
 
-1. Mở `NightOneGraybox`, Play, đọc cảnh báo, chọn chơi mới. Đi tới phòng 7, nhắn tin, đổi vị trí ba lô; đợi ít nhất 2 giây.
+1. Mở `NightOneRealistic`, Play, đọc cảnh báo, chọn chơi mới. Đi tới phòng 7, nhắn tin, đổi vị trí ba lô; đợi ít nhất 2 giây.
 2. Esc, đổi âm lượng/độ nhạy/chất lượng/cảnh báo, lưu cài đặt. Chọn “Lưu và thoát” trong bản build (trong Editor dùng Stop).
 3. Mở lại ứng dụng/Play, chọn tiếp tục. Kiểm tra vị trí, góc nhìn, tin nhắn, sổ tay, đồng hồ và cài đặt.
 4. Chơi lại từ checkpoint: tiến độ quay về snapshot checkpoint, không phải snapshot tự lưu mới nhất. Chọn chơi mới và xác nhận: bắt đầu lại Đêm 1.

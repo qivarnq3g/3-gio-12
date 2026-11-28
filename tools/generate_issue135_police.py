@@ -1,8 +1,10 @@
 """Build the ward police station and reception counter with Blender 5.2."""
 
 import argparse
+import json
 import math
 import sys
+import urllib.request
 from pathlib import Path
 
 import bpy
@@ -12,6 +14,7 @@ from mathutils import Vector
 ROOT = Path(__file__).resolve().parents[1]
 ART = ROOT / "game/Assets/Art"
 PROJECT_FONT = ART / "Resources/Fonts/BeVietnamPro-Medium.ttf"
+POLYHAVEN_CACHE = ROOT / "tools/out/polyhaven"
 PALETTE = {
     "M_WallPaintYellow": (0.74, 0.57, 0.32),
     "M_WallPaintOffWhite": (0.79, 0.75, 0.63),
@@ -22,6 +25,11 @@ PALETTE = {
     "M_SteelDark": (0.07, 0.08, 0.08),
     "M_GlassDark": (0.12, 0.19, 0.19),
     "M_BikeBlack": (0.12, 0.12, 0.13),
+    "M_PoliceGlass": (0.62, 0.74, 0.78),
+    "M_AluminumFrame": (0.62, 0.64, 0.66),
+    "M_MetalHandle": (0.55, 0.56, 0.58),
+    "M_Rubber": (0.05, 0.05, 0.05),
+    "M_PlasticRed": (0.60, 0.05, 0.04),
     "M_PoliceSignRed": (0.51, 0.031, 0.024),
     "M_PoliceSignGold": (0.97, 0.69, 0.16),
     "M_DoorWoodBrown": (0.34, 0.19, 0.10),
@@ -36,8 +44,81 @@ def use_material(obj, name):
     mat = bpy.data.materials.get(name)
     if mat is None:
         mat = bpy.data.materials.new(name)
-        mat.diffuse_color = (*PALETTE[name], 1)
+        mat.diffuse_color = (*PALETTE[name], .28 if name == "M_PoliceGlass" else 1)
+        if name == "M_PoliceGlass":
+            mat.surface_render_method = "BLENDED"
     obj.data.materials.append(mat)
+
+
+def fetch_polyhaven(asset):
+    """Download a CC0 Poly Haven model (glTF, 1K textures) once and export URP textures for Unity."""
+    folder = POLYHAVEN_CACHE / asset
+    gltf = folder / f"{asset}.gltf"
+    if not gltf.exists():
+        def get(url):
+            # Poly Haven refuses Python's default user agent.
+            request = urllib.request.Request(url, headers={"User-Agent": "asset-build-script"})
+            with urllib.request.urlopen(request) as response:
+                return response.read()
+        files = json.loads(get(f"https://api.polyhaven.com/files/{asset}"))["gltf"]["1k"]["gltf"]
+        for relative, url in [(gltf.name, files["url"])] + [(k, v["url"]) for k, v in files["include"].items()]:
+            target = folder / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(get(url))
+    name = f"PH_{asset}"
+    # ArtPipelineCheck only allows prop textures under Assets/Art/Textures, named T_<EnglishName>.png.
+    stem = "T_" + "".join(word.title() for word in asset.split("_"))
+    textures = folder / "textures"
+
+    def save(pixels, size, kind, data):
+        image = bpy.data.images.new(f"{stem}{kind}", size[0], size[1], alpha=True, is_data=data)
+        image.pixels = pixels
+        image.filepath_raw = str(ART / "Textures" / f"{stem}{kind}.png")
+        image.file_format = "PNG"
+        image.save()
+
+    for kind, suffix in (("Albedo", "diff"), ("Normal", "nor_gl")):
+        source = bpy.data.images.load(str(textures / f"{asset}_{suffix}_1k.jpg"))
+        if kind == "Normal":
+            source.colorspace_settings.name = "Non-Color"
+        save(list(source.pixels), source.size, kind, kind == "Normal")
+    # Poly Haven ARM is R=occlusion, G=roughness, B=metal; URP Lit reads R=metal, G=occlusion, A=smoothness.
+    arm = bpy.data.images.load(str(textures / f"{asset}_arm_1k.jpg"))
+    arm.colorspace_settings.name = "Non-Color"
+    source = list(arm.pixels)
+    mask = [0.0] * len(source)
+    mask[0::4], mask[1::4], mask[3::4] = source[2::4], source[0::4], [1 - g for g in source[1::4]]
+    save(mask, arm.size, "Mask", True)
+    return gltf, name
+
+
+def place_scan(asset, picks):
+    """Import a Poly Haven scan and set each picked mesh down on the counter top."""
+    gltf, material_name = fetch_polyhaven(asset)
+    before = set(bpy.context.scene.objects)
+    bpy.ops.import_scene.gltf(filepath=str(gltf))
+    imported = [obj for obj in bpy.context.scene.objects if obj not in before]
+    meshes = {obj.name: obj for obj in imported if obj.type == "MESH"}
+    for material in {slot.material for obj in meshes.values() for slot in obj.material_slots if slot.material}:
+        material.name = material_name
+    kept = []
+    for source, rotation, (x, y, z) in picks:
+        obj = meshes[source]
+        if obj in kept:
+            obj = obj.copy()
+            obj.data = obj.data.copy()
+            bpy.context.collection.objects.link(obj)
+        obj.parent = None
+        obj.rotation_mode = "XYZ"
+        obj.rotation_euler = rotation
+        bpy.context.view_layer.update()
+        corners = [obj.matrix_world @ Vector(c) for c in obj.bound_box]
+        low = Vector((sum(c.x for c in corners) / 8, sum(c.y for c in corners) / 8, min(c.z for c in corners)))
+        obj.location += Vector((x, y, z)) - low
+        kept.append(obj)
+    for obj in imported:
+        if obj not in kept:
+            bpy.data.objects.remove(obj, do_unlink=True)
 
 
 def box(name, center, size, material, bevel=0, solid=False):
@@ -199,33 +280,93 @@ def build_station():
 
 
 def build_desk():
+    # +Y faces the visitor, -Y faces the officer. Solid_ pieces keep the collision used by Night 3.
     wood = "M_DoorWoodBrown"
     dark = "M_DoorWoodDark"
-    steel = "M_SteelDark"
+    black = "M_BikeBlack"
     paper = "M_PaperWhite"
+    alu = "M_AluminumFrame"
     box("Service counter top", (0, .015, 1.045), (1.91, .74, .088), wood, .029, True)
     box("Visitor panel", (0, .257, .53), (1.68, .12, .94), dark, .015, True)
-    box("Kick plate", (0, .327, .105), (1.71, .027, .17), steel, .008)
+    box("Kick plate", (0, .327, .105), (1.71, .027, .17), black, .008)
     for side in (-1, 1):
         box("Counter side panel", (side * .823, -.035, .525), (.11, .61, .95), wood, .016, True)
-        box("Counter glides", (side * .81, -.029, .03), (.125, .55, .06), steel, .008)
-    for i in range(20):
-        x = -.75 + i * .079
-        box("Vertical timber slat", (x, .327, .565), (.043, .026, .73), wood, .009)
+        box("Counter glides", (side * .81, -.029, .03), (.125, .55, .06), "M_Rubber", .008)
 
-    box("Desk plaque base", (.49, .19, 1.103), (.64, .145, .027), dark, .014)
-    box("Desk plaque", (.49, .198, 1.172), (.60, .048, .127), "M_PoliceSignRed", .009)
-    lettering("Reception label", "TIẾP NHẬN", (.49, .224, 1.169), .088, .53, "M_PoliceSignGold")
-    for i in range(3):
-        box("Stacked reception forms", (-.46 + i * .012, .087 + i * .012, 1.093 + i * .006),
-            (.29, .205, .005), paper, .002)
-    for i in range(5):
-        box("Form rule", (-.44, .168 - i * .021, 1.109), (.187, .004, .001), steel)
-    tube("Ballpoint pen", (-.61, .032, 1.109), (-.54, -.070, 1.109), .006, "M_PlasticBlue")
-    box("Monitor foot", (.35, -.175, 1.102), (.34, .23, .025), "M_BikeBlack", .016)
-    box("Monitor stand", (.35, -.185, 1.231), (.062, .06, .24), "M_BikeBlack", .015)
-    box("Monitor case", (.35, -.16, 1.407), (.55, .097, .35), "M_BikeBlack", .020)
-    box("Monitor screen", (.35, -.212, 1.407), (.51, .012, .30), "M_GlassDark", .009)
+    # Visitor face: slats framed by a red band with brass pinstripes and a base rail.
+    for i in range(20):
+        box("Vertical timber slat", (-.75 + i * .079, .327, .55), (.043, .026, .64), wood, .009)
+    box("Front fascia band", (0, .347, .935), (1.64, .018, .09), "M_PoliceSignRed", .006)
+    for z in (.893, .977):
+        box("Fascia pinstripe", (0, .357, z), (1.62, .004, .008), "M_PoliceSignGold")
+    box("Slat base rail", (0, .344, .212), (1.64, .022, .036), dark, .006)
+
+    # Glass screen with a document slot, aluminium frame and the reception sign on top.
+    box("Screen bottom channel", (0, .30, 1.099), (1.84, .034, .02), alu, .004)
+    box("Screen top cap", (0, .30, 1.51), (1.86, .034, .02), alu, .004)
+    for side in (-1, 1):
+        box("Screen post", (side * .915, .30, 1.30), (.03, .034, .42), alu, .005)
+        box("Lower screen glass", (side * .565, .30, 1.1545), (.69, .008, .091), "M_PoliceGlass")
+        box("Slot jamb", (side * .225, .30, 1.1545), (.014, .03, .091), alu)
+    box("Upper screen glass", (0, .30, 1.355), (1.80, .008, .29), "M_PoliceGlass")
+    box("Slot lintel", (0, .30, 1.205), (.464, .03, .014), alu)
+    box("Sign frame", (0, .296, 1.62), (.90, .03, .22), "M_PoliceSignGold", .006)
+    box("Desk plaque", (0, .30, 1.62), (.86, .04, .19), "M_PoliceSignRed", .006)
+    lettering("Ward label", "CÔNG AN PHƯỜNG HẺM LƯƠNG", (0, .322, 1.672), .032, .76, "M_PoliceSignGold")
+    lettering("Reception label", "TIẾP NHẬN", (0, .322, 1.595), .085, .60, "M_PoliceSignGold")
+
+    # Officer side: three-drawer pedestal under the right of the top.
+    box("Drawer pedestal", (.6035, -.0725, .5275), (.325, .525, .935), wood, .01, True)
+    for z0, z1 in ((.80, .97), (.47, .78), (.09, .45)):
+        box("Drawer front", (.6035, -.341, (z0 + z1) / 2), (.30, .012, z1 - z0 - .012), wood, .005)
+        tube("Drawer pull", (.55, -.356, z1 - .045), (.66, -.356, z1 - .045), .006, "M_MetalHandle")
+
+    # Monitor, keyboard and mouse.
+    box("Monitor foot", (.35, -.055, 1.102), (.34, .23, .025), black, .016)
+    box("Monitor stand", (.35, -.065, 1.231), (.062, .06, .24), black, .015)
+    box("Monitor case", (.35, -.04, 1.407), (.55, .097, .35), black, .020)
+    box("Monitor screen", (.35, -.092, 1.407), (.51, .012, .30), "M_GlassDark", .009)
+    box("Keyboard", (.35, -.27, 1.10), (.44, .14, .022), black, .006)
+    for row in range(4):
+        for col in range(12):
+            box("Key", (.163 + col * .034, -.317 + row * .029, 1.114), (.028, .024, .008), "M_Rubber", .002)
+    box("Mouse pad", (.66, -.26, 1.091), (.20, .18, .004), "M_Rubber")
+    box("Mouse", (.66, -.26, 1.106), (.06, .10, .028), black, .012)
+
+    # Desk phone.
+    box("Phone base", (-.02, -.20, 1.114), (.20, .17, .05), black, .012)
+    for row in range(4):
+        for col in range(3):
+            box("Phone key", (-.01 + col * .025, -.255 + row * .022, 1.141), (.018, .015, .005), "M_PaperWhite", .002)
+    box("Phone handset", (-.07, -.17, 1.152), (.05, .19, .03), black, .013)
+
+    # Tray frame; the paper, ledger, pens and clipboard on it are Poly Haven scans.
+    for z in (1.095, 1.175):
+        box("Tray shelf", (-.62, .05, z), (.34, .25, .008), black, .003)
+        box("Tray lip", (-.62, -.073, z + .015), (.34, .006, .03), black)
+    box("Ink pad", (-.70, -.29, 1.098), (.11, .075, .018), black, .004)
+    box("Ink", (-.70, -.29, 1.1075), (.09, .055, .002), "M_PlasticRed")
+    box("Stamp base", (-.62, -.30, 1.104), (.05, .05, .03), black, .005)
+    tube("Stamp handle", (-.62, -.30, 1.119), (-.62, -.30, 1.185), .014, dark)
+    tube("Stamp knob", (-.62, -.30, 1.18), (-.62, -.30, 1.205), .021, dark)
+    top = 1.089
+    place_scan("binder_notebook", [("binder_notebook", (0, 0, math.pi), (-.30, -.21, top))])
+    place_scan("office_notepads", [
+        ("office_notepads_a4_stack", (0, 0, math.pi / 2), (-.62, .05, 1.0995)),
+        ("office_notepads_a4_stack", (0, 0, math.pi / 2), (-.62, .05, 1.1795)),
+        ("office_notepads_sticky_stack", (0, 0, .3), (.66, .04, top)),
+        ("office_notepads_yellow_pad", (0, 0, 1.45), (.02, .07, top)),
+    ])
+    place_scan("clipboard", [("clipboard", (0, 0, -.2), (-.23, .08, top + .002))])
+    place_scan("stationery_supplies", [
+        ("stationery_supplies_pencilcup", (0, 0, 0), (-.86, -.12, top)),
+        ("stationery_supplies_pen_red", (0, math.radians(-78), .4), (-.872, -.11, top + .012)),
+        ("stationery_supplies_pencil_new_a", (0, math.radians(-83), 2.1), (-.85, -.128, top + .012)),
+        ("stationery_supplies_pen_fancy", (0, math.radians(-75), 4.0), (-.858, -.106, top + .012)),
+    ])
+    for x in (-.78, -.46):
+        for y in (-.07, .17):
+            tube("Tray post", (x, y, 1.095), (x, y, 1.175), .005, black)
 
 
 def export_model(destination):
@@ -255,7 +396,7 @@ def render_views(output, stem, target, scale):
     scene.render.resolution_y = 768
     scene.render.resolution_percentage = 100
     scene.display.shading.light = "STUDIO"
-    scene.display.shading.color_type = "MATERIAL"
+    scene.display.shading.color_type = "TEXTURE"
     scene.display.shading.show_shadows = True
     scene.display.shading.show_cavity = True
     scene.display.shading.cavity_type = "BOTH"
