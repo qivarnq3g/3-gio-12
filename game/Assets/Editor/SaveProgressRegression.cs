@@ -20,6 +20,8 @@ public static class SaveProgressRegression
     static bool reading, menuOnly;
     static int step;
     static Keyboard captureKeyboard;
+    static bool ownsCaptureKeyboard;
+    static KeyboardState captureState;
     static NightOneDirector story;
     static NightPersistence persistence;
     static SaveProgressRegression()
@@ -71,7 +73,14 @@ public static class SaveProgressRegression
         {
             var gameView = EditorWindow.GetWindow(typeof(EditorWindow).Assembly.GetType("UnityEditor.GameView"));
             gameView.position = new Rect(50, 50, 1280, 800); gameView.Show(); gameView.Focus();
-            captureKeyboard = InputSystem.AddDevice<Keyboard>();
+#if UNITY_EDITOR_WIN
+            captureKeyboard = PhysicalKeyboardHook.Device;
+#endif
+            ownsCaptureKeyboard = captureKeyboard == null;
+            if (ownsCaptureKeyboard) captureKeyboard = InputSystem.AddDevice<Keyboard>("SaveMenuReviewKeyboard");
+            captureState = new KeyboardState();
+            InputSystem.onBeforeUpdate += QueueCaptureState;
+            Debug.Log("SAVE_MENU_REVIEW_INPUT_DEVICE " + captureKeyboard.name + " owned=" + ownsCaptureKeyboard);
             Directory.CreateDirectory(NightPersistence.DataRoot);
             foreach (var name in new[] { "warning.png", "menu.png", "settings.png" })
                 File.Delete(Path.Combine(NightPersistence.DataRoot, name));
@@ -98,9 +107,9 @@ public static class SaveProgressRegression
                         ScreenCapture.CaptureScreenshot(Path.Combine(NightPersistence.DataRoot, "warning.png"));
                         next = EditorApplication.timeSinceStartup + 3; return;
                     case 1:
-                        InputSystem.QueueStateEvent(captureKeyboard, new KeyboardState(Key.Space)); break;
+                        captureState = new KeyboardState(Key.Space); break;
                     case 2:
-                        InputSystem.QueueStateEvent(captureKeyboard, new KeyboardState());
+                        captureState = new KeyboardState();
                         Check(!story.player.GetComponent<PauseMenu>().NoticeVisible, "content warning did not acknowledge input");
                         if (persistence.AskTelemetryConsent) persistence.AnswerTelemetryConsent(false);
                         break;
@@ -194,9 +203,13 @@ public static class SaveProgressRegression
         }
         catch (Exception error) { Debug.LogException(error); Finish(1); }
     }
+    static void QueueCaptureState()
+    { if (captureKeyboard != null && captureKeyboard.added) InputSystem.QueueStateEvent(captureKeyboard, captureState); }
     static void Finish(int code)
     {
-        if (captureKeyboard != null) InputSystem.RemoveDevice(captureKeyboard);
+        InputSystem.onBeforeUpdate -= QueueCaptureState;
+        if (captureKeyboard != null && captureKeyboard.added) InputSystem.QueueStateEvent(captureKeyboard, new KeyboardState());
+        if (ownsCaptureKeyboard && captureKeyboard != null) InputSystem.RemoveDevice(captureKeyboard);
         EditorApplication.update -= Tick; SessionState.SetBool("SaveProgressReview", false);
         EditorApplication.Exit(code);
     }
