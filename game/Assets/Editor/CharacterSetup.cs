@@ -137,7 +137,8 @@ public static class CharacterSetup
                 PrefabUtility.UnpackPrefabInstance(go, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
             go.name = "Person";
             go.transform.localPosition = Vector3.up * heightOffset; go.transform.localRotation = Quaternion.identity;
-            var anim = go.GetComponent<Animator>() ?? go.AddComponent<Animator>();
+            if (!go.TryGetComponent<Animator>(out var anim))
+                anim = go.AddComponent<Animator>();
             anim.runtimeAnimatorController = controllerPath == Controller ? ctrl : RequireAsset<RuntimeAnimatorController>(controllerPath);
             if (anim.avatar == null)
                 anim.avatar = AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<Avatar>().FirstOrDefault();
