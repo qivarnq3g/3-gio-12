@@ -14,7 +14,7 @@ using UnityEngine.InputSystem.LowLevel;
 public static class NightPhoneUiRegression
 {
     const string Flag = "NightPhoneUiReview";
-    static Keyboard keyboard;
+    static Keyboard keyboard, competingKeyboard;
     static double next, deadline;
     static int step;
     static NightOneDirector story;
@@ -22,7 +22,17 @@ public static class NightPhoneUiRegression
     static readonly string[] captures = { "n1-phone", "n2-alarm", "n2-ngan", "n2-own", "n3-alarm", "n3-stranger", "n3-profile" };
     static NightPhoneUiRegression()
     { if (SessionState.GetBool(Flag, false)) EditorApplication.playModeStateChanged += Changed; }
+    public static void RunWithCompetingKeyboard()
+    {
+        SessionState.SetBool(Flag + "Competing", true);
+        StartReview();
+    }
     public static void Run()
+    {
+        SessionState.SetBool(Flag + "Competing", false);
+        StartReview();
+    }
+    static void StartReview()
     {
         if (Application.isBatchMode) throw new Exception("UI review requires a graphical Editor.");
         string root = Environment.GetEnvironmentVariable("THREEGIO12_DATA_ROOT");
@@ -42,12 +52,18 @@ public static class NightPhoneUiRegression
         Application.runInBackground = true;
         InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
         InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+        if (SessionState.GetBool(Flag + "Competing", false))
+        {
+            competingKeyboard = InputSystem.AddDevice<Keyboard>("ReviewCurrentKeyboardOwner");
+            InputSystem.onAfterUpdate += KeepCompetingKeyboardCurrent;
+        }
         keyboard = InputSystem.AddDevice<Keyboard>();
         var view = EditorWindow.GetWindow(typeof(EditorWindow).Assembly.GetType("UnityEditor.GameView"));
         view.position = new Rect(50, 50, 1280, 800); view.Show(); view.Focus();
         step = 0; next = EditorApplication.timeSinceStartup + 2; deadline = next + 100;
         EditorApplication.update += Tick;
     }
+    static void KeepCompetingKeyboardCurrent() => competingKeyboard?.MakeCurrent();
     static void Check(bool ok, string message) { if (!ok) throw new Exception("PHONE UI: " + message); }
     static void Capture(string name) => ScreenCapture.CaptureScreenshot(Path.Combine(NightPersistence.DataRoot, name + ".png"));
     static void Key(bool down) => InputSystem.QueueStateEvent(keyboard, down ? new KeyboardState(UnityEngine.InputSystem.Key.Enter) : new KeyboardState());
@@ -109,6 +125,8 @@ public static class NightPhoneUiRegression
     }
     static void Finish(int code)
     {
+        InputSystem.onAfterUpdate -= KeepCompetingKeyboardCurrent;
+        if (competingKeyboard != null) InputSystem.RemoveDevice(competingKeyboard);
         if (keyboard != null) InputSystem.RemoveDevice(keyboard);
         SessionState.SetBool(Flag, false); EditorApplication.update -= Tick; EditorApplication.Exit(code);
     }
