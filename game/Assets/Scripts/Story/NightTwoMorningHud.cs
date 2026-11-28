@@ -95,21 +95,29 @@ namespace BaGio12.Story
 
         void DrawPlay()
         {
-            bool fresh = objectiveSwap.Set(HudKit.Glue(Objective));
-            if (fresh && !string.IsNullOrEmpty(Objective)) HudKit.Play(MenuSounds.Note, .7f);
+            string road = State.riding ? (!State.returning && !State.redLightCleared ? "Đèn đỏ phía trước, dừng tại vạch." : "Đường thẳng tới điểm dừng.") : "";
+            bool blink = !story.State.night1_slept && fatiguePulse < 24 && fatiguePulse % 12 > 11.4f;
+            blink |= State.stage == MorningStage.Rest && State.restSeconds > 20 && State.restSeconds % 8 > 7.3f;
+            blink |= State.stage == MorningStage.Vigil && State.vigilSeconds % 5 > 4.1f;
+            DrawPlayHud("Đêm 2   ·   Thứ Tư, 25/11", Objective, State.riding, State.speed, road, State.riding && FixedRouteRide.AtStop(State), blink);
+        }
+
+        void DrawPlayHud(string day, string objective, bool riding, float speed, string road, bool atStop, bool blink)
+        {
+            bool fresh = objectiveSwap.Set(HudKit.Glue(objective));
+            if (fresh && !string.IsNullOrEmpty(objective)) HudKit.Play(MenuSounds.Note, .7f);
             HudKit.ShadeLeft(new Rect(0, 0, 980, 230), .7f);
-            HudKit.Label(new Rect(64, 48, 800, 30), story.State.clock + "   ·   Đêm 2   ·   Thứ Tư, 25/11", 21, HudKit.Fade(HudKit.Warm, .85f), true);
+            HudKit.Label(new Rect(64, 48, 800, 30), story.State.clock + "   ·   " + day, 21, HudKit.Fade(HudKit.Warm, .85f), true);
             float age = objectiveSwap.Age, shown = HudKit.Reveal(age, .13f, .32f), flash = 1 - Mathf.Clamp01(age / .9f);
             float height = Mathf.Max(34, HudKit.TextHeight(objectiveSwap.Current, 28, 780));
             HudKit.Fill(new Rect(40, 90, 3, height - 4), HudKit.Fade(HudKit.Warm, .3f + .6f * flash));
             HudKit.Push(shown, -14 * (1 - shown));
             HudKit.Label(new Rect(64, 84, 780, 120), objectiveSwap.Current, 28, HudKit.Paper);
             HudKit.Pop();
-            if (State.riding)
+            if (riding)
             {
-                string road = !State.returning && !State.redLightCleared ? "Đèn đỏ phía trước, dừng tại vạch." : "Đường thẳng tới điểm dừng.";
-                HudKit.Label(new Rect(64, 100 + height, 780, 30), (State.speed * 3.6f).ToString("0") + " km/h   ·   " + road, 22, HudKit.Fade(HudKit.Paper, .7f));
-                if (FixedRouteRide.AtStop(State)) HudKit.Prompt("E", "Tắt máy, xuống xe");
+                HudKit.Label(new Rect(64, 100 + height, 780, 30), (speed * 3.6f).ToString("0") + " km/h" + (road != "" ? "   ·   " + road : ""), 22, HudKit.Fade(HudKit.Paper, .7f));
+                if (atStop) HudKit.Prompt("E", "Tắt máy, xuống xe");
                 HudKit.Footer(true, "W", "Tăng tốc", "S", "Phanh", "E", "Xuống xe", "Esc", "Tạm dừng");
             }
             else
@@ -123,16 +131,17 @@ namespace BaGio12.Story
                 }
             }
             if (story.Subtitle != "") HudKit.Subtitle(story.Subtitle);
-            bool blink = !story.State.night1_slept && fatiguePulse < 24 && fatiguePulse % 12 > 11.4f;
-            blink |= State.stage == MorningStage.Rest && State.restSeconds > 20 && State.restSeconds % 8 > 7.3f;
-            blink |= State.stage == MorningStage.Vigil && State.vigilSeconds % 5 > 4.1f;
             if (blink) HudKit.Fill(new Rect(0, 0, HudKit.Width, HudKit.Height), Color.black);
         }
 
         void CloseAction(string label)
         {
             if (HudKit.Action(HudKit.Width - HudKit.Margin - 170, 110, "Esc", label))
-            { if (page != "") ClosePage(); else story.player.SetPhone(0); }
+            {
+                if (page == "") story.player.SetPhone(0);
+                else if (story.InNightThree) CloseThreePage();
+                else ClosePage();
+            }
         }
 
         void DrawPage()
@@ -268,23 +277,28 @@ namespace BaGio12.Story
 
         void DrawEnded()
         {
+            DrawEndedScreen("Hết Đêm 2", State.vigilDozed ? "Bạn ngủ gật lúc nào không hay. Trời đã sáng." : "Sáng 26/11/2026.", new List<(string, Action, bool)>
+            {
+                ("Sáng 26/11 - Bắt đầu Đêm 3", () => BeginThree(), true),
+                ("Chơi lại đêm 1", () => story.GetComponent<BaGio12.Persistence.NightPersistence>().StartNewGame(), true),
+            });
+        }
+
+        void DrawEndedScreen(string title, string subtitle, List<(string label, Action run, bool enabled)> items)
+        {
             HudKit.Fill(new Rect(0, 0, HudKit.Width, HudKit.Height), Color.black);
             float age = Now - screenAt, y = 360, left = HudKit.Margin;
             float head = HudKit.Reveal(age, .25f, .7f);
             HudKit.Push(head, 0, 10 * (1 - head));
-            HudKit.Label(new Rect(left, y, HudKit.Width - 2 * left, 80), "Hết Đêm 2", 52, HudKit.Paper, true);
+            HudKit.Label(new Rect(left, y, HudKit.Width - 2 * left, 80), title, 52, HudKit.Paper, true);
             HudKit.Pop();
             float sub = HudKit.Reveal(age, .7f, .6f);
             HudKit.Push(sub);
-            HudKit.Label(new Rect(left, y + 90, 1100, 80), State.vigilDozed ? "Bạn ngủ gật lúc nào không hay. Trời đã sáng." : "Sáng 26/11/2026.", 26, HudKit.Fade(HudKit.Paper, .75f));
+            HudKit.Label(new Rect(left, y + 90, 1100, 80), subtitle, 26, HudKit.Fade(HudKit.Paper, .75f));
             HudKit.Pop();
             bool ready = screenChoices.Age >= 0;
             HudKit.Push(ready ? 1 : 0, 0, 0, !ready);
-            Pick(screenChoices, left, y + 210, new List<(string, Action, bool)>
-            {
-                ("Sáng 26/11 - Bắt đầu Đêm 3", () => BeginThree(), true),
-                ("Chơi lại đêm 1", () => story.GetComponent<BaGio12.Persistence.NightPersistence>().StartNewGame(), true),
-            }, 32, 70);
+            Pick(screenChoices, left, y + 210, items, 32, 70);
             HudKit.Pop();
             HudKit.Push(HudKit.Reveal(screenChoices.Age, .2f, .4f));
             HudKit.Footer("W S", "Chọn", "Enter", "Xác nhận");

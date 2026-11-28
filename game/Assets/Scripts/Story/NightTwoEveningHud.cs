@@ -64,36 +64,13 @@ namespace BaGio12.Story
             return true;
         }
 
-        void StepTabs()
-        {
-            if (Event.current.type != EventType.Repaint || tabKeyFrame == Time.frameCount) return;
-            tabKeyFrame = Time.frameCount;
-            var keys = Keyboard.current;
-            if (keys == null) return;
-            int step = keys.aKey.wasPressedThisFrame || keys.leftArrowKey.wasPressedThisFrame ? -1 : keys.dKey.wasPressedThisFrame || keys.rightArrowKey.wasPressedThisFrame ? 1 : 0;
-            if (step == 0) return;
-            int at = Array.IndexOf(NganTabs, NganTab);
-            OpenNganTab(NganTabs[(Mathf.Max(0, at) + step + NganTabs.Length) % NganTabs.Length]);
-            HudKit.Tick();
-        }
-
         void DrawNganEvening()
         {
             if (NganTab == "messages" && !State.readEveningBatch) OpenNganTab("messages");
             PhoneLayout(out float left, out float listWidth, out float choiceX, out float choiceWidth);
             HudKit.Heading(left, 70, story.State.clock, "Máy Ngân", listWidth);
             CloseAction("Cất máy");
-            StepTabs();
-            float x = left;
-            for (int i = 0; i < NganTabs.Length; i++)
-            {
-                bool active = NganTab == NganTabs[i];
-                float w = HudKit.TextWidth(NganTabLabels[i], 22, active) + 8;
-                HudKit.Label(new Rect(x, 196, w + 20, 32), NganTabLabels[i], 22, active ? HudKit.Warm : HudKit.Fade(HudKit.Paper, .5f), active, TextAnchor.MiddleLeft, false);
-                if (active) HudKit.Fill(new Rect(x, 230, w, 2), HudKit.Fade(HudKit.Warm, .8f));
-                if (TabClicked(new Rect(x - 8, 190, w + 16, 44))) { OpenNganTab(NganTabs[i]); HudKit.Tick(); }
-                x += w + 36;
-            }
+            DrawTabStrip(NganTabs, NganTabLabels, NganTab, tab => OpenNganTab(tab));
             var body = new Rect(left, 260, listWidth, HudKit.Height - 260 - 180);
             switch (NganTab)
             {
@@ -153,17 +130,19 @@ namespace BaGio12.Story
             TabFooter(false);
         }
 
-        void DrawCalculator(Rect area)
+        void DrawCalculator(Rect area) => DrawCalculatorPad(area, CalculatorDisplay, key => PressCalculator(key));
+
+        void DrawCalculatorPad(Rect area, string display, Action<string> press)
         {
             HudKit.Fill(new Rect(area.x, area.y, 420, 84), HudKit.Fade(HudKit.Paper, .08f));
-            HudKit.Label(new Rect(area.x + 20, area.y + 10, 380, 64), CalculatorDisplay, 44, HudKit.Paper, false, TextAnchor.MiddleRight, false);
+            HudKit.Label(new Rect(area.x + 20, area.y + 10, 380, 64), display, 44, HudKit.Paper, false, TextAnchor.MiddleRight, false);
             if (Event.current.type == EventType.Repaint && Keyboard.current != null)
             {
                 var keys = Keyboard.current;
                 Key[] pad = { Key.Numpad0, Key.Numpad1, Key.Numpad2, Key.Numpad3, Key.Numpad4, Key.Numpad5, Key.Numpad6, Key.Numpad7, Key.Numpad8, Key.Numpad9 };
-                for (int d = 0; d < pad.Length; d++) if (keys[pad[d]].wasPressedThisFrame) PressCalculator(d.ToString());
-                if (keys.backspaceKey.wasPressedThisFrame || keys.deleteKey.wasPressedThisFrame) PressCalculator("C");
-                if (keys.enterKey.wasPressedThisFrame || keys.numpadEnterKey.wasPressedThisFrame || keys.numpadEqualsKey.wasPressedThisFrame) PressCalculator("=");
+                for (int d = 0; d < pad.Length; d++) if (keys[pad[d]].wasPressedThisFrame) press(d.ToString());
+                if (keys.backspaceKey.wasPressedThisFrame || keys.deleteKey.wasPressedThisFrame) press("C");
+                if (keys.enterKey.wasPressedThisFrame || keys.numpadEnterKey.wasPressedThisFrame || keys.numpadEqualsKey.wasPressedThisFrame) press("=");
             }
             for (int i = 0; i < CalculatorKeys.Length; i++)
             {
@@ -171,9 +150,34 @@ namespace BaGio12.Story
                 HudKit.Fill(cell, HudKit.Fade(HudKit.Paper, .07f));
                 HudKit.Fill(new Rect(cell.x, cell.yMax - 2, cell.width, 2), HudKit.Fade(HudKit.Paper, .2f));
                 HudKit.Label(cell, CalculatorKeys[i], 30, HudKit.Paper, false, TextAnchor.MiddleCenter, false);
-                if (TabClicked(cell)) { PressCalculator(CalculatorKeys[i]); HudKit.Tick(); }
+                if (TabClicked(cell)) { press(CalculatorKeys[i]); HudKit.Tick(); }
             }
             HudKit.Footer("A D", "Đổi mục", "Bàn phím số", "Nhập", "Enter", "Bằng", "Backspace", "Xóa", "Esc", "Cất máy");
+        }
+
+        void DrawTabStrip(string[] tabs, string[] labels, string current, Action<string> open, bool keyboard = true)
+        {
+            if (keyboard && Event.current.type == EventType.Repaint && tabKeyFrame != Time.frameCount && Keyboard.current != null)
+            {
+                tabKeyFrame = Time.frameCount;
+                var keys = Keyboard.current;
+                int step = keys.aKey.wasPressedThisFrame || keys.leftArrowKey.wasPressedThisFrame ? -1 : keys.dKey.wasPressedThisFrame || keys.rightArrowKey.wasPressedThisFrame ? 1 : 0;
+                if (step != 0 && tabs.Length > 1)
+                {
+                    int at = Mathf.Max(0, Array.IndexOf(tabs, current));
+                    open(tabs[(at + step + tabs.Length) % tabs.Length]); HudKit.Tick();
+                }
+            }
+            float x = HudKit.Margin;
+            for (int i = 0; i < tabs.Length; i++)
+            {
+                bool active = current == tabs[i];
+                float w = HudKit.TextWidth(labels[i], 22, active) + 8;
+                HudKit.Label(new Rect(x, 196, w + 20, 32), labels[i], 22, active ? HudKit.Warm : HudKit.Fade(HudKit.Paper, .5f), active, TextAnchor.MiddleLeft, false);
+                if (active) HudKit.Fill(new Rect(x, 230, w, 2), HudKit.Fade(HudKit.Warm, .8f));
+                if (TabClicked(new Rect(x - 8, 190, w + 16, 44))) { open(tabs[i]); HudKit.Tick(); }
+                x += w + 36;
+            }
         }
 
         void DrawVlog(Rect area, float choiceX, float choiceWidth)
