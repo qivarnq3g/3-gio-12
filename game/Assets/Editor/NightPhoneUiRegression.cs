@@ -15,6 +15,7 @@ public static class NightPhoneUiRegression
 {
     const string Flag = "NightPhoneUiReview";
     static Keyboard keyboard;
+    static Keyboard Target => Keyboard.current ?? keyboard;
     static double next, deadline;
     static int step;
     static NightOneDirector story;
@@ -50,7 +51,7 @@ public static class NightPhoneUiRegression
     }
     static void Check(bool ok, string message) { if (!ok) throw new Exception("PHONE UI: " + message); }
     static void Capture(string name) => ScreenCapture.CaptureScreenshot(Path.Combine(NightPersistence.DataRoot, name + ".png"));
-    static void Key(bool down) => InputSystem.QueueStateEvent(keyboard, down ? new KeyboardState(UnityEngine.InputSystem.Key.Enter) : new KeyboardState());
+    static void Key(bool down) => InputSystem.QueueStateEvent(Target, down ? new KeyboardState(UnityEngine.InputSystem.Key.Enter) : new KeyboardState());
     static void Tick()
     {
         EditorApplication.QueuePlayerLoopUpdate();
@@ -92,9 +93,9 @@ public static class NightPhoneUiRegression
                 case 14: Key(true); break;
                 case 15:
                     Key(false); Check(story.State.number_choice != "blocked", "Enter did not activate unblock action");
-                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(UnityEngine.InputSystem.Key.D)); break;
+                    InputSystem.QueueStateEvent(Target, new KeyboardState(UnityEngine.InputSystem.Key.D)); break;
                 case 16:
-                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    InputSystem.QueueStateEvent(Target, new KeyboardState());
                     var tab = typeof(NightTwoMorning).GetField("threeTab", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
                     Check((string)tab.GetValue(night) == "profile", "D did not switch to profile tab"); break;
                 case 17: Capture("n3-profile"); break;
