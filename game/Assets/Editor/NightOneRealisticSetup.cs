@@ -8,6 +8,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Rendering.Universal;
 
 public static class NightOneRealisticSetup
 {
@@ -17,6 +18,7 @@ public static class NightOneRealisticSetup
     const string MatRoot = "Assets/Scenes/Night01/Materials";
     const string PoliceStation = "env_police_station";
     const string PoliceDesk = "Night3_PoliceDesk";
+    const string FpsArmsPath = "Assets/Prefabs/Player/NightOneFpsArms.prefab";
     static Transform blockout, gameplay;
     static readonly List<string> missing = new List<string>();
     static readonly List<NightObserver> watchers = new List<NightObserver>();
@@ -521,6 +523,11 @@ public static class NightOneRealisticSetup
     [MenuItem("3 Gio 12/Night 1/Create Realistic (overwrites scene)")]
     public static void Create()
     {
+        var armsPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(FpsArmsPath);
+        var arms = armsPrefab != null ? armsPrefab.GetComponentInChildren<FpsArmsAnimator>() : null;
+        if (arms == null || arms.armsCamera == null || arms.animatedCamera == null)
+            throw new System.InvalidOperationException("Invalid FPS arms prefab: " + FpsArmsPath);
+
         missing.Clear(); watchers.Clear();
         if (AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath) != null) AssetDatabase.DeleteAsset(ScenePath);
         if (!AssetDatabase.CopyAsset(SourcePath, ScenePath)) throw new System.Exception("Cannot copy " + SourcePath);
@@ -536,6 +543,7 @@ public static class NightOneRealisticSetup
 
         var controller = Object.FindFirstObjectByType<FirstPersonPlayer>();
         if (controller == null) throw new System.Exception("Player missing from " + SourcePath);
+        InstallFpsArms(controller, armsPrefab);
         controller.showTestHud = false;
         var story = new GameObject("NightOneDirector").AddComponent<NightOneDirector>(); story.player = controller;
         story.gameObject.AddComponent<NightOneHud>().story = story;
@@ -561,8 +569,8 @@ public static class NightOneRealisticSetup
         Lamp("Camera red LED", led.center + Vector3.left * .03f, Color.red, .1f, 1);
 
         var hung = Watch("Chú Hùng", new Vector3(2.6f, .05f, -2.4f), 270, 20, 5, 5, story); hung.flashlight = true;
-        var stool = Box("Dishwasher_Stool", new Vector3(-1.45f, 0, -10.5f), new Vector3(-1.15f, .35f, -10.2f));
-        Watch("Người phụ nữ", new Vector3(stool.center.x, 0, stool.center.z), 90, 13, 3, 3, story).irregularLook = true;
+        var dishwasher = Watch("Người phụ nữ", new Vector3(-1.3f, .11f, -10.35f), 90, 13, 3, 3, story);
+        dishwasher.irregularLook = true;
         var kids = new Vector3(1.4f, 0, -15);
         Watch("Đứa nhỏ 1", kids, 270, 12, 4, 6, story, true).patrol = true;
         Watch("Đứa nhỏ 2", kids + new Vector3(0, 0, -1.5f), 270, 12, 4, 8, story, true).patrol = true;
@@ -729,9 +737,36 @@ public static class NightOneRealisticSetup
         bool corridor = NavMesh.SamplePosition(new Vector3(top.center.x + .2f, room.min.y, -41), out var landing, .8f, NavMesh.AllAreas);
         if (!corridor || !NavMesh.CalculatePath(story.parkingSpawn.position, landing.position, NavMesh.AllAreas, stairs) || stairs.status != NavMeshPathStatus.PathComplete)
             missing.Add("navmesh path parking->room7 corridor");
-        CharacterSetup.DressObservers(watchers);
+        CharacterSetup.DressObservers(watchers, hung, dishwasher, lienWatch);
+        var storyData = new SerializedObject(story);
+        storyData.FindProperty("lienAnimator").objectReferenceValue = lienWatch.GetComponent<ObserverAnimator>().animator;
+        storyData.ApplyModifiedPropertiesWithoutUndo();
         EditorSceneManager.SaveScene(scene); AssetDatabase.SaveAssets();
         Debug.Log($"NIGHT_ONE_REALISTIC_CREATED missing=[{string.Join(",", missing)}]");
+    }
+
+    static void InstallFpsArms(FirstPersonPlayer player, GameObject armsPrefab)
+    {
+        var eyes = player.eyes;
+        var stack = eyes.GetUniversalAdditionalCameraData().cameraStack;
+        foreach (var oldRig in player.GetComponentsInChildren<FpsArmsAnimator>(true))
+            Object.DestroyImmediate(oldRig.gameObject);
+        foreach (var child in eyes.GetComponentsInChildren<Transform>(true))
+        {
+            if (child != null && (child.name == "Left forearm placeholder" || child.name == "Right forearm placeholder"
+                || child.name == "First Person Arms Camera"))
+                Object.DestroyImmediate(child.gameObject);
+        }
+        stack.RemoveAll(camera => camera == null);
+
+        var instance = (GameObject)PrefabUtility.InstantiatePrefab(armsPrefab, eyes.transform);
+        var arms = instance.GetComponentInChildren<FpsArmsAnimator>();
+        arms.player = player;
+        arms.armsCamera.fieldOfView = eyes.fieldOfView;
+        eyes.cullingMask &= ~PlayerGeometry.ArmsMask;
+        stack.Add(arms.armsCamera);
+        PrefabUtility.RecordPrefabInstancePropertyModifications(arms);
+        PrefabUtility.RecordPrefabInstancePropertyModifications(arms.armsCamera);
     }
 
     public static void Run() { Create(); EditorApplication.Exit(missing.Count == 0 ? 0 : 2); }
