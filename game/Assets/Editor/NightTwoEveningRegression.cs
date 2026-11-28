@@ -146,6 +146,7 @@ public static class NightTwoEveningRegression
                 string image = Path.Combine(NightPersistence.DataRoot, "evening-review.png");
                 if (captureStep == 0)
                 {
+                    if (File.Exists(image)) File.Delete(image);
                     story.player.SetPhone(1); night.OpenNganTab("messages");
                     typeof(NightTwoMorning).GetField("scroll", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(night, Vector2.zero);
                     captureFrame = Time.frameCount; captureStep = 1;
