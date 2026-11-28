@@ -19,7 +19,7 @@ public static class NightPhoneUiRegression
     static int step;
     static NightOneDirector story;
     static NightTwoMorning night;
-    static readonly string[] captures = { "n1-phone", "n2-alarm", "n2-ngan", "n2-own", "n3-alarm", "n3-stranger" };
+    static readonly string[] captures = { "n1-phone", "n2-alarm", "n2-ngan", "n2-own", "n3-alarm", "n3-stranger", "n3-profile" };
     static NightPhoneUiRegression()
     { if (SessionState.GetBool(Flag, false)) EditorApplication.playModeStateChanged += Changed; }
     public static void Run()
@@ -92,6 +92,13 @@ public static class NightPhoneUiRegression
                 case 14: Key(true); break;
                 case 15:
                     Key(false); Check(story.State.number_choice != "blocked", "Enter did not activate unblock action");
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(UnityEngine.InputSystem.Key.D)); break;
+                case 16:
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    var tab = typeof(NightTwoMorning).GetField("threeTab", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                    Check((string)tab.GetValue(night) == "profile", "D did not switch to profile tab"); break;
+                case 17: Capture("n3-profile"); break;
+                case 18:
                     foreach (string file in captures)
                         Check(File.Exists(Path.Combine(NightPersistence.DataRoot, file + ".png")), "missing " + file);
                     Debug.Log("NIGHT_PHONE_UI_KEYBOARD_CAPTURE_PASSED"); Finish(0); return;
