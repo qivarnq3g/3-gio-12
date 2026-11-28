@@ -73,6 +73,12 @@ namespace BaGio12.Gameplay
             if (expired && group.alpha <= 0) { finished = true; Destroy(group.gameObject); }
         }
 
+        public void Dismiss()
+        {
+            finished = true;
+            if (group != null) Destroy(group.gameObject);
+        }
+
         static void Fade(CanvasGroup row, bool done)
         {
             row.alpha = Mathf.MoveTowards(row.alpha, done ? .28f : 1, Time.unscaledDeltaTime * 2);

@@ -11,7 +11,8 @@ namespace BaGio12.Story
         Collider doorCollider;
         Quaternion closedRotation;
         Vector3 closedPosition;
-        bool open;
+        bool open, followupLocked;
+        public void SetFollowupLocked(bool value) => followupLocked=value;
         void Awake()
         {
             director=FindFirstObjectByType<NightOneDirector>();doorCollider=GetComponent<Collider>();
@@ -20,7 +21,7 @@ namespace BaGio12.Story
         void Update()
         {
             if(director==null)return;
-            bool passable=director.State.stage>=NightStage.Room;
+            bool passable=director.State.stage>=NightStage.Room && !followupLocked;
             doorCollider.isTrigger=passable;
             if(leaf==null||passable==open)return;
             open=passable;

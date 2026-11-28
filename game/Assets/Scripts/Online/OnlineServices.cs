@@ -51,7 +51,7 @@ namespace BaGio12.Online
 
         public void SetConsent(bool granted)
         {
-            if (Profile == null) return;
+            if (Profile == null || (granted && !TelemetrySupported)) return;
             var before = Profile.Consent;
             if (granted)
             {

@@ -148,6 +148,7 @@ namespace BaGio12.Story
         }
         public string PromptFor(string action, int index)
         {
+            if (story.InNightThree) return ThreePrompt(action);
             if (State.stage >= MorningStage.Evening)
                 switch(action)
                 {
@@ -171,6 +172,7 @@ namespace BaGio12.Story
         }
         public void Interact(string action, int index)
         {
+            if (story.InNightThree) { InteractThree(action); return; }
             if (Transitioning || story.player.IsPaused || State.riding) return;
             bool ok;
             switch(action)
@@ -191,6 +193,7 @@ namespace BaGio12.Story
         }
         void OnDestroy()
         {
+            ReleaseThreeCamera();
             if (world != null) Destroy(world);
         }
     }

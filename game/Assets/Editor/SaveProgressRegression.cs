@@ -32,7 +32,7 @@ public static class SaveProgressRegression
             throw new Exception("Set THREEGIO12_DATA_ROOT to an isolated test directory.");
         if (!read) StorageCases(root + "-storage");
         SessionState.SetBool("SaveProgressRead", read); SessionState.SetBool("SaveProgressReview", true);
-        EditorSceneManager.OpenScene("Assets/Scenes/Night01/NightOneGraybox.unity");
+        EditorSceneManager.OpenScene(NightOneRealisticSetup.ScenePath);
         EditorApplication.playModeStateChanged -= Changed; EditorApplication.playModeStateChanged += Changed;
         EditorApplication.EnterPlaymode();
     }
@@ -98,6 +98,8 @@ public static class SaveProgressRegression
                     Check(persistence.StartNewGame(), "new game failed");
                     story.TelemetryProduced -= emitted.Add;
                     Check(emitted.OfType<NightStartedTelemetry>().Any(x => !x.isReplay), "StartNewGame did not emit night_started");
+                    // Seed completed arrival/help prerequisites; this suite tests persistence, not the prologue.
+                    story.State.bikeArrived = true; story.State.helpedLien = true;
                     story.State.stage = NightStage.Parking; story.State.phonePlaced = true; story.Clock.Set("21:00");
                     story.Act(NightAction.ParkBike); story.Act(NightAction.Phone); story.Act(NightAction.Gate); story.EnterRoom();
                     story.player.Teleport(story.roomSpawn.position, 73); story.player.SetPhone(1); story.Send("camera:unknown", "Cháu không biết.");
@@ -154,7 +156,11 @@ public static class SaveProgressRegression
             replayEmitted.Clear();
             persistence.AnswerTelemetryConsent(true);
             story.FinishNight();
-            Check(persistence.StartNewGame() && persistence.Online.QueuedEvents >= 3, "night_started was not queued after consent");
+            Check(persistence.StartNewGame(), "replay after consent failed");
+            if (BaGio12.Online.OnlineServices.TelemetrySupported)
+                Check(persistence.Online.QueuedEvents >= 3, "night_started was not queued after consent");
+            else
+                Check(persistence.Online.QueuedEvents == 0 && !persistence.Online.ConsentGranted, "unsupported platform queued telemetry");
             Check(replayEmitted.OfType<NightStartedTelemetry>().Any(x => x.isReplay), "StartNewGame after FinishNight did not emit replay night_started");
             story.TelemetryProduced -= replayEmitted.Add;
             Check(Mathf.Abs(story.player.sensitivity - .13f) < .001f, "replay reset preferences");

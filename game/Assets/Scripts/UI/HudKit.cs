@@ -126,6 +126,11 @@ namespace BaGio12.Gameplay
 
         static void Tint(Color color) => GUI.color = Fade(color, layerAlpha);
 
+        public static void Image(Rect rect, Texture texture)
+        {
+            if (texture != null) GUI.DrawTexture(S(rect), texture, ScaleMode.ScaleToFit);
+        }
+
         public static void Label(Rect r, string text, float size, Color color, bool bold = false, TextAnchor align = TextAnchor.UpperLeft, bool wrap = true)
         {
             if (string.IsNullOrEmpty(text) || layerAlpha * color.a <= .002f) return;
