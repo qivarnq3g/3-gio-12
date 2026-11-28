@@ -156,7 +156,11 @@ public static class SaveProgressRegression
             replayEmitted.Clear();
             persistence.AnswerTelemetryConsent(true);
             story.FinishNight();
-            Check(persistence.StartNewGame() && persistence.Online.QueuedEvents >= 3, "night_started was not queued after consent");
+            Check(persistence.StartNewGame(), "replay after consent failed");
+            if (BaGio12.Online.OnlineServices.TelemetrySupported)
+                Check(persistence.Online.QueuedEvents >= 3, "night_started was not queued after consent");
+            else
+                Check(persistence.Online.QueuedEvents == 0 && !persistence.Online.ConsentGranted, "unsupported platform queued telemetry");
             Check(replayEmitted.OfType<NightStartedTelemetry>().Any(x => x.isReplay), "StartNewGame after FinishNight did not emit replay night_started");
             story.TelemetryProduced -= replayEmitted.Add;
             Check(Mathf.Abs(story.player.sensitivity - .13f) < .001f, "replay reset preferences");
