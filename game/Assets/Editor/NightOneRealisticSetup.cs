@@ -8,6 +8,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Rendering.Universal;
 
 public static class NightOneRealisticSetup
 {
@@ -17,6 +18,7 @@ public static class NightOneRealisticSetup
     const string MatRoot = "Assets/Scenes/Night01/Materials";
     const string PoliceStation = "env_police_station";
     const string PoliceDesk = "Night3_PoliceDesk";
+    const string FpsArmsPath = "Assets/Prefabs/Player/NightOneFpsArms.prefab";
     static Transform blockout, gameplay;
     static readonly List<string> missing = new List<string>();
     static readonly List<NightObserver> watchers = new List<NightObserver>();
@@ -521,6 +523,11 @@ public static class NightOneRealisticSetup
     [MenuItem("3 Gio 12/Night 1/Create Realistic (overwrites scene)")]
     public static void Create()
     {
+        var armsPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(FpsArmsPath);
+        var arms = armsPrefab != null ? armsPrefab.GetComponentInChildren<FpsArmsAnimator>() : null;
+        if (arms == null || arms.armsCamera == null || arms.animatedCamera == null)
+            throw new System.InvalidOperationException("Invalid FPS arms prefab: " + FpsArmsPath);
+
         missing.Clear(); watchers.Clear();
         if (AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath) != null) AssetDatabase.DeleteAsset(ScenePath);
         if (!AssetDatabase.CopyAsset(SourcePath, ScenePath)) throw new System.Exception("Cannot copy " + SourcePath);
@@ -536,6 +543,7 @@ public static class NightOneRealisticSetup
 
         var controller = Object.FindFirstObjectByType<FirstPersonPlayer>();
         if (controller == null) throw new System.Exception("Player missing from " + SourcePath);
+        InstallFpsArms(controller, armsPrefab);
         controller.showTestHud = false;
         var story = new GameObject("NightOneDirector").AddComponent<NightOneDirector>(); story.player = controller;
         story.gameObject.AddComponent<NightOneHud>().story = story;
@@ -735,6 +743,30 @@ public static class NightOneRealisticSetup
         storyData.ApplyModifiedPropertiesWithoutUndo();
         EditorSceneManager.SaveScene(scene); AssetDatabase.SaveAssets();
         Debug.Log($"NIGHT_ONE_REALISTIC_CREATED missing=[{string.Join(",", missing)}]");
+    }
+
+    static void InstallFpsArms(FirstPersonPlayer player, GameObject armsPrefab)
+    {
+        var eyes = player.eyes;
+        var stack = eyes.GetUniversalAdditionalCameraData().cameraStack;
+        foreach (var oldRig in player.GetComponentsInChildren<FpsArmsAnimator>(true))
+            Object.DestroyImmediate(oldRig.gameObject);
+        foreach (var child in eyes.GetComponentsInChildren<Transform>(true))
+        {
+            if (child != null && (child.name == "Left forearm placeholder" || child.name == "Right forearm placeholder"
+                || child.name == "First Person Arms Camera"))
+                Object.DestroyImmediate(child.gameObject);
+        }
+        stack.RemoveAll(camera => camera == null);
+
+        var instance = (GameObject)PrefabUtility.InstantiatePrefab(armsPrefab, eyes.transform);
+        var arms = instance.GetComponentInChildren<FpsArmsAnimator>();
+        arms.player = player;
+        arms.armsCamera.fieldOfView = eyes.fieldOfView;
+        eyes.cullingMask &= ~PlayerGeometry.ArmsMask;
+        stack.Add(arms.armsCamera);
+        PrefabUtility.RecordPrefabInstancePropertyModifications(arms);
+        PrefabUtility.RecordPrefabInstancePropertyModifications(arms.armsCamera);
     }
 
     public static void Run() { Create(); EditorApplication.Exit(missing.Count == 0 ? 0 : 2); }
